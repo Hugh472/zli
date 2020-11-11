@@ -5,12 +5,19 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc -p tsconfig.json"
+    "start": "ts-node src/index.ts",
+    "build": "tsc"
   },
   "author": "nabeelperson",
   "license": "ISC",
   "devDependencies": {
     "typescript": "^4.0.5"
+  },
+  "dependencies": {
+    "@types/minimist": "^1.2.1",
+    "@types/node": "^14.14.7",
+    "got": "^11.8.0",
+    "minimist": "^1.2.5",
+    "ts-node": "^9.0.0"
   }
 }
