@@ -1,5 +1,4 @@
 import { CliArgParser } from "./arg-parser";
-import got from 'got';
 import chalk from 'chalk';
 import figlet from "figlet";
 import { HttpService } from "./http.service";
@@ -26,9 +25,9 @@ const run = async () => {
 
     var httpService = new HttpService(args.jwt);
 
-    const cool = await httpService.Get<MixpanelTokenResponse>('api/v1/mixpanel/token', null);
+    const cool = await httpService.Get<MixpanelTokenResponse>('api/v1/mixpanel/token');
 
-    console.log(cool); // only prints raw json, need to parse this
+    console.log(cool.token); // only prints raw json, need to parse this
 };
 
 run();
