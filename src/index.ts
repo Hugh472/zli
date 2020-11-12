@@ -1,7 +1,9 @@
 import { CliArgParser } from "./arg-parser";
 import chalk from 'chalk';
 import figlet from "figlet";
-import { HttpService } from "./http.service";
+import { HttpService } from "./http.service/http.service";
+import { CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse } from "./http.service/http.service.types";
+import { time } from "console";
 
 // console.log('1 cup cloves garlic, 2 teaspoons salt, 1/4 cup lemon juice, 1/4 cup water, 3 cups neutral oil');
 
@@ -12,11 +14,8 @@ console.log(
   );
 
 
-// TODO: remove, only using to test got lib
-interface MixpanelTokenResponse
-{
-    token: string;
-}
+
+
 
 const run = async () => {
     
@@ -25,9 +24,22 @@ const run = async () => {
 
     var httpService = new HttpService(args.jwt);
 
-    const cool = await httpService.Get<MixpanelTokenResponse>('api/v1/mixpanel/token');
+    var newSessionRequest : CreateSessionRequest = {
+        displayName: `cli-space-${Math.round(new Date().getTime() / 1000)}`,
+        connectionsToOpen: []
+    };
 
-    console.log(cool.token); // only prints raw json, need to parse this
+    const newSessionResponse = await httpService.Post<CreateSessionRequest, CreateSessionResponse>('api/v1/session/create', newSessionRequest);
+
+    var newConnectionRequest : CreateConnectionRequest = {
+        serverId: args.targetId,
+        serverType: args.targetType,
+        sessionId: newSessionResponse.sessionId
+    };
+
+    const newConnectionResponse = await httpService.Post<CreateConnectionRequest, CreateConnectionResponse>('api/v1/connection/create', newConnectionRequest);
+
+    // feed into signal R
 };
 
 run();

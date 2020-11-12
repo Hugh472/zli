@@ -1,5 +1,5 @@
 import minimist from "minimist";
-import { TargetType } from "./TargetType";
+import { TargetType } from "./types";
 
 
 // need a command layer
