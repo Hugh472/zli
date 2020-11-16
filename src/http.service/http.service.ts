@@ -3,18 +3,15 @@ import got, { Got } from 'got/dist/source';
 
 export class HttpService
 {
-    private baseUrl: string = "https://webshell-development-vpc-0917-115500-nabeel.clunk80.com/"; // TODO: read from config
-    private jwt: string; // TODO: store in config on start up
     // ref for got: https://github.com/sindresorhus/got
     private httpClient: Got;
 
-    constructor(jwt: string)
+    // TODO: oauth flow
+    constructor(baseUrl: string, apiSecret: string)
     {
-        this.jwt = jwt;
-
         this.httpClient = got.extend({
-            prefixUrl: this.baseUrl,
-            headers: {authorization: this.jwt},
+            prefixUrl: baseUrl,
+            headers: {'X-API-KEY': apiSecret},
         });
     }
 
