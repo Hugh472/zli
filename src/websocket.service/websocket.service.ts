@@ -99,7 +99,7 @@ export class WebsocketStream implements IDisposable
         const connectionBuilder = new HubConnectionBuilder();
         connectionBuilder.withUrl(
             this.connectionUrl, 
-            { headers: { 'X-API-KEY': this.jwt } }
+            { headers: { 'X-API-KEY': this.jwt } } // TODO: change to authorization header for jwt
         );
     
         return connectionBuilder.build();

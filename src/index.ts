@@ -47,7 +47,6 @@ const run = async () => {
     if(args.action == CliActions.config)
     {
         // TODO: inquirer to set up config
-        // exit
         config.set('serviceUrl', 'https://webshell-development-vpc-0917-115500-nabeel.clunk80.com/');
         config.set('apiSecret', '======ADD CONFIG HERE======');
         config.set('firstTime', false);
@@ -87,7 +86,7 @@ const run = async () => {
     readline.emitKeypressEvents(process.stdin);
     process.stdin.setRawMode(true);
     process.stdin.on('keypress', (str, key) => {
-        if (key.ctrl && key.name === 'c') {
+        if (key.ctrl && key.name === 'q') {
             // close the session
             httpService.Post<CloseSessionRequest, CloseSessionResponse>('api/v1/connection/close', {sessionId: newSessionResponse.sessionId}).catch();
             terminal.dispose();
