@@ -1,8 +1,7 @@
 import { CliActions, CliArgParser } from "./arg-parser";
 import chalk from 'chalk';
 import figlet from "figlet";
-import { HttpService } from "./http.service/http.service";
-import { CloseSessionRequest, CloseSessionResponse, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse } from "./http.service/http.service.types";
+import { ConnectionService, SessionService } from "./http.service/http.service";
 import { ShellTerminal } from "./terminal/terminal";
 import Conf from 'conf';
 
@@ -57,24 +56,26 @@ const run = async () => {
     
     const serviceUrl = <string> config.get('serviceUrl');
     const apiSecret = <string> config.get('apiSecret');
-    var httpService = new HttpService(serviceUrl, apiSecret);
 
-    var newSessionRequest : CreateSessionRequest = {
-        displayName: 'cli-space',
-        connectionsToOpen: []
-    };
+    const sessionService = new SessionService(serviceUrl, apiSecret);
+    const sessions = await sessionService.ListSessions();
 
-    const newSessionResponse = await httpService.Post<CreateSessionRequest, CreateSessionResponse>('api/v1/session/create', newSessionRequest);
+    var cliSpace = sessions.sessions.filter(s => s.displayName === 'cli-space'); // TODO: cli-space name can be changed in config
 
-    var newConnectionRequest : CreateConnectionRequest = {
-        serverId: args.targetId,
-        serverType: args.targetType,
-        sessionId: newSessionResponse.sessionId
-    };
+    var cliSessionId: string;
+    if(cliSpace.length === 0)
+    {
+        const resp =  await sessionService.CreateSession('cli-space');
+        cliSessionId = resp;
+    } else {
+        // there should only be 1
+        cliSessionId = cliSpace.pop().id;
+    }
 
-    const newConnectionResponse = await httpService.Post<CreateConnectionRequest, CreateConnectionResponse>('api/v1/connection/create', newConnectionRequest);
+    const connectionService = new ConnectionService(serviceUrl, apiSecret);
+    const connectionId = await connectionService.CreateConnection(args.targetType, args.targetId, cliSessionId);
 
-    const queryString = `?connectionId=${newConnectionResponse.connectionId}`;
+    const queryString = `?connectionId=${connectionId}`;
     const connectionUrl = `${serviceUrl}api/v1/hub/ssh/${queryString}`;
 
     var terminal = new ShellTerminal(connectionUrl, apiSecret);
@@ -88,7 +89,7 @@ const run = async () => {
     process.stdin.on('keypress', (str, key) => {
         if (key.ctrl && key.name === 'q') {
             // close the session
-            httpService.Post<CloseSessionRequest, CloseSessionResponse>('api/v1/connection/close', {sessionId: newSessionResponse.sessionId}).catch();
+            connectionService.CloseConnection(connectionId).catch();
             terminal.dispose();
             process.exit();
         } else {

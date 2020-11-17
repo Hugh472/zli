@@ -1,75 +1,103 @@
 import { SessionState, TargetType } from "../types";
 
 
-  export interface CreateSessionRequest {
+export interface CreateSessionRequest {
     displayName?: string;
     connectionsToOpen: ConnectionsToOpen[];
-  }
+}
   
-  export interface CreateSessionResponse {
+export interface CreateSessionResponse {
     sessionId: string;
-  }
+}
   
-  export interface CloseSessionRequest {
+export interface CloseSessionRequest {
     sessionId: string;
-  }
+}
   
-  export interface CloseSessionResponse {
+export interface CloseSessionResponse {
+}
   
-  }
+export interface ListSessionsRequest {  
+}
   
-  export interface ListSessionsRequest {
-  
-  }
-  
-  export interface ListSessionsResponse {
+export interface ListSessionsResponse {
     sessions: SessionDetails[];
-  }
+}
   
-  export interface SessionDetails {
+export interface SessionDetails {
     id: string;
     displayName: string;
     timeCreated: number;
     state: SessionState,
     connections: ConnectionSummary[]
-  }
+}
   
-  export interface ConnectionsToOpen {
+export interface ConnectionsToOpen {
       serverId: string;
       connectionType: TargetType,
       count: number
-  }
+}
 
 
-  export enum ConnectionState {
+export enum ConnectionState {
     Open = "Open",
     Closed = "Closed",
     Error = "Error"
-  }
+}
   
-  export interface CreateConnectionRequest {
+export interface CreateConnectionRequest {
     sessionId: string;
     serverId: string;
     serverType: TargetType;
-  }
+}
   
-  export interface CreateConnectionResponse {
+export interface CreateConnectionResponse {
     connectionId: string;
-  }
+}
   
   
-  export interface CloseConnectionRequest {
+export interface CloseConnectionRequest {
     connectionId: string;
-  }
+}
   
-  export interface CloseConnectionResponse {
-  }
+export interface CloseConnectionResponse {
+}
   
-  export interface ConnectionSummary {
+export interface ConnectionSummary {
     id: string;
     timeCreated: number;
     serverId: string;
     sessionId: string;
     state: ConnectionState,
     serverType: TargetType
-  }
+}
+
+export interface SsmTargetInfo {
+    id: string;
+    name: string;
+    status: SsmTargetStatus;
+    environmentId?: string;
+}
+
+export enum SsmTargetStatus {
+    Online = "Online",
+    Offline = "Offline"
+}
+
+export enum AuthenticationType {
+    Password = "Password",
+    PrivateKey = "PrivateKey",
+    UseExisting = "UseExisting"
+}
+  
+export interface SshServerInfo {
+    id: string;
+    alias: string;
+    host: string;
+    userName: string;
+    port: number;
+    authenticationType: AuthenticationType;
+    color: string;
+    vpnId?: string;
+    environmentId?: string;
+}
