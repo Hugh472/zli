@@ -9,50 +9,70 @@ import got from "got/dist/source";
 var client: Client;
 const code_verifier = generators.codeVerifier();
 const code_challenge = generators.codeChallenge(code_verifier);
-var browserProcess: Promise<ChildProcess>;
+var browserProcess: ChildProcess;
 var tokenSet: TokenSet;
-
 
 const run = async () =>
 {
+    // TODO: read authority from config
     const clunk80Auth = await Issuer.discover('https://auth-webshell-development-vpc-0917-115500-nabeel.clunk80.com:5003');
 
+    // should be equivalent to the server definition
+    // ref: https://github.com/cwcrypto/webshell-backend/blob/01228d26197be1f84ad07832c155b7a82d3fe435/Webshell.IdentityServer/Configuration/IdentityServerConfig.cs#L46
     client = new clunk80Auth.Client({
         client_id: 'CLI',
-        // client_secret: 'TQV5U29k1gHibH5bx1layBo0OSAvAbRT3UYW3EWrSYBB5swxjVfWUa1BS8lqzxG/0v9wruMcrGadany3',
-        redirect_uris: ['http://127.0.0.1:3000'],
+        redirect_uris: ['http://127.0.0.1:3000/login-callback' ],
+        post_logout_redirect_uris: ['http://127.0.0.1:3000/logout-callback'],
         response_types: ['code'],
         token_endpoint_auth_method: 'none',
         // id_token_signed_response_alg (default "RS256")
         // token_endpoint_auth_method (default "client_secret_basic")
     });
 
-    
+    // parameters that get serialized into the url
     var authParams : AuthorizationParameters = {
+        client_id: 'CLI',
         code_challenge: code_challenge,
         code_challenge_method: 'S256',
-        scope: 'openid offline_access', // both openid and offline_access must be set for refresh token
-        client_id: 'CLI'
-    }
+        // both openid and offline_access must be set for refresh token
+        // strangely enough I do not need 'backend-api' scope at the moment
+        // leaving it in just in case we enforce it later
+        scope: 'openid offline_access email profile backend-api',
+    };
 
-    browserProcess = open(client.authorizationUrl(authParams), {app: 'firefox'});
+    browserProcess = await open(client.authorizationUrl(authParams));
 }
 
 const host = '127.0.0.1';
 const port = 3000;
 
 const requestListener : RequestListener = async (req, res) => {
-    const params = client.callbackParams(req);
+    res.writeHead(200);
+    res.end();
+
+    switch (req.url.split('?')[0]) {
+        case "/login-callback":
+            const params = client.callbackParams(req);
+            tokenSet = await client.callback('http://127.0.0.1:3000/login-callback', params, { code_verifier });
+            console.log('Tokens received and validated');
+            const userInfo = await client.userinfo(tokenSet.access_token);
+
+            // call some service here?
+
+            // var resp = await got.post('https://webshell-development-vpc-0917-115500-nabeel.clunk80.com/api/v1/session/list', {headers: {authorization: `${tokenSet.token_type} ${tokenSet.access_token}`}, json: {payload: {}}}).json();
+            // console.log(resp);
+            break;
+        
+        case "/logout-callback":
+            console.log('logout callback');
+            break;
+
+        default:
+            console.log(`default callback at: ${req.url.split('?')[0]}`);
+            break;
+    }
     
-    tokenSet = await client.callback('http://127.0.0.1:3000', params, { code_verifier });
-    console.log('received and validated tokens %j', tokenSet); // refresh token in here
-    console.log('validated ID Token claims %j', tokenSet.claims());
-
-    const userInfo = await client.userinfo(tokenSet.access_token);
-    console.log('userinfo %j', userInfo);
-
-    var resp = await got.post('https://webshell-development-vpc-0917-115500-nabeel.clunk80.com/api/v1/session/list', {headers: {authorization: `Bearer ${tokenSet.access_token}`}, json: {payload: {}}}).json();
-    console.log(resp);
+    
 };
 
 const server = http.createServer(requestListener);
