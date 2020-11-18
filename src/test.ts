@@ -3,6 +3,7 @@ import http from 'http';
 import { RequestListener } from "http";
 import open from 'open';
 import { ChildProcess } from "child_process";
+import got from "got/dist/source";
 
 
 var client: Client;
@@ -34,8 +35,7 @@ const run = async () =>
         client_id: 'CLI'
     }
 
-    browserProcess = open(client.authorizationUrl(authParams));
-
+    browserProcess = open(client.authorizationUrl(authParams), {app: 'firefox'});
 }
 
 const host = '127.0.0.1';
@@ -50,6 +50,9 @@ const requestListener : RequestListener = async (req, res) => {
 
     const userInfo = await client.userinfo(tokenSet.access_token);
     console.log('userinfo %j', userInfo);
+
+    var resp = await got.post('https://webshell-development-vpc-0917-115500-nabeel.clunk80.com/api/v1/session/list', {headers: {authorization: `Bearer ${tokenSet.access_token}`}, json: {payload: {}}}).json();
+    console.log(resp);
 };
 
 const server = http.createServer(requestListener);
