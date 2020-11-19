@@ -42,7 +42,7 @@ const port = 3000;
 
 const requestListener : RequestListener = async (req, res) => {
     res.writeHead(200);
-    res.end();
+    res.end("You may close this window"); // TODO: serve HTML here
 
     switch (req.url.split('?')[0]) {
         case "/login-callback":
