@@ -17,16 +17,12 @@ const run = async () =>
     // TODO: read authority from config
     const clunk80Auth = await Issuer.discover('https://auth-webshell-development-vpc-0917-115500-nabeel.clunk80.com:5003');
 
-    // should be equivalent to the server definition
-    // ref: https://github.com/cwcrypto/webshell-backend/blob/01228d26197be1f84ad07832c155b7a82d3fe435/Webshell.IdentityServer/Configuration/IdentityServerConfig.cs#L46
+    // The client will make the log-in requests with the following parameters
     client = new clunk80Auth.Client({
-        client_id: 'CLI',
-        redirect_uris: ['http://127.0.0.1:3000/login-callback' ],
-        post_logout_redirect_uris: ['http://127.0.0.1:3000/logout-callback'],
+        client_id: 'CLI', // don't touch
+        redirect_uris: ['http://127.0.0.1:3000/login-callback' ], // this URL gets delivered to server for redirect
         response_types: ['code'],
-        token_endpoint_auth_method: 'none',
-        // id_token_signed_response_alg (default "RS256")
-        // token_endpoint_auth_method (default "client_secret_basic")
+        token_endpoint_auth_method: 'none'
     });
 
     // parameters that get serialized into the url
@@ -35,8 +31,6 @@ const run = async () =>
         code_challenge: code_challenge,
         code_challenge_method: 'S256',
         // both openid and offline_access must be set for refresh token
-        // strangely enough I do not need 'backend-api' scope at the moment
-        // leaving it in just in case we enforce it later
         scope: 'openid offline_access email profile backend-api',
     };
 
