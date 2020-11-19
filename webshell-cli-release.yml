@@ -1,0 +1,31 @@
+# spec:
+# https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
+version: 0.2
+env:
+    variables:
+      TZ: "America/New_York date"
+      ReleaseDir: "release"
+phases:
+  install:
+    runtime-versions:
+      nodejs: 12
+    commands:
+      - echo Install started `date`
+      - npm i
+  build:
+    commands:
+      - echo Build started `date`
+      - npm run release
+  post_build:
+    commands:
+      - echo Post build started `date`
+      - Version=$(node -p "require('./package.json').version")
+      - mkdir -p $ReleaseDir/$Version
+      - cp -a bin $ReleaseDir/$Version
+      - cp -a $ReleaseDir/$Version $ReleaseDir/latest
+      - echo $Version > $ReleaseDir/latest/VERSION
+artifacts:
+  files:
+    - '**/*'
+  base-directory: $ReleaseDir
+  name: release
