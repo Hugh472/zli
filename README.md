@@ -14,7 +14,7 @@ npm run start -- <cmd> [args] --flag flagArg
 npm run proto
 ```
 
-### Run against stage or deb
+### Run against stage or dev
 The following command is hidden from the help menu:
 ```
 npm run start -- <cmd> [args] --configName <prod | stage | dev>
