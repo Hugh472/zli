@@ -20,7 +20,8 @@ export class OAuthService implements IDisposable {
         codeVerifier: string, 
         callback: (tokenSet: TokenSet) => void,
         onListen: () => void,
-        resolve: (value?: void | PromiseLike<void>) => void
+        resolve: (value?: void | PromiseLike<void>) => void,
+        expectedNonce?: string,
     ): void {
 
         const requestListener: RequestListener = async (req, res) => {
@@ -30,7 +31,10 @@ export class OAuthService implements IDisposable {
                 case '/login-callback':
                     const params = client.callbackParams(req);
 
-                    const tokenSet = await client.callback(`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`, params, { code_verifier: codeVerifier });
+                    const tokenSet = await client.callback(
+                        `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
+                        params,
+                        { code_verifier: codeVerifier, nonce: expectedNonce });
 
                     this.logger.info(`Login successful`);
                     this.logger.debug(`callback listener closed`);
@@ -88,7 +92,7 @@ export class OAuthService implements IDisposable {
         return client;
     }
 
-    private getAuthUrl(client: Client, code_challenge: string) : string
+    private getAuthUrl(client: Client, code_challenge: string, nonce?: string) : string
     {
         const authParams: AuthorizationParameters = {
             client_id: this.configService.clientId(), // This one gets put in the queryParams
@@ -98,7 +102,8 @@ export class OAuthService implements IDisposable {
             scope: this.configService.authScopes(),
             // required for google refresh token
             prompt: 'consent',
-            access_type: 'offline'
+            access_type: 'offline',
+            nonce: nonce
         };
 
         return client.authorizationUrl(authParams);
@@ -114,7 +119,7 @@ export class OAuthService implements IDisposable {
         return tokenSet.expired();
     }
 
-    public login(callback: (tokenSet: TokenSet) => void): Promise<void>
+    public login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void>
     {
         return new Promise<void>(async (resolve, reject) => {
             setTimeout(() => reject('Log in timeout reached'), 60 * 1000);
@@ -123,9 +128,9 @@ export class OAuthService implements IDisposable {
             const code_verifier = generators.codeVerifier();
             const code_challenge = generators.codeChallenge(code_verifier);
 
-            const openBrowser = async () => await open(this.getAuthUrl(client, code_challenge));
+            const openBrowser = async () => await open(this.getAuthUrl(client, code_challenge, nonce));
             
-            this.setupCallbackListener(client, code_verifier, callback, openBrowser, resolve);
+            this.setupCallbackListener(client, code_verifier, callback, openBrowser, resolve, nonce);
         });
     }
 
