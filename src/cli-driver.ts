@@ -36,12 +36,15 @@ import qrcode from 'qrcode';
 import { Logger } from './logger.service/logger'
 import { LoggerConfigService } from "./logger-config.service/logger-config.service";
 import { SsmTunnelService } from "./ssm-tunnel/ssm-tunnel.service";
+import { KeySplittingService } from "./keysplitting.service/keysplitting.service";
+import { KeySplittingConfigService } from "./keysplitting.service/keysplitting-config.service";
 
 export class CliDriver
 {
     private processName: string;
     private configService: ConfigService;
     private loggerConfigService: LoggerConfigService;
+    private ksConfigService: KeySplittingConfigService
     private userInfo: UserinfoResponse; // sub and email
     private logger: Logger;
 
@@ -71,6 +74,7 @@ export class CliDriver
 
             // Config init
             this.configService = new ConfigService(<string> argv.configName, this.logger);
+            this.ksConfigService = new KeySplittingConfigService(<string> argv.configName)
         })
         .middleware(() => {
             checkVersionMiddleware(this.logger);
@@ -217,13 +221,22 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 const provider = <IdP> argv.provider;
                 await this.configService.loginSetup(provider);
-                
+
                 // Can only create oauth service after loginSetup completes
                 const oAuthService = new OAuthService(this.configService, this.logger);
+                const ksService = new KeySplittingService(this.ksConfigService, this.logger);
+
                 if(! oAuthService.isAuthenticated())
                 {
                     this.logger.info('Login required, opening browser');
-                    await oAuthService.login((t) => this.configService.setTokenSet(t));
+
+                    // Create hello msg
+                    // TODO: Send hello to bastion HERE
+                    // Create nonce from hello msg
+                    const helloMsg = await ksService.createHelloMsg();
+                    const nonce = ksService.createNonce(helloMsg);
+
+                    await oAuthService.login((t) => this.configService.setTokenSet(t), nonce);
                     this.userInfo = await oAuthService.userInfo();
                 }
                 
