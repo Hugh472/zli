@@ -35,6 +35,7 @@ import { version } from '../package.json';
 import qrcode from 'qrcode';
 import { Logger } from './logger.service/logger'
 import { LoggerConfigService } from "./logger-config.service/logger-config.service";
+import { SsmTunnelService } from "./ssm-tunnel/ssm-tunnel.service";
 
 export class CliDriver
 {
@@ -52,7 +53,7 @@ export class CliDriver
     // use the following to shortcut middleware according to command
     private noOauthCommands: string[] = ['config', 'login', 'logout'];
     private noMixpanelCommands: string[] = ['config', 'login', 'logout'];
-    private noFetchCommands: string[] = ['config', 'login', 'logout'];
+    private noFetchCommands: string[] = ['ssh-proxy', 'config', 'login', 'logout'];
 
     public start()
     {
@@ -129,6 +130,39 @@ export class CliDriver
 
             this.envs = envService.ListEnvironments();
         })
+        .command(
+            'ssh-proxy <host> <user> <port> <identityFile>',
+            'ssh proxy command',
+            (yargs) => {
+                return yargs
+                .positional('host', {
+                    type: 'string',
+                })
+                .positional('user', {
+                    type: 'string',
+                })
+                .positional('port', {
+                    type: 'string',
+                })
+                .positional('identityFile', {
+                    type: 'string'
+                })
+            },
+            async (argv) => {
+                let ssmTunnelService = new SsmTunnelService(this.logger, this.configService);
+                await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, parseInt(argv.port), argv.identityFile);
+                process.stdin.on('data', async (data) => {
+                    try {
+                        await ssmTunnelService.sendDataMessage(data);
+                    } catch(error) {
+                        // TODO: Handle errors more gracefully
+                        // also display an error message to stderr so ssh proxy command will see it?
+                        this.logger.error(`Error sending websocket message`);
+                        process.exit(1);
+                    }
+                });
+            }
+        )
         .command(
             'login <provider>',
             'Login through a specific provider',
