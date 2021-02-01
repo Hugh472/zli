@@ -131,8 +131,28 @@ export class CliDriver
             this.envs = envService.ListEnvironments();
         })
         .command(
+            'ssh-proxy-config',
+            'Generate ssh configuration to be used with the ssh-proxy command',
+            (yargs) => {},
+            async (argv) => {
+                let thoumPath = argv.$0;
+                let keyPath = this.configService.sshKeyPath();
+                this.logger.info(`Add the following lines to your ssh config (~/.ssh/config) file:
+
+host bzero-*
+    IdentityFile ${keyPath}
+    ProxyCommand ${thoumPath} ssh-proxy %h %r %p ${keyPath}
+
+                `);
+                this.logger.info(`Then you can use bastion zero to proxy ssh commands using the following syntax:
+
+ssh <user>@bzero-<target-id>
+                `);
+            }
+        )
+        .command(
             'ssh-proxy <host> <user> <port> <identityFile>',
-            'ssh proxy command',
+            'ssh proxy command (use ssh-proxy-config to setup)',
             (yargs) => {
                 return yargs
                 .positional('host', {

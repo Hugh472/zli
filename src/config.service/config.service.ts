@@ -4,6 +4,7 @@ import { ClientSecretResponse, UserSummary } from '../http.service/http.service.
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
+import path from 'path';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type ThoumConfigSchema = {
@@ -16,7 +17,8 @@ type ThoumConfigSchema = {
     mixpanelToken: string,
     idp: IdP,
     sessionId: string,
-    whoami: UserSummary
+    whoami: UserSummary,
+    sshKeyPath: string
 }
 
 export class ConfigService {
@@ -38,7 +40,8 @@ export class ConfigService {
                 mixpanelToken: undefined,
                 idp: undefined,
                 sessionId: undefined,
-                whoami: undefined
+                whoami: undefined,
+                sshKeyPath: undefined
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true    // if config is invalid, delete
@@ -48,6 +51,8 @@ export class ConfigService {
             logger.error(`Config not initialized (or is invalid) for dev environment: Must set serviceUrl in: ${this.config.path}`);
             process.exit(1);
         }
+
+        this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'thoum-temp-key'));
 
         this.tokenService = new TokenService(this, logger);
     }
@@ -120,6 +125,10 @@ export class ConfigService {
 
     public setMe(me: UserSummary): void {
         this.config.set('whoami', me);
+    }
+
+    public sshKeyPath() {
+        return this.config.get('sshKeyPath');
     }
 
     public logout(): void
