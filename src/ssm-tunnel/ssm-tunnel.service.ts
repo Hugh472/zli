@@ -3,16 +3,20 @@ import crypto from 'crypto';
 import fs from 'fs';
 
 import SshPK from 'sshpk';
+import { Observable, Subject } from 'rxjs';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
-import { AddSshPubKeyMessage, StartTunnelMessage, TunnelDataMessage } from './ssm-tunnel.types';
+import { AddSshPubKeyMessage, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
+import { SsmTargetService } from '../http.service/http.service';
 
 
 export class SsmTunnelService
 {
     private websocket : HubConnection;
+    private errorSubject: Subject<string> = new Subject<string>();
+    public errors: Observable<string> = this.errorSubject.asObservable();
 
     constructor(
         private logger: Logger,
@@ -26,29 +30,56 @@ export class SsmTunnelService
         userName: string,
         port: number,
         identityFile: string
-    ) {
-        let targetId = this.parseTargetIdFromHost(hostName);
+    ) : Promise<boolean> {
+        try {
+            let targetId = await this.parseTargetIdFromHost(hostName);
 
-        await Promise.all([
-            this.setupWebsocket(),
-            this.setupEphemeralSshKey(identityFile)
-        ]);
+            await Promise.all([
+                this.setupWebsocket(),
+                this.setupEphemeralSshKey(identityFile)
+            ]);
 
-        await this.sendStartTunnelMessage({
-            targetId: targetId,
-            targetPort: port,
-            targetUser: userName
-        });
+            await this.sendStartTunnelMessage({
+                targetId: targetId,
+                targetPort: port,
+                targetUser: userName
+            });
 
-        await this.sendPubKeyFromIdentityFile(identityFile);
+            await this.sendPubKeyFromIdentityFile(identityFile);
+
+            return true;
+        } catch(err) {
+            this.handleError(`Failed to setup tunnel: ${err.message}`);
+            return false;
+        }
+    }
+
+    public async sendDataMessage(data: Buffer) {
+        // this.logger.debug('Outgoing message >>>> ' + data.toString('utf8'));
+        let base64EncData = data.toString('base64');
+        let dataMessage: TunnelDataMessage = {
+            data: base64EncData
+        };
+
+        try {
+            await this.sendWebsocketMessage<TunnelDataMessage>('SendData', dataMessage);
+        } catch(err) {
+            this.handleError(err);
+        }
+    }
+
+    public async closeConnection() {
+        if(this.websocket) {
+            await this.websocket.stop();
+            this.websocket = undefined;
+        }
     }
 
     private async setupWebsocket() {
         await this.startWebsocket();
 
-        // TODO: why isnt this triggered on server restarts?
         this.websocket.onclose((error) => {
-            this.logger.error(`Websocket was closed by server: ${error}`);
+            this.handleError(`Websocket was closed by server: ${error}`);
         });
 
         this.websocket.on('ReceiveData', (dataMessage: TunnelDataMessage) => {
@@ -88,7 +119,7 @@ export class SsmTunnelService
 
         // Generate a new ephemeral key to use
         this.logger.info('Generating an ephemeral ssh key');
-            
+
         let { publicKey, privateKey } = await util.promisify(crypto.generateKeyPair)('rsa', {
             modulusLength: 4096,
             publicKeyEncoding: {
@@ -135,27 +166,17 @@ export class SsmTunnelService
         return util.promisify(fs.readFile)(identityFileName, 'utf8');
     }
 
-    public async sendDataMessage(data: Buffer) {
-        // this.logger.debug('Outgoing message >>>> ' + data.toString('utf8'));
-        let base64EncData = data.toString('base64');
-        let dataMessage: TunnelDataMessage = {
-            data: base64EncData
-        };
-
-        await this.sendWebsocketMessage<TunnelDataMessage>('SendData', dataMessage);
-    }
-
     private createConnection(): HubConnection {
         // sessionId is for user authentication
         const queryString = `?session_id=${this.configService.sessionId()}`;
         const connectionUrl = `${this.configService.serviceUrl()}api/v1/hub/ssm-tunnel/${queryString}`;
-        
+
         const connectionBuilder = new HubConnectionBuilder();
         connectionBuilder.withUrl(
-            connectionUrl, 
+            connectionUrl,
             { headers: { authorization: this.configService.getAuthHeader() } }
         ).configureLogging(6); // log level 6 is no websocket logs
-    
+
         return connectionBuilder.build();
     }
 
@@ -165,35 +186,38 @@ export class SsmTunnelService
         await this.websocket.start();
     }
 
-    private sendStartTunnelMessage(startTunnelMessage: StartTunnelMessage) {
-        return this.sendWebsocketMessage<StartTunnelMessage>(
-            'StartTunnel', 
+    private async sendStartTunnelMessage(startTunnelMessage: StartTunnelMessage) {
+        await this.sendWebsocketMessage<StartTunnelMessage>(
+            'StartTunnel',
             startTunnelMessage
         );
     }
 
-    private sendAddSshPubKeyMessage(addSshPubKeyMessage: AddSshPubKeyMessage) {
-        return this.sendWebsocketMessage<AddSshPubKeyMessage>(
+    private async sendAddSshPubKeyMessage(addSshPubKeyMessage: AddSshPubKeyMessage) {
+        await this.sendWebsocketMessage<AddSshPubKeyMessage>(
             'AddSshPubKey',
             addSshPubKeyMessage
         );
     }
 
     private async sendWebsocketMessage<T>(methodName: string, message: T) {
-        if(this.websocket.state == HubConnectionState.Disconnected)
+        if(this.websocket === undefined || this.websocket.state == HubConnectionState.Disconnected)
             throw new Error('Hub disconnected');
 
-        await this.websocket.invoke(methodName, message);
-    }
-    
-    private async closeConnection() {
-        if(this.websocket) {
-            await this.websocket.stop();
-            this.websocket = undefined;
+        let response = await this.websocket.invoke<WebsocketResponse>(methodName, message);
+
+        // Handle Hub Error
+        if(response.error) {
+            throw new Error(response.errorMessage);
         }
     }
 
-    private parseTargetIdFromHost(host: string): string {
+    private async handleError(errorMessage: string) {
+        this.logger.error(errorMessage);
+        this.errorSubject.next(errorMessage);
+    }
+
+    private async parseTargetIdFromHost(host: string): Promise<string> {
         let prefix = 'bzero-';
 
         if(! host.startsWith(prefix)) {
@@ -203,9 +227,12 @@ export class SsmTunnelService
 
         let targetId = host.substr(prefix.length);
 
-        // TODO: Validate the targetId. We may want to do more then just check
-        // for a valid guid and also check that this target exists when listing
-        // ssm targets
+        const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+        let ssmTargets = await ssmTargetService.ListSsmTargets();
+
+        if(! ssmTargets.some(t => t.id == targetId)) {
+            throw new Error(`No ssm target exists with id ${targetId}`);
+        }
 
         return targetId;
     }

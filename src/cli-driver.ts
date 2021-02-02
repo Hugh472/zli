@@ -53,7 +53,7 @@ export class CliDriver
     // use the following to shortcut middleware according to command
     private noOauthCommands: string[] = ['config', 'login', 'logout'];
     private noMixpanelCommands: string[] = ['config', 'login', 'logout'];
-    private noFetchCommands: string[] = ['ssh-proxy', 'config', 'login', 'logout'];
+    private noFetchCommands: string[] = ['ssh-proxy-config', 'ssh-proxy', 'config', 'login', 'logout'];
 
     public start()
     {
@@ -141,7 +141,7 @@ export class CliDriver
 
 host bzero-*
     IdentityFile ${keyPath}
-    ProxyCommand ${thoumPath} ssh-proxy %h %r %p ${keyPath}
+    ProxyCommand ${thoumPath} ssh-proxy -s %h %r %p ${keyPath}
 
                 `);
                 this.logger.info(`Then you can use bastion zero to proxy ssh commands using the following syntax:
@@ -170,17 +170,17 @@ ssh <user>@bzero-<target-id>
             },
             async (argv) => {
                 let ssmTunnelService = new SsmTunnelService(this.logger, this.configService);
-                await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, parseInt(argv.port), argv.identityFile);
-                process.stdin.on('data', async (data) => {
-                    try {
-                        await ssmTunnelService.sendDataMessage(data);
-                    } catch(error) {
-                        // TODO: Handle errors more gracefully
-                        // also display an error message to stderr so ssh proxy command will see it?
-                        this.logger.error(`Error sending websocket message`);
-                        process.exit(1);
-                    }
+                ssmTunnelService.errors.subscribe(errorMessage => {
+                    process.stderr.write(`\n${errorMessage}\n`);
+                    ssmTunnelService.closeConnection();
+                    process.exit(1);
                 });
+
+                if( await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, parseInt(argv.port), argv.identityFile)) {
+                    process.stdin.on('data', async (data) => {
+                        await ssmTunnelService.sendDataMessage(data);
+                    });
+                }
             }
         )
         .command(

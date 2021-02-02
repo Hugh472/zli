@@ -1,3 +1,8 @@
+export interface WebsocketResponse {
+    error: boolean;
+    errorMessage: string;
+}
+
 export interface StartTunnelMessage {
     targetId: string;
     targetPort: number;
