@@ -54,11 +54,12 @@ export class SsmTunnelService
         }
     }
 
-    public async sendDataMessage(data: Buffer) {
+    public async sendDataMessage(data: Buffer, sequenceNumber: number) {
         // this.logger.debug('Outgoing message >>>> ' + data.toString('utf8'));
         let base64EncData = data.toString('base64');
         let dataMessage: TunnelDataMessage = {
-            data: base64EncData
+            data: base64EncData,
+            sequenceNumber: sequenceNumber
         };
 
         try {
@@ -86,6 +87,8 @@ export class SsmTunnelService
             try {
                 let buf = Buffer.from(dataMessage.data, 'base64');
                 // this.logger.debug('Incoming message >>>>>' + buf.toString('utf8'));
+
+                this.logger.debug(`received tunnel data message with sequence number ${dataMessage.sequenceNumber}`);
 
                 // Write to standard out for ProxyCommand to consume
                 process.stdout.write(buf);

@@ -16,4 +16,5 @@ export interface AddSshPubKeyMessage {
 
 export interface TunnelDataMessage {
     data: string;
+    sequenceNumber: number;
 }
