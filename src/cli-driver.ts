@@ -162,7 +162,7 @@ ssh <user>@bzero-<target-id>
                     type: 'string',
                 })
                 .positional('port', {
-                    type: 'string',
+                    type: 'number',
                 })
                 .positional('identityFile', {
                     type: 'string'
@@ -177,7 +177,7 @@ ssh <user>@bzero-<target-id>
                 });
 
                 let sequenceNumber = 0;
-                if( await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, parseInt(argv.port), argv.identityFile)) {
+                if( await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, argv.port, argv.identityFile)) {
                     process.stdin.on('data', async (data) => {
                         await ssmTunnelService.sendDataMessage(data, sequenceNumber++);
                     });

@@ -55,7 +55,6 @@ export class SsmTunnelService
     }
 
     public async sendDataMessage(data: Buffer, sequenceNumber: number) {
-        // this.logger.debug('Outgoing message >>>> ' + data.toString('utf8'));
         let base64EncData = data.toString('base64');
         let dataMessage: TunnelDataMessage = {
             data: base64EncData,
@@ -86,7 +85,6 @@ export class SsmTunnelService
         this.websocket.on('ReceiveData', (dataMessage: TunnelDataMessage) => {
             try {
                 let buf = Buffer.from(dataMessage.data, 'base64');
-                // this.logger.debug('Incoming message >>>>>' + buf.toString('utf8'));
 
                 this.logger.debug(`received tunnel data message with sequence number ${dataMessage.sequenceNumber}`);
 
@@ -119,7 +117,6 @@ export class SsmTunnelService
     }
 
     private async generateEphemeralSshKey() : Promise<string> {
-
         // Generate a new ephemeral key to use
         this.logger.info('Generating an ephemeral ssh key');
 
@@ -131,9 +128,7 @@ export class SsmTunnelService
             },
             privateKeyEncoding: {
                 type: 'pkcs1',
-                format: 'pem',
-                // cipher: 'aes-256-cbc',
-                // passphrase: ''
+                format: 'pem'
             }
         });
 
@@ -141,14 +136,11 @@ export class SsmTunnelService
     }
 
     private async sendPubKeyFromIdentityFile(identityFile: string) {
-
         let pubKey = await this.extractPubKeyFromIdentityFile(identityFile);
 
         // key type and pubkey are space delimited in the resulting string
         // https://github.com/joyent/node-sshpk/blob/4342c21c2e0d3860f5268fd6fd8af6bdeddcc6fc/lib/formats/ssh.js#L99
-        let keyString = pubKey.toString('ssh');
-        let keyType = keyString.split(' ')[0];
-        let sshPubKey = keyString.split(' ')[1];
+        let [keyType, sshPubKey] = pubKey.toString('ssh').split(' ');
 
         await this.sendAddSshPubKeyMessage({
             keyType: keyType,
@@ -224,8 +216,7 @@ export class SsmTunnelService
         let prefix = 'bzero-';
 
         if(! host.startsWith(prefix)) {
-            this.logger.error(`Invalid host provided must have form ${prefix}<targetId>`);
-            throw Error('Invalid host');
+            throw new Error(`Invalid host provided must have form ${prefix}<targetId>`);
         }
 
         let targetId = host.substr(prefix.length);
