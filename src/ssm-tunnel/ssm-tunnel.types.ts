@@ -18,3 +18,13 @@ export interface TunnelDataMessage {
     data: string;
     sequenceNumber: number;
 }
+
+export enum SsmTunnelHubIncomingMessages {
+    ReceiveData = "ReceiveData"
+}
+
+export enum SsmTunnelHubOutgoingMessages {
+    StartTunnel = "StartTunnel",
+    AddSshPubKey = "AddSshPubKey",
+    SendData = "SendData"
+}

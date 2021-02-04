@@ -8,7 +8,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
-import { AddSshPubKeyMessage, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
+import { AddSshPubKeyMessage, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
 import { SsmTargetService } from '../http.service/http.service';
 
 
@@ -62,7 +62,10 @@ export class SsmTunnelService
         };
 
         try {
-            await this.sendWebsocketMessage<TunnelDataMessage>('SendData', dataMessage);
+            await this.sendWebsocketMessage<TunnelDataMessage>(
+                SsmTunnelHubOutgoingMessages.SendData,
+                dataMessage
+            );
         } catch(err) {
             this.handleError(err);
         }
@@ -82,7 +85,7 @@ export class SsmTunnelService
             this.handleError(`Websocket was closed by server: ${error}`);
         });
 
-        this.websocket.on('ReceiveData', (dataMessage: TunnelDataMessage) => {
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveData, (dataMessage: TunnelDataMessage) => {
             try {
                 let buf = Buffer.from(dataMessage.data, 'base64');
 
@@ -183,14 +186,14 @@ export class SsmTunnelService
 
     private async sendStartTunnelMessage(startTunnelMessage: StartTunnelMessage) {
         await this.sendWebsocketMessage<StartTunnelMessage>(
-            'StartTunnel',
+            SsmTunnelHubOutgoingMessages.StartTunnel,
             startTunnelMessage
         );
     }
 
     private async sendAddSshPubKeyMessage(addSshPubKeyMessage: AddSshPubKeyMessage) {
         await this.sendWebsocketMessage<AddSshPubKeyMessage>(
-            'AddSshPubKey',
+            SsmTunnelHubOutgoingMessages.AddSshPubKey,
             addSshPubKeyMessage
         );
     }
