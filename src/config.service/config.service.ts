@@ -23,10 +23,12 @@ type ThoumConfigSchema = {
 
 export class ConfigService {
     private config: Conf<ThoumConfigSchema>;
+    private configName: string;
     private tokenService: TokenService;
 
     constructor(configName: string, logger: Logger) {
         var appName = this.getAppName(configName);
+        this.configName = configName;
         this.config = new Conf<ThoumConfigSchema>({
             projectName: 'thoum-cli',
             configName: configName, // prod, stage, dev
@@ -52,9 +54,14 @@ export class ConfigService {
             process.exit(1);
         }
 
-        this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'thoum-temp-key'));
+        if(! this.config.get('sshKeyPath'))
+            this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'bzero-temp-key'));
 
         this.tokenService = new TokenService(this, logger);
+    }
+
+    public getConfigName() {
+        return this.configName;
     }
 
     public configPath(): string {

@@ -39,6 +39,7 @@ import { SsmTunnelService } from "./ssm-tunnel/ssm-tunnel.service";
 
 export class CliDriver
 {
+    private processName: string;
     private configService: ConfigService;
     private loggerConfigService: LoggerConfigService;
     private userInfo: UserinfoResponse; // sub and email
@@ -57,6 +58,8 @@ export class CliDriver
 
     public start()
     {
+        this.processName = process.argv[0];
+
         yargs(process.argv.slice(2))
         .scriptName("thoum")
         .usage('$0 <cmd> [args]')
@@ -135,24 +138,30 @@ export class CliDriver
             'Generate ssh configuration to be used with the ssh-proxy command',
             (yargs) => {},
             async (argv) => {
-                let thoumPath = argv.$0;
                 let keyPath = this.configService.sshKeyPath();
-                this.logger.info(`Add the following lines to your ssh config (~/.ssh/config) file:
+                let configName = this.configService.getConfigName();
+                let configNameArg = '';
+                if(configName != 'prod') {
+                    configNameArg = `--configName=${configName}`;
+                }
+
+                this.logger.info(`
+Add the following lines to your ssh config (~/.ssh/config) file:
 
 host bzero-*
     IdentityFile ${keyPath}
-    ProxyCommand ${thoumPath} ssh-proxy -s %h %r %p ${keyPath}
+    ProxyCommand ${this.processName} ssh-proxy ${configNameArg} -s %h %r %p ${keyPath}
 
-                `);
-                this.logger.info(`Then you can use bastion zero to proxy ssh commands using the following syntax:
 
-ssh <user>@bzero-<target-id>
+Then you can use native ssh to connect to any of your ssm targets using the following syntax:
+
+ssh <user>@bzero-<ssm-target-id-or-name>
                 `);
             }
         )
         .command(
             'ssh-proxy <host> <user> <port> <identityFile>',
-            'ssh proxy command (use ssh-proxy-config to setup)',
+            'ssh proxy command (run ssh-proxy-config command to generate configuration)',
             (yargs) => {
                 return yargs
                 .positional('host', {
