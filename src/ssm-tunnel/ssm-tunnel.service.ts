@@ -216,18 +216,37 @@ export class SsmTunnelService
         let prefix = 'bzero-';
 
         if(! host.startsWith(prefix)) {
-            throw new Error(`Invalid host provided must have form ${prefix}<targetId>`);
+            throw new Error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
         }
 
-        let targetId = host.substr(prefix.length);
+        let targetString = host.substr(prefix.length);
 
         const ssmTargetService = new SsmTargetService(this.configService, this.logger);
         let ssmTargets = await ssmTargetService.ListSsmTargets();
 
-        if(! ssmTargets.some(t => t.id == targetId)) {
-            throw new Error(`No ssm target exists with id ${targetId}`);
-        }
+        const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
+        if(guidPattern.test(targetString)) {
+            // target id
+            let targetId = targetString;
+            if(! ssmTargets.some(t => t.id == targetId)) {
+                throw new Error(`No ssm target exists with id ${targetId}`);
+            }
 
-        return targetId;
+            return targetId;
+        } else {
+            // target name
+            let targetName = targetString;
+            let matchedTarget = ssmTargets.filter(t => t.name == targetName);
+
+            if(matchedTarget.length == 0) {
+                throw new Error(`No ssm target exists with name ${targetName}`)
+            }
+            
+            if(matchedTarget.length > 1) {
+                throw new Error(`Multiple targets found with name ${targetName}`)
+            }
+
+            return matchedTarget[0].id;
+        }
     }
 }
