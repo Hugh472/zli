@@ -25,6 +25,7 @@ export class SsmTunnelService
         private configService: ConfigService,
     )
     {
+        // https://caolan.github.io/async/v3/docs.html#queue
         this.sendQueue = async.queue(async (data: Buffer, cb) => {
             await this.sendDataWorker(data);
             cb();
@@ -125,23 +126,17 @@ export class SsmTunnelService
     }
 
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
-        return new Promise(async (res, rej) => {
-            let bzeroSshKeyPath = this.configService.sshKeyPath();
-
-            // Only generate a new ssh key if the identity file provided is
-            // managed by bzero
-            if(identityFile === bzeroSshKeyPath) {
-                try {
-                    let privateKey = await this.generateEphemeralSshKey();
-                    await util.promisify(fs.writeFile)(bzeroSshKeyPath, privateKey, {
-                        mode: '0600'
-                    });
-                } catch(err) {
-                    rej(err)
-                }
-            }
-            res();
-        });
+        let bzeroSshKeyPath = this.configService.sshKeyPath();
+        
+        // Generate a new ssh key for each new tunnel as long as the identity
+        // file provided is managed by bzero
+        // TODO #39: Change the lifetime of this key?
+        if(identityFile === bzeroSshKeyPath) {
+            let privateKey = await this.generateEphemeralSshKey();
+            await util.promisify(fs.writeFile)(bzeroSshKeyPath, privateKey, {
+                mode: '0600'
+            });
+        }
     }
 
     private async generateEphemeralSshKey() : Promise<string> {
