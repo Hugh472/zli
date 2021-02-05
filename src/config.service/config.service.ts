@@ -4,6 +4,7 @@ import { ClientSecretResponse, UserSummary } from '../http.service/http.service.
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
+import path from 'path';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type ThoumConfigSchema = {
@@ -16,15 +17,18 @@ type ThoumConfigSchema = {
     mixpanelToken: string,
     idp: IdP,
     sessionId: string,
-    whoami: UserSummary
+    whoami: UserSummary,
+    sshKeyPath: string
 }
 
 export class ConfigService {
     private config: Conf<ThoumConfigSchema>;
+    private configName: string;
     private tokenService: TokenService;
 
     constructor(configName: string, logger: Logger) {
         var appName = this.getAppName(configName);
+        this.configName = configName;
         this.config = new Conf<ThoumConfigSchema>({
             projectName: 'thoum-cli',
             configName: configName, // prod, stage, dev
@@ -38,7 +42,8 @@ export class ConfigService {
                 mixpanelToken: undefined,
                 idp: undefined,
                 sessionId: undefined,
-                whoami: undefined
+                whoami: undefined,
+                sshKeyPath: undefined
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true    // if config is invalid, delete
@@ -49,7 +54,14 @@ export class ConfigService {
             process.exit(1);
         }
 
+        if(! this.config.get('sshKeyPath'))
+            this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'bzero-temp-key'));
+
         this.tokenService = new TokenService(this, logger);
+    }
+
+    public getConfigName() {
+        return this.configName;
     }
 
     public configPath(): string {
@@ -120,6 +132,10 @@ export class ConfigService {
 
     public setMe(me: UserSummary): void {
         this.config.set('whoami', me);
+    }
+
+    public sshKeyPath() {
+        return this.config.get('sshKeyPath');
     }
 
     public logout(): void

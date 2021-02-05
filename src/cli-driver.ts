@@ -35,9 +35,11 @@ import { version } from '../package.json';
 import qrcode from 'qrcode';
 import { Logger } from './logger.service/logger'
 import { LoggerConfigService } from "./logger-config.service/logger-config.service";
+import { SsmTunnelService } from "./ssm-tunnel/ssm-tunnel.service";
 
 export class CliDriver
 {
+    private processName: string;
     private configService: ConfigService;
     private loggerConfigService: LoggerConfigService;
     private userInfo: UserinfoResponse; // sub and email
@@ -52,10 +54,12 @@ export class CliDriver
     // use the following to shortcut middleware according to command
     private noOauthCommands: string[] = ['config', 'login', 'logout'];
     private noMixpanelCommands: string[] = ['config', 'login', 'logout'];
-    private noFetchCommands: string[] = ['config', 'login', 'logout'];
+    private noFetchCommands: string[] = ['ssh-proxy-config', 'ssh-proxy', 'config', 'login', 'logout'];
 
     public start()
     {
+        this.processName = process.argv[0];
+
         yargs(process.argv.slice(2))
         .scriptName("thoum")
         .usage('$0 <cmd> [args]')
@@ -129,6 +133,65 @@ export class CliDriver
 
             this.envs = envService.ListEnvironments();
         })
+        .command(
+            'ssh-proxy-config',
+            'Generate ssh configuration to be used with the ssh-proxy command',
+            (yargs) => {},
+            async (argv) => {
+                let keyPath = this.configService.sshKeyPath();
+                let configName = this.configService.getConfigName();
+                let configNameArg = '';
+                if(configName != 'prod') {
+                    configNameArg = `--configName=${configName}`;
+                }
+
+                this.logger.info(`
+Add the following lines to your ssh config (~/.ssh/config) file:
+
+host bzero-*
+    IdentityFile ${keyPath}
+    ProxyCommand ${this.processName} ssh-proxy ${configNameArg} -s %h %r %p ${keyPath}
+
+
+Then you can use native ssh to connect to any of your ssm targets using the following syntax:
+
+ssh <user>@bzero-<ssm-target-id-or-name>
+                `);
+            }
+        )
+        .command(
+            'ssh-proxy <host> <user> <port> <identityFile>',
+            'ssh proxy command (run ssh-proxy-config command to generate configuration)',
+            (yargs) => {
+                return yargs
+                .positional('host', {
+                    type: 'string',
+                })
+                .positional('user', {
+                    type: 'string',
+                })
+                .positional('port', {
+                    type: 'number',
+                })
+                .positional('identityFile', {
+                    type: 'string'
+                })
+            },
+            async (argv) => {
+                let ssmTunnelService = new SsmTunnelService(this.logger, this.configService);
+                ssmTunnelService.errors.subscribe(errorMessage => {
+                    process.stderr.write(`\n${errorMessage}\n`);
+                    ssmTunnelService.closeConnection();
+                    process.exit(1);
+                });
+
+                if( await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, argv.port, argv.identityFile)) {
+                    process.stdin.on('data', async (data) => {
+                        ssmTunnelService.sendData(data);
+                    });
+                }
+            }
+        )
         .command(
             'login <provider>',
             'Login through a specific provider',
