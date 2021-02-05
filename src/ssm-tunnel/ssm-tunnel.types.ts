@@ -1,3 +1,6 @@
+// Maximum receive limit configured for the signalR server
+export const HUB_RECEIVE_MAX_SIZE = 32 * 1024;
+
 export interface WebsocketResponse {
     error: boolean;
     errorMessage: string;

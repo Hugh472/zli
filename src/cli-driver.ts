@@ -185,10 +185,9 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                     process.exit(1);
                 });
 
-                let sequenceNumber = 0;
                 if( await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, argv.port, argv.identityFile)) {
                     process.stdin.on('data', async (data) => {
-                        await ssmTunnelService.sendDataMessage(data, sequenceNumber++);
+                        ssmTunnelService.sendData(data);
                     });
                 }
             }

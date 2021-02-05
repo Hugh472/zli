@@ -3,17 +3,19 @@ import crypto from 'crypto';
 import fs from 'fs';
 
 import SshPK from 'sshpk';
+import async from 'async';
 import { Observable, Subject } from 'rxjs';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
-import { AddSshPubKeyMessage, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
+import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
 import { SsmTargetService } from '../http.service/http.service';
-
 
 export class SsmTunnelService
 {
+    private sequenceNumber = 0;
+    private sendQueue: async.QueueObject<Buffer>;
     private websocket : HubConnection;
     private errorSubject: Subject<string> = new Subject<string>();
     public errors: Observable<string> = this.errorSubject.asObservable();
@@ -23,6 +25,10 @@ export class SsmTunnelService
         private configService: ConfigService,
     )
     {
+        this.sendQueue = async.queue(async (data: Buffer, cb) => {
+            await this.sendDataWorker(data);
+            cb();
+        });
     }
 
     public async setupWebsocketTunnel(
@@ -54,18 +60,37 @@ export class SsmTunnelService
         }
     }
 
-    public async sendDataMessage(data: Buffer, sequenceNumber: number) {
+    public sendData(data: Buffer) {
+        this.sendQueue.push(data);
+    }
+
+    private async sendDataWorker(data: Buffer) {
         let base64EncData = data.toString('base64');
-        let dataMessage: TunnelDataMessage = {
-            data: base64EncData,
-            sequenceNumber: sequenceNumber
-        };
+        let len = base64EncData.length;
 
         try {
-            await this.sendWebsocketMessage<TunnelDataMessage>(
-                SsmTunnelHubOutgoingMessages.SendData,
-                dataMessage
-            );
+            // Batch the send data so that an individual message stays below the
+            // HUB_RECEIVE_MAX_SIZE limit
+            let offset = 0;
+
+            // Give some slack for the rest of the TunnelDataMessage (sequence
+            // number + json encoding)
+            let maxChunkSize = HUB_RECEIVE_MAX_SIZE - 1024;
+
+            while(offset < len) {
+
+                let chunkSize = Math.min(len - offset, maxChunkSize);
+                let dataMessage: TunnelDataMessage = {
+                    data: base64EncData.substr(offset, chunkSize),
+                    sequenceNumber: this.sequenceNumber++
+                };
+                offset += chunkSize;
+
+                await this.sendWebsocketMessage<TunnelDataMessage>(
+                    SsmTunnelHubOutgoingMessages.SendData,
+                    dataMessage
+                );
+            }
         } catch(err) {
             this.handleError(err);
         }
