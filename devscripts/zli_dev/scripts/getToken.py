@@ -7,7 +7,7 @@ import json
 import sys
 
 
-def getToken(zliPath, config_name):
+def getTokenHandler(zliPath, config_name):
     # If we don't pass a custom zli path, use the normal `zli`
     if (zliPath is None):
         zliPath = 'zli'

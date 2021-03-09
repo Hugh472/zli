@@ -11,10 +11,10 @@ setup(
     author='Sid Premkumar',
     author_email='sid@commonwealthcrypto.com',
     install_requires=install_requires,
-    packages=find_packages("zli_dev"),
+    packages=find_packages("scripts"),
     entry_points={
         'console_scripts': [
-            "zli-dev=zli_dev.main:main",
+            "zli-dev=zli_dev.main:cli",
         ],
     },
 )
