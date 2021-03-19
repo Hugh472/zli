@@ -4,6 +4,7 @@ import { ClientSecretResponse, UserSummary } from '../http.service/http.service.
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
+import { KeySplittingConfigSchema, ConfigInterface } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
@@ -19,9 +20,10 @@ type BastionZeroConfigSchema = {
     sessionId: string,
     whoami: UserSummary,
     sshKeyPath: string
+    keySplitting: KeySplittingConfigSchema
 }
 
-export class ConfigService {
+export class ConfigService implements ConfigInterface {
     private config: Conf<BastionZeroConfigSchema>;
     private configName: string;
     private tokenService: TokenService;
@@ -43,7 +45,14 @@ export class ConfigService {
                 idp: undefined,
                 sessionId: undefined,
                 whoami: undefined,
-                sshKeyPath: undefined
+                sshKeyPath: undefined,
+                keySplitting: {
+                    initialIdToken: undefined,
+                    cerRand: undefined,
+                    cerRandSig: undefined,
+                    privateKey: undefined,
+                    publicKey: undefined
+                }
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete
@@ -65,6 +74,14 @@ export class ConfigService {
             this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'bzero-temp-key'));
 
         this.tokenService = new TokenService(this, logger);
+    }
+
+    public updateKeySplitting(data: KeySplittingConfigSchema) {
+        this.config.set('keySplitting', data);
+    }
+
+    public loadKeySplitting() {
+        return this.config.get('keySplitting');
     }
 
     public getConfigName() {
@@ -114,7 +131,7 @@ export class ConfigService {
     }
 
     public getAuthHeader(): string {
-        return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`
+        return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`;
     }
 
     public getAuth(): string {
@@ -152,6 +169,7 @@ export class ConfigService {
     public logout(): void
     {
         this.config.delete('tokenSet');
+        this.config.delete('keySplitting');
     }
 
     public async loginSetup(idp: IdP): Promise<void>
@@ -164,10 +182,10 @@ export class ConfigService {
         const clientSecret = await this.getOAuthClient(idp);
         this.config.set('clientId', clientSecret.clientId);
         this.config.set('clientSecret', clientSecret.clientSecret);
-        
+
         const mixpanelToken = await this.getMixpanelToken();
         this.config.set('mixpanelToken', mixpanelToken);
-        
+
         // Clear previous sessionId
         this.config.delete('sessionId');
         this.config.delete('whoami');
@@ -176,12 +194,12 @@ export class ConfigService {
     private getAppName(configName: string) {
         switch(configName)
         {
-            case 'prod':
-                return 'cloud';
-            case 'stage':
-                return 'cloud-staging';
-            default:
-                return undefined;
+        case 'prod':
+            return 'cloud';
+        case 'stage':
+            return 'cloud-staging';
+        default:
+            return undefined;
         }
     }
 
@@ -193,25 +211,25 @@ export class ConfigService {
     private getAuthUrl(idp: IdP) {
         switch(idp)
         {
-            case IdP.Google:
-                return 'https://accounts.google.com';
-            case IdP.Microsoft:
-                return 'https://login.microsoftonline.com/common/v2.0';
-            default:
-                throw new Error(`Unknown idp ${idp}`);
+        case IdP.Google:
+            return 'https://accounts.google.com';
+        case IdP.Microsoft:
+            return 'https://login.microsoftonline.com/common/v2.0';
+        default:
+            throw new Error(`Unknown idp ${idp}`);
         }
     }
 
     private getAuthScopes(idp: IdP) {
         switch(idp)
         {
-            case IdP.Google:
-                return 'openid email profile'
-            case IdP.Microsoft:
-                // both openid and offline_access must be set for refresh token
-                return 'offline_access openid email profile'
-            default:
-                throw new Error(`Unknown idp ${idp}`);
+        case IdP.Google:
+            return 'openid email profile';
+        case IdP.Microsoft:
+            // both openid and offline_access must be set for refresh token
+            return 'offline_access openid email profile';
+        default:
+            throw new Error(`Unknown idp ${idp}`);
         }
     }
 
@@ -220,6 +238,6 @@ export class ConfigService {
     }
 
     private async getMixpanelToken(): Promise<string> {
-        return (await this.tokenService.GetMixpanelToken()).token
+        return (await this.tokenService.GetMixpanelToken()).token;
     }
 }

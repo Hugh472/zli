@@ -1,27 +1,10 @@
 import { BehaviorSubject, Observable } from 'rxjs';
-import { IDisposable, WebsocketStream, AuthConfigService, TerminalSize } from '../../webshell-common-ts/websocket.service/websocket.service';
+import { IDisposable, WebsocketStream, TerminalSize } from '../../webshell-common-ts/websocket.service/websocket.service';
+
 import { ConfigService } from '../config.service/config.service';
 import { ShellState } from '../../webshell-common-ts/websocket.service/websocket.service.types';
+import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 
-class ZliAuthConfigService implements AuthConfigService {
-
-    constructor(
-        private configService: ConfigService
-    )
-    {}
-
-    getServiceUrl() {
-        return this.configService.serviceUrl() + "api/v1/";
-    }
-
-    getSessionId() {
-        return this.configService.sessionId();
-    }
-
-    async getIdToken() {
-        return this.configService.getAuth();
-    }
-}
 
 export class ShellTerminal implements IDisposable
 {
@@ -66,7 +49,7 @@ export class ShellTerminal implements IDisposable
             () => {
                 this.terminalRunningStream.error(undefined);
             }
-        ); 
+        );
     }
 
     public resize(resizeEvent: TerminalSize)
@@ -88,7 +71,7 @@ export class ShellTerminal implements IDisposable
     {
         if(this.websocketStream)
             this.websocketStream.dispose();
-        
+
         this.terminalRunningStream.complete();
     }
 }
