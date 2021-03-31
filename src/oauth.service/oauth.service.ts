@@ -1,13 +1,25 @@
-import { AuthorizationParameters, Client, custom, generators, Issuer, TokenSet, UserinfoResponse } from 'openid-client';
+import { User, UserManager, OidcClient, Log, OidcClientSettings, StateStore } from 'oidc-client';
 import open from 'open';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { ConfigService } from '../config.service/config.service';
 import http, { RequestListener } from 'http';
 import { setTimeout } from 'timers';
-import { Logger } from '../../src/logger.service/logger';
+import { Logger } from '../logger.service/logger';
 
 const fs = require('fs');
 const path = require('path');
+
+// TODO: setting Oidc.Global.XMLHttpRequest not working
+// const Window = require('window');
+// const window = new Window();
+// const global = require('oidc-client').Global;
+// var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+// global.setXMLHttpRequest(new XMLHttpRequest());
+
+// oidc-client expects xmlhttprequest to exist in browser environment but we
+// must install it separately when running in nodejs environment
+// https://stackoverflow.com/questions/32604460/xmlhttprequest-module-not-defined-found
+global.XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -16,12 +28,16 @@ export class OAuthService implements IDisposable {
 
     constructor(private configService: ConfigService, logger: Logger) {
         this.logger = logger;
+
+        // Set Oidc internal logger and log level
+        // https://github.com/IdentityModel/oidc-client-js/wiki#logging
+        Log.logger = this.logger;
+        Log.level = Log.DEBUG;
     }
 
     private setupCallbackListener(
-        client: Client,
-        codeVerifier: string,
-        callback: (tokenSet: TokenSet) => void,
+        client: OidcClient,
+        callback: (tokenSet: User) => void,
         onListen: () => void,
         resolve: (value?: void | PromiseLike<void>) => void,
         expectedNonce?: string
@@ -32,18 +48,14 @@ export class OAuthService implements IDisposable {
 
             switch (req.url.split('?')[0]) {
             case '/login-callback':
-                const params = client.callbackParams(req);
+                const signinResponse = await client.processSigninResponse(req.url);
 
-                const tokenSet = await client.callback(
-                    `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
-                    params,
-                    { code_verifier: codeVerifier, nonce: expectedNonce });
-
+                this.logger.info(JSON.stringify(signinResponse));
                 this.logger.info('Login successful');
                 this.logger.debug('callback listener closed');
 
                 // write to config with callback
-                callback(tokenSet);
+                callback(new User(signinResponse as any));
                 this.server.close();
                 fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res);
                 resolve();
@@ -76,40 +88,85 @@ export class OAuthService implements IDisposable {
         this.server.listen(this.configService.callbackListenerPort(), this.host, () => {});
     }
 
-    // The client will make the log-in requests with the following parameters
-    private async getClient(): Promise<Client>
-    {
-        const authority = await Issuer.discover(this.configService.authUrl());
-        var client = new authority.Client({
-            client_id: this.configService.clientId(),
-            redirect_uris: [`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`],
-            response_types: ['code'],
-            token_endpoint_auth_method: 'client_secret_basic',
-            client_secret: this.configService.clientSecret()
-        });
+    private async getOidcSettings(nonce?: string) : Promise<OidcClientSettings> {
+        let extraQueryParams: ExtraQueryParams = {
+            // TODO condition this on provider?
+            // this is needed in order for Google to give us the refresh token (ref:
+            // https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient)
+            'access_type': 'offline',
+        };
 
-        // set clock skew
-        // ref: https://github.com/panva/node-openid-client/blob/77d7c30495df2df06c407741500b51498ba61a94/docs/README.md#customizing-clock-skew-tolerance
-        client[custom.clock_tolerance] = 5 * 60; // 5 minute clock skew allowed for verification
+        if(nonce) {
+            extraQueryParams['nonce'] = nonce
+        }
+
+        let oidcClientSettings = {
+            authority: this.configService.authUrl(),
+            client_id: this.configService.clientId(),
+            client_secret: this.configService.clientSecret(),
+            redirect_uri: `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
+            response_type: 'code',
+            scope: this.configService.authScopes(),
+            extraQueryParams: extraQueryParams,
+            // to enforce account selection and refresh token (ref:
+            // https://stackoverflow.com/a/10857806/9727747)
+            prompt: "consent",
+            clockSkew: 5 * 60, // 5 minute clock skew allowed for verification
+            stateStore: new CustomStateStore(),
+        };
+
+        return oidcClientSettings;
+    }
+
+    private async getOidcClient(nonce?: string): Promise<OidcClient>
+    {
+        let oidcClientSettings = await this.getOidcSettings(nonce);
+        let client = new OidcClient(await this.getOidcSettings(nonce));
+
+        // TODO: Figure out how to make this less awful
+        // super hacky way to ensure XMLHttpRequest is set for all dependent services within OidcClient
+        (client.metadataService as any)['_jsonService']['_XMLHttpRequest'] = global.XMLHttpRequest;
+        (client as any)['_validator']['_tokenClient']['_jsonService']['_XMLHttpRequest'] = global.XMLHttpRequest;
+        (client as any)['_validator']['_userInfoService']['_jsonService']['_XMLHttpRequest'] = global.XMLHttpRequest;
 
         return client;
     }
 
-    private getAuthUrl(client: Client, code_challenge: string, nonce?: string) : string
+    private async getUserManager(nonce?: string): Promise<UserManager>
     {
-        const authParams: AuthorizationParameters = {
-            client_id: this.configService.clientId(), // This one gets put in the queryParams
-            response_type: 'code',
-            code_challenge: code_challenge,
-            code_challenge_method: 'S256',
-            scope: this.configService.authScopes(),
-            // required for google refresh token
-            prompt: 'consent',
-            access_type: 'offline',
-            nonce: nonce
+        let extraQueryParams: ExtraQueryParams = {
+            // TODO condition this on provider?
+            // this is needed in order for Google to give us the refresh token (ref:
+            // https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient)
+            'access_type': 'offline',
         };
 
-        return client.authorizationUrl(authParams);
+        if(nonce) {
+            extraQueryParams['nonce'] = nonce
+        }
+
+        let userManager = new UserManager({
+            authority: this.configService.authUrl(),
+            client_id: this.configService.clientId(),
+            client_secret: this.configService.clientSecret(),
+            redirect_uri: `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
+            response_type: 'code',
+            scope: this.configService.authScopes(),
+            extraQueryParams: extraQueryParams,
+            // to enforce account selection and refresh token (ref:
+            // https://stackoverflow.com/a/10857806/9727747)
+            prompt: "consent",
+            clockSkew: 5 * 60, // 5 minute clock skew allowed for verification
+            stateStore: new CustomStateStore(),
+            userStore: new CustomUserStore(this.configService)
+        });
+
+        // TODO: Figure out how to make this less awful
+        // super hacky way to ensure XMLHttpRequest is set for all dependent services within OidcClient
+        (userManager as any)['_tokenClient']['_metadataService']['_jsonService']['_XMLHttpRequest'] = global.XMLHttpRequest;
+        (userManager as any)['_tokenClient']['_jsonService']['_XMLHttpRequest'] = global.XMLHttpRequest;
+
+        return userManager;
     }
 
     public isAuthenticated(): boolean
@@ -119,45 +176,29 @@ export class OAuthService implements IDisposable {
         if(tokenSet === undefined)
             return false;
 
-        return tokenSet.expired();
+        return tokenSet.expired;
     }
 
-    public login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void>
+    public login(callback: (tokenSet: User) => void, nonce?: string): Promise<void>
     {
         return new Promise<void>(async (resolve, reject) => {
             setTimeout(() => reject('Log in timeout reached'), 60 * 1000);
-
-            const client = await this.getClient();
-            const code_verifier = generators.codeVerifier();
-            const code_challenge = generators.codeChallenge(code_verifier);
-
-            const openBrowser = async () => await open(this.getAuthUrl(client, code_challenge, nonce));
-            this.setupCallbackListener(client, code_verifier, callback, openBrowser, resolve, nonce);
+            try {
+                let client = await this.getOidcClient(nonce);
+                let signInRequest = await client.createSigninRequest();
+                const openBrowser = async () => await open(signInRequest.url);
+                this.setupCallbackListener(client, callback, openBrowser, resolve, nonce);
+            } catch(err){
+                reject(err);
+            }
         });
     }
 
-    public async refresh(): Promise<TokenSet>
+    public async refresh(): Promise<User>
     {
-        const client = await this.getClient();
-        const tokenSet = this.configService.tokenSet();
-        const refreshToken = tokenSet.refresh_token;
-        const refreshedTokenSet = await client.refresh(tokenSet);
-
-        // In case of google the refreshed token is not returned in the refresh
-        // response so we set it from the previous value
-        if(! refreshedTokenSet.refresh_token)
-            refreshedTokenSet.refresh_token = refreshToken;
-
-        return refreshedTokenSet;
-    }
-
-    // If you need the token.sub this is where you can get it
-    public async userInfo(): Promise<UserinfoResponse>
-    {
-        const client = await this.getClient();
-        const tokenSet = this.configService.tokenSet();
-        const userInfo = await client.userinfo(tokenSet);
-        return userInfo;
+        let userManager = await this.getUserManager();
+        let user = userManager.signinSilent();
+        return user;
     }
 
     dispose(): void {
@@ -166,5 +207,52 @@ export class OAuthService implements IDisposable {
             this.server.close();
             this.server = undefined;
         }
+    }
+}
+
+interface ExtraQueryParams {
+    access_type: string,
+    nonce?: string
+}
+
+// TODO actually merge this with the configService store
+class CustomUserStore implements StateStore {
+    constructor(private configService: ConfigService) {}
+
+    async set(key: string, value: any): Promise<void> {
+        return;
+    }
+
+    async get(key: string): Promise<any> {
+        return this.configService.tokenSet().toStorageString();
+    }
+
+    async remove(key: string): Promise<any> {
+        return;
+    }
+
+    getAllKeys(): Promise<string[]> {
+        throw new Error('Method not implemented.');
+    }
+}
+class CustomStateStore {
+    private myState: { [key: string] : string } = {}
+
+    async set(key: string, value: any): Promise<void> {
+        this.myState[key] = value;
+    }
+
+    async get(key: string): Promise<any> {
+        return this.myState[key];
+    }
+
+    async remove(key: string): Promise<any> {
+        let value = this.myState[key];
+        delete this.myState[key];
+        return value;
+    }
+
+    async getAllKeys(): Promise<string[]> {
+        return Object.keys(this.myState);
     }
 }

@@ -1,11 +1,11 @@
 import Conf from 'conf/dist/source';
-import { TokenSet, TokenSetParameters } from 'openid-client';
 import { ClientSecretResponse, UserSummary } from '../http.service/http.service.types';
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
 import { KeySplittingConfigSchema, ConfigInterface } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
+import { User } from 'oidc-client';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type BastionZeroConfigSchema = {
@@ -13,7 +13,7 @@ type BastionZeroConfigSchema = {
     clientId: string,
     clientSecret: string,
     serviceUrl: string,
-    tokenSet: TokenSetParameters,
+    tokenSet: string,
     callbackListenerPort: number,
     mixpanelToken: string,
     idp: IdP,
@@ -24,7 +24,7 @@ type BastionZeroConfigSchema = {
 }
 
 export class ConfigService implements ConfigInterface {
-    private config: Conf<BastionZeroConfigSchema>;
+    public config: Conf<BastionZeroConfigSchema>;
     private configName: string;
     private tokenService: TokenService;
 
@@ -108,9 +108,13 @@ export class ConfigService implements ConfigInterface {
         return this.config.get('authUrl');
     }
 
-    public tokenSet(): TokenSet {
+    public tokenSet(): User {
         let tokenSet = this.config.get('tokenSet');
-        return tokenSet && new TokenSet(tokenSet);
+        return tokenSet && User.fromStorageString(tokenSet);
+    }
+
+    public setTokenSet(tokenSet: User): void {
+        this.config.set('tokenSet', tokenSet.toStorageString());
     }
 
     // private until we have a reason to expose to app
@@ -144,13 +148,6 @@ export class ConfigService implements ConfigInterface {
 
     public setSessionId(sessionId: string): void {
         this.config.set('sessionId', sessionId);
-    }
-
-    public setTokenSet(tokenSet: TokenSet): void {
-        // TokenSet implements TokenSetParameters, makes saving it like
-        // this safe to do.
-        if(tokenSet)
-            this.config.set('tokenSet', tokenSet);
     }
 
     public me(): UserSummary
