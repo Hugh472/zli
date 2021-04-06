@@ -1,30 +1,64 @@
-import { BehaviorSubject, Observable } from 'rxjs';
-import { ShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { SshShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssh-shell-websocket.service';
+import { SsmShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssm-shell-websocket.service';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
+import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import { ConfigService } from '../config.service/config.service';
-import { ShellState, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
+import { IShellWebsocketService, ShellState, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
-
+import { SsmTargetService } from '../http.service/http.service';
+import { TargetType } from '../types';
+import { parsedTargetString } from '../utils';
 
 export class ShellTerminal implements IDisposable
 {
-    private websocketStream : ShellWebsocketService;
+    private websocketStream : IShellWebsocketService;
+
     // stdin
-    private inputSubject: BehaviorSubject<string> = new BehaviorSubject<string>(null);
-    private resizeSubject: BehaviorSubject<TerminalSize> = new BehaviorSubject<TerminalSize>({rows: 0, columns: 0});
+    private inputSubject: Subject<string> = new Subject<string>();
+    private resizeSubject: Subject<TerminalSize> = new Subject<TerminalSize>();
     private blockInput: boolean = true;
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(private logger: Logger, configService: ConfigService, connectionId: string)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private parsedTarget: parsedTargetString)
     {
-        this.websocketStream = new ShellWebsocketService(logger, new ZliAuthConfigService(configService), connectionId, this.inputSubject, this.resizeSubject);
+    }
+
+    private async createWebsocketService() : Promise<IShellWebsocketService> {
+        const targetType = this.parsedTarget.type;
+
+        if(targetType === TargetType.SSH) {
+            return this.websocketStream = new SshShellWebsocketService(
+                this.logger,
+                new ZliAuthConfigService(this.configService),
+                this.connectionId,
+                this.inputSubject,
+                this.resizeSubject
+            );
+        } else if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
+            const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.parsedTarget.id);
+            return this.websocketStream = new SsmShellWebsocketService(
+                new KeySplittingService(this.configService, this.logger),
+                ssmTargetInfo,
+                this.logger,
+                new ZliAuthConfigService(this.configService),
+                this.connectionId,
+                this.inputSubject,
+                this.resizeSubject
+            );
+        } else {
+            throw new Error(`Unhandled target type ${targetType}`);
+        }
     }
 
     public async start(termSize: TerminalSize)
     {
+        this.websocketStream = await this.createWebsocketService();
+
         // Handle writing to stdout
         // TODO: bring this up a level
         this.websocketStream.outputData.subscribe(data => {
@@ -35,13 +69,13 @@ export class ShellTerminal implements IDisposable
         await this.websocketStream.start();
 
         this.websocketStream.shellStateData.subscribe(
-            (newState: ShellState) => {
+            async (newState: ShellState) => {
                 this.logger.trace(`Got new shell state update: ${JSON.stringify(newState)}`);
                 if (newState.start) {
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
                 } else if (newState.ready) {
-                    this.websocketStream.sendShellConnect(termSize.rows, termSize.columns);
+                    await this.websocketStream.sendShellConnect(termSize.rows, termSize.columns);
                 } else if (newState.disconnect || newState.delete ) {
                     this.dispose();
                 }
