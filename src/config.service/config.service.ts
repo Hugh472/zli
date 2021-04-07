@@ -78,6 +78,10 @@ export class ConfigService implements ConfigInterface {
         return this.config.get('keySplitting');
     }
 
+    public removeKeySplitting() {
+        this.config.delete('keySplitting');
+    }
+
     public getConfigName() {
         return this.configName;
     }
