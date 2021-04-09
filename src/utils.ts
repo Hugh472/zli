@@ -92,20 +92,33 @@ export interface TargetSummary
     name: string;
     environmentId: string;
     type: TargetType;
+    status: string;
+    agentVersion: string;
 }
 
-export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[]) : string
+export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], detail: boolean = false) : string
 {
     const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
     const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
+    const statusNameLength = max(targets.map(t => t.status.length).concat(16));
+    const agentVersionNameLength = max(targets.map(t => t.agentVersion.length).concat(16));
 
     // ref: https://github.com/cli-table/cli-table3
-    const table = new Table({
-        head: ['Type', 'Name', 'Environment', 'Id']
-        , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
-    });
-
-    targets.forEach(target => table.push([target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name, target.id]));
+    let table = undefined;
+    if (detail == true) {
+        table = new Table({
+            head: ['Type', 'Name', 'Status', 'Environment', 'Id', 'Agent Version']
+            , colWidths: [10, targetNameLength + 2,  statusNameLength + 2, envNameLength + 2, 38, agentVersionNameLength + 2]
+        });
+        targets.forEach(target => table.push([target.type, target.name, target.status, envs.filter(e => e.id == target.environmentId).pop().name, target.id, target.agentVersion]));
+    }
+    else {
+        table = new Table({
+            head: ['Type', 'Name', 'Environment', 'Id']
+            , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
+        });
+        targets.forEach(target => table.push([target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name, target.id]));
+    }
 
     return table.toString();
 }
