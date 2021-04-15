@@ -10,7 +10,7 @@ import { ZliAuthConfigService } from '../config.service/zli-auth-config.service'
 import { Logger } from '../logger.service/logger';
 import { SsmTargetService } from '../http.service/http.service';
 import { TargetType } from '../types';
-import { parsedTargetString } from '../utils';
+import { ParsedTargetString } from '../types';
 import { SsmTargetSummary } from '../http.service/http.service.types';
 
 export class ShellTerminal implements IDisposable
@@ -24,7 +24,7 @@ export class ShellTerminal implements IDisposable
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private parsedTarget: parsedTargetString)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private parsedTarget: ParsedTargetString)
     {
     }
 
