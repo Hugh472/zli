@@ -57,7 +57,7 @@ export class SsmTunnelService
             this.ssmTunnelWebsocketService = new SsmTunnelWebsocketService(
                 this.logger,
                 this.keySplittingService,
-                new ZliAuthConfigService(this.configService),
+                new ZliAuthConfigService(this.configService, this.logger),
                 target as SsmTargetInfo
             );
 

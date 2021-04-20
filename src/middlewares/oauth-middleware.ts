@@ -6,7 +6,7 @@ import { cleanExit } from '../../src/handlers/clean-exit.handler';
 
 export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<void> {
 
-    const ouath = new OAuthService(configService, logger);
+    const oauth = new OAuthService(configService, logger);
 
     const tokenSet = configService.tokenSet();
 
@@ -18,7 +18,7 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
             try {
                 logger.debug('Refreshing oauth tokens');
 
-                const newTokenSet = await ouath.refresh();
+                const newTokenSet = await oauth.refresh();
                 configService.setTokenSet(newTokenSet);
                 logger.debug('Oauth tokens refreshed');
             } catch(e) {
