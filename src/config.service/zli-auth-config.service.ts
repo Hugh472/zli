@@ -5,11 +5,15 @@ import { OAuthService } from '../../src/oauth.service/oauth.service';
 
 export class ZliAuthConfigService implements AuthConfigService {
 
+    private oauth: OAuthService;
+
     constructor(
         private configService: ConfigService,
         private logger: Logger
     )
-    {}
+    {
+        this.oauth = new OAuthService(this.configService, this.logger);
+    }
 
     getServiceUrl() {
         return this.configService.serviceUrl() + 'api/v1/';
@@ -20,7 +24,6 @@ export class ZliAuthConfigService implements AuthConfigService {
     }
 
     async getIdToken() {
-        const oauth = new OAuthService(this.configService, this.logger);
-        return oauth.getIdToken();
+        return await this.oauth.getIdToken();
     }
 }

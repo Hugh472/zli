@@ -162,7 +162,7 @@ export class OAuthService implements IDisposable {
     }
 
     // Returns the current OAuth idtoken. Refreshes it before returning if expired
-    async getIdToken() {
+    public async getIdToken(): Promise<string> {
 
         const tokenSet = this.configService.tokenSet();
 
@@ -195,7 +195,6 @@ export class OAuthService implements IDisposable {
             this.logger.warn('You need to log in, please run \'zli login --help\'');
             process.exit(1);
         }
-
 
         return this.configService.getAuth();
     }
