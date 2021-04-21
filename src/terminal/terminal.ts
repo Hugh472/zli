@@ -50,7 +50,7 @@ export class ShellTerminal implements IDisposable
     private createSshShellWebsocketService() {
         return new SshShellWebsocketService(
             this.logger,
-            new ZliAuthConfigService(this.configService),
+            new ZliAuthConfigService(this.configService, this.logger),
             this.connectionId,
             this.inputSubject,
             this.resizeSubject
@@ -62,7 +62,7 @@ export class ShellTerminal implements IDisposable
             new KeySplittingService(this.configService, this.logger),
             ssmTargetInfo,
             this.logger,
-            new ZliAuthConfigService(this.configService),
+            new ZliAuthConfigService(this.configService, this.logger),
             this.connectionId,
             this.inputSubject,
             this.resizeSubject
