@@ -45,7 +45,7 @@ export async function copyHandler(
     {
         logger.error('Cannot file transfer with a dynamic access config');
         logger.warn('Please create a new dynamic access target or fetch an existing one (zli lt)');
-        await cleanExit(1, this.logger);
+        await cleanExit(1, logger);
     }
 
     // figure out upload or download
