@@ -154,7 +154,7 @@ export async function disambiguateTarget(
     } else {
         logger.warn('More than one target found with the same targetName');
         logger.info(`Please specify the targetId instead of the targetName (zli lt -n ${parsedTarget.name} -d)`);
-        cleanExit(1, logger);
+        await cleanExit(1, logger);
     }
 
     return parsedTarget;

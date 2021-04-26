@@ -30,14 +30,14 @@ export async function connectHandler(
     if(! response.allowed)
     {
         logger.error('You do not have sufficient permission to access the target');
-        cleanExit(1, logger);
+        await cleanExit(1, logger);
     }
 
     const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
     if(response.allowedTargetUsers && ! _.includes(allowedTargetUsers, parsedTarget.user)) {
         logger.error(`You do not have permission to connect as targetUser: ${parsedTarget.user}`);
         logger.info(`Current allowed users for you: ${allowedTargetUsers}`);
-        cleanExit(1, logger);
+        await cleanExit(1, logger);
     }
 
     // call list session

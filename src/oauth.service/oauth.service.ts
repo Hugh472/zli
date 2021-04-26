@@ -182,18 +182,18 @@ export class OAuthService implements IDisposable {
                         this.logger.error('Stale log in detected');
                         this.logger.info('You need to log in, please run \'zli login --help\'');
                         this.configService.logout();
-                        cleanExit(1, this.logger);
+                        await cleanExit(1, this.logger);
                     } else {
                         this.logger.error('Unexpected error during oauth refresh');
                         this.logger.info('Please log in again');
                         this.configService.logout();
-                        cleanExit(1, this.logger);
+                        await cleanExit(1, this.logger);
                     }
                 }
             }
         } else {
             this.logger.warn('You need to log in, please run \'zli login --help\'');
-            process.exit(1);
+            await cleanExit(1, this.logger);
         }
 
         return this.configService.getAuth();
