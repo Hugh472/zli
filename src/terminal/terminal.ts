@@ -71,7 +71,7 @@ export class ShellTerminal implements IDisposable
         );
     }
 
-    public async start(termSize: TerminalSize)
+    public async start(termSize: TerminalSize): Promise<void>
     {
         this.currentTerminalSize = termSize;
         this.shellWebsocketService = await this.createShellWebsocketService();
@@ -127,7 +127,7 @@ export class ShellTerminal implements IDisposable
         );
     }
 
-    public resize(terminalSize: TerminalSize)
+    public resize(terminalSize: TerminalSize): void
     {
         this.logger.trace(`New terminal resize event (rows: ${terminalSize.rows} cols: ${terminalSize.columns})`);
 
@@ -140,7 +140,7 @@ export class ShellTerminal implements IDisposable
             this.resizeSubject.next({rows: terminalSize.rows, columns: terminalSize.columns});
     }
 
-    public async writeString(input: string) : Promise<void> {
+    public writeString(input: string) : void {
         if(! this.blockInput) {
             this.inputSubject.next(input);
         }
