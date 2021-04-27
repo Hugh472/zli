@@ -6,6 +6,7 @@ import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
 import { KeySplittingConfigSchema, ConfigInterface, getDefaultKeysplittingConfig } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
+import { Observable, Subject } from 'rxjs';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type BastionZeroConfigSchema = {
@@ -27,6 +28,9 @@ export class ConfigService implements ConfigInterface {
     private config: Conf<BastionZeroConfigSchema>;
     private configName: string;
     private tokenService: TokenService;
+    private logoutDetectedSubject: Subject<boolean> = new Subject<boolean>();
+
+    public logoutDetected : Observable<boolean> = this.logoutDetectedSubject.asObservable();
 
     constructor(configName: string, logger: Logger) {
         const appName = this.getAppName(configName);
@@ -68,6 +72,15 @@ export class ConfigService implements ConfigInterface {
             this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'bzero-temp-key'));
 
         this.tokenService = new TokenService(this, logger);
+
+        this.config.onDidChange('tokenSet',
+        (newValue : TokenSetParameters, oldValue : TokenSetParameters) => {
+            logger.debug('Change in tokenSet detected. Old value:' + oldValue + ' New value:' + newValue);
+            if (newValue === undefined && oldValue){
+                logger.debug('This is a logout');
+                this.logoutDetectedSubject.next(true);
+            }
+        });
     }
 
     public updateKeySplitting(data: KeySplittingConfigSchema) {

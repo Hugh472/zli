@@ -8,5 +8,5 @@ export async function logoutHandler(configService: ConfigService, logger: Logger
     // user to login again before running another command
     configService.logout();
     logger.info('Logout successful');
-    await cleanExit(0, logger);
+    //await cleanExit(0, logger);
 }
