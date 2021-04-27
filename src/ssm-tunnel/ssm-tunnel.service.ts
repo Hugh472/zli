@@ -44,7 +44,10 @@ export class SsmTunnelService
             this.logger.info('Keysplitting Disabled!');
         }
 
-        configService.logoutDetected.subscribe(async () => await cleanExit(0, this.logger));
+        // configService.logoutDetected.subscribe(async () => {
+        //     logger.debug('About to call cleanExit');
+        //     await cleanExit(0, this.logger)
+        // });
     }
 
     public async setupWebsocketTunnel(

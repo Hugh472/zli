@@ -60,7 +60,8 @@ export class ConfigService implements ConfigInterface {
                     if(appName)
                         config.set('serviceUrl', this.getServiceUrl(appName));
                 }
-            }
+            },
+            watch: true
         });
 
         if(configName == 'dev' && ! this.config.get('serviceUrl')) {
@@ -78,7 +79,7 @@ export class ConfigService implements ConfigInterface {
             logger.debug('Change in tokenSet detected. Old value:' + oldValue + ' New value:' + newValue);
             if (newValue === undefined && oldValue){
                 logger.debug('This is a logout');
-                this.logoutDetectedSubject.next(true);
+                //this.logoutDetectedSubject.next(true);
             }
         });
     }
