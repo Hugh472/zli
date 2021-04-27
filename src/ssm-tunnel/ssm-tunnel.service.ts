@@ -15,14 +15,12 @@ import { SsmTunnelWebsocketService } from '../../webshell-common-ts/ssm-tunnel-w
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { SsmTunnelTargetInfo } from '../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.types';
 import { ParsedTargetString } from '../types';
-import { cleanExit } from '../../src/handlers/clean-exit.handler';
 
 export class SsmTunnelService
 {
     private ssmTunnelWebsocketService: SsmTunnelWebsocketService;
     private sendQueue: async.QueueObject<Buffer>;
     private errorSubject: Subject<string> = new Subject<string>();
-    private tokenChangedSubscription: Observable<boolean>;
     public errors: Observable<string> = this.errorSubject.asObservable();
 
     constructor(
@@ -43,11 +41,6 @@ export class SsmTunnelService
         } else {
             this.logger.info('Keysplitting Disabled!');
         }
-
-        // configService.logoutDetected.subscribe(async () => {
-        //     logger.debug('About to call cleanExit');
-        //     await cleanExit(0, this.logger)
-        // });
     }
 
     public async setupWebsocketTunnel(
