@@ -4,6 +4,7 @@ import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { SessionState } from '../types';
 import { cleanExit } from './clean-exit.handler';
+import _ from 'lodash';
 
 
 export async function logoutHandler(configService: ConfigService, logger: Logger) {
@@ -23,16 +24,10 @@ export async function logoutHandler(configService: ConfigService, logger: Logger
         cliSession = cliSpace.pop();
     }
     const connectionService = new ConnectionService(configService, logger);
-    logger.debug('Closing any open cli connections');        
-    for (let index = 0; index < cliSession.connections.length; index++) {
-        logger.debug('Closing connection: ' + cliSession.connections[index].id + " with state: " + cliSession.connections[index].state);
-        if(cliSession.connections[index].state == ConnectionState.Open)
-            await connectionService.CloseConnection(cliSession.connections[index].id);
-    }
-    // await cliSession.connections.forEach(async conn => {
-    //     await connectionService.CloseConnection(conn.id);
-    //     logger.debug('Closed connection: ' + conn.id);        
-    // });
+    logger.debug('Closing any open cli connections');
+    const openConnections = _.filter(cliSession.connections, c => c.state === ConnectionState.Open)
+    _.forEach(openConnections, async c => await connectionService.CloseConnection(c.id));
+
     // Deletes the auth tokens from the config which will force the
     // user to login again before running another command
     configService.logout();

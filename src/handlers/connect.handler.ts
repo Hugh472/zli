@@ -115,19 +115,7 @@ export async function connectHandler(
             }
 
             terminal.dispose();
-
-            logger.debug('Cleaning up connection...');
-            const conn = await connectionService.GetConnection(connectionId);
-            // if connection not already closed
-            if(conn.state == ConnectionState.Open)
-                await connectionService.CloseConnection(connectionId);
-
-            logger.debug('Connection closed');
-
-            if(error)
-                await cleanExit(1, logger);
-
-            await cleanExit(0, logger);
+            await cleanExit(!! error ? 0 : 1, logger);
         },
         () => {}
     );
