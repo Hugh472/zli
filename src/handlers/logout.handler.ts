@@ -17,8 +17,12 @@ export async function logoutHandler(configService: ConfigService, logger: Logger
 
     // maybe make a session
     let cliSession: SessionDetails;
+    // If there is no session there are no connections to close, we can exit
     if(cliSpace.length === 0) {
-        //cliSessionId =  await sessionService.CreateSession('cli-space');
+        configService.logout();
+        logger.info('Logout successful');
+        await cleanExit(0, logger);
+        return;
     } else {
         // there should only be 1 active 'cli-space' session
         cliSession = cliSpace.pop();
