@@ -1,71 +1,149 @@
-import { BehaviorSubject, Observable } from 'rxjs';
-import { ShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service';
+import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { SshShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssh-shell-websocket.service';
+import { isAgentKeysplittingReady, SsmShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssm-shell-websocket.service';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
+import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import { ConfigService } from '../config.service/config.service';
-import { ShellState, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
+import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
-
+import { SsmTargetService } from '../http.service/http.service';
+import { TargetType } from '../types';
+import { ParsedTargetString } from '../types';
+import { SsmTargetSummary } from '../http.service/http.service.types';
 
 export class ShellTerminal implements IDisposable
 {
-    private websocketStream : ShellWebsocketService;
+    private shellWebsocketService : IShellWebsocketService;
+    private shellEventDataSubscription: Subscription;
+    private currentTerminalSize: TerminalSize;
+
     // stdin
-    private inputSubject: BehaviorSubject<string> = new BehaviorSubject<string>(null);
-    private resizeSubject: BehaviorSubject<TerminalSize> = new BehaviorSubject<TerminalSize>({rows: 0, columns: 0});
+    private inputSubject: Subject<string> = new Subject<string>();
+    private resizeSubject: Subject<TerminalSize> = new Subject<TerminalSize>();
     private blockInput: boolean = true;
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(private logger: Logger, configService: ConfigService, connectionId: string)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private parsedTarget: ParsedTargetString)
     {
-        this.websocketStream = new ShellWebsocketService(logger, new ZliAuthConfigService(configService), connectionId, this.inputSubject, this.resizeSubject);
     }
 
-    public async start(termSize: TerminalSize)
+    private async createShellWebsocketService() : Promise<IShellWebsocketService> {
+        const targetType = this.parsedTarget.type;
+
+        if(targetType === TargetType.SSH) {
+            return this.createSshShellWebsocketService();
+        } else if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
+            const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.parsedTarget.id);
+            if( isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
+                return this.createSsmShellWebsocketService(ssmTargetInfo);
+            } else {
+                this.logger.warn(`Agent version ${ssmTargetInfo.agentVersion} not compatible with keysplitting...falling back to non-keysplitting shell`);
+                return this.createSshShellWebsocketService();
+            }
+        } else {
+            throw new Error(`Unhandled target type ${targetType}`);
+        }
+    }
+
+    private createSshShellWebsocketService(): IShellWebsocketService {
+        return new SshShellWebsocketService(
+            this.logger,
+            new ZliAuthConfigService(this.configService, this.logger),
+            this.connectionId,
+            this.inputSubject,
+            this.resizeSubject
+        );
+    }
+
+    private createSsmShellWebsocketService(ssmTargetInfo: SsmTargetSummary): IShellWebsocketService {
+        return new SsmShellWebsocketService(
+            new KeySplittingService(this.configService, this.logger),
+            ssmTargetInfo,
+            this.logger,
+            new ZliAuthConfigService(this.configService, this.logger),
+            this.connectionId,
+            this.inputSubject,
+            this.resizeSubject
+        );
+    }
+
+    public async start(termSize: TerminalSize): Promise<void>
     {
+        this.currentTerminalSize = termSize;
+        this.shellWebsocketService = await this.createShellWebsocketService();
+
         // Handle writing to stdout
         // TODO: bring this up a level
-        this.websocketStream.outputData.subscribe(data => {
+        this.shellWebsocketService.outputData.subscribe(data => {
             process.stdout.write(Buffer.from(data, 'base64'));
         });
 
         // initial terminal size
-        await this.websocketStream.start();
+        await this.shellWebsocketService.start();
 
-        this.websocketStream.shellStateData.subscribe(
-            (newState: ShellState) => {
-                this.logger.trace(`Got new shell state update: ${JSON.stringify(newState)}`);
-                if (newState.start) {
+        this.shellEventDataSubscription = this.shellWebsocketService.shellEventData.subscribe(
+            async (shellEvent: ShellEvent) => {
+                this.logger.debug(`Got new shell event: ${shellEvent.type}`);
+
+                switch(shellEvent.type) {
+                case ShellEventType.Ready:
+                    this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns);
+                    break;
+                case ShellEventType.Start:
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
-                } else if (newState.ready) {
-                    this.websocketStream.sendShellConnect(termSize.rows, termSize.columns);
-                } else if (newState.disconnect || newState.delete ) {
-                    this.dispose();
+                    // Send initial terminal dimensions
+                    this.resize(this.currentTerminalSize);
+                    break;
+                case ShellEventType.Unattached:
+                    // When another client connects (web app) handle this by
+                    // exiting this ZLI process without closing the
+                    // connection and effectively transferring ownership of
+                    // the connection to the web app. We do not support
+                    // re-attaching within the same ZLI command.
+                    this.logger.error('Web App session has been detected.');
+                    this.terminalRunningStream.complete();
+                    break;
+                case ShellEventType.Disconnect:
+                    this.terminalRunningStream.error('Target Disconnected.');
+                    break;
+                case ShellEventType.Delete:
+                    this.terminalRunningStream.error('Connection was closed.');
+                    break;
+                default:
+                    this.logger.warn(`Unhandled shell event type ${shellEvent.type}`);
                 }
             },
             (error: any) => {
                 this.terminalRunningStream.error(error);
             },
             () => {
-                this.terminalRunningStream.error(undefined);
+                this.terminalRunningStream.error('ShellEventData subscription completed prematurely');
             }
         );
     }
 
-    public resize(resizeEvent: TerminalSize)
+    public resize(terminalSize: TerminalSize): void
     {
-        this.logger.trace(`New terminal resize event (rows: ${resizeEvent.rows} cols: ${resizeEvent.columns})`);
+        this.logger.trace(`New terminal resize event (rows: ${terminalSize.rows} cols: ${terminalSize.columns})`);
+
+        // Save the new terminal dimensions even if the shell input is blocked
+        // so that when we start the shell we initialize the terminal dimensions
+        // correctly
+        this.currentTerminalSize = terminalSize;
 
         if(! this.blockInput)
-            this.resizeSubject.next({rows: resizeEvent.rows, columns: resizeEvent.columns});
+            this.resizeSubject.next({rows: terminalSize.rows, columns: terminalSize.columns});
     }
 
     public writeString(input: string) : void {
-        if(! this.blockInput)
+        if(! this.blockInput) {
             this.inputSubject.next(input);
+        }
     }
 
     public writeBytes(input: Uint8Array) : void {
@@ -74,8 +152,13 @@ export class ShellTerminal implements IDisposable
 
     public dispose() : void
     {
-        if(this.websocketStream)
-            this.websocketStream.dispose();
+        // First unsubscribe to shell event subscription because this wil be
+        // completed when disposing the shellWebsocketService
+        if(this.shellEventDataSubscription)
+            this.shellEventDataSubscription.unsubscribe();
+
+        if(this.shellWebsocketService)
+            this.shellWebsocketService.dispose();
 
         this.terminalRunningStream.complete();
     }

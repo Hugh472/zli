@@ -1,4 +1,4 @@
-import { AuthorizationParameters, Client, custom, generators, Issuer, TokenSet, UserinfoResponse } from 'openid-client';
+import { AuthorizationParameters, Client, custom, errors, generators, Issuer, TokenSet, UserinfoResponse } from 'openid-client';
 import open from 'open';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { ConfigService } from '../config.service/config.service';
@@ -7,6 +7,7 @@ import { setTimeout } from 'timers';
 import { Logger } from '../../src/logger.service/logger';
 import { loginHtml } from './templates/login';
 import { logoutHtml } from './templates/logout';
+import { cleanExit } from '../../src/handlers/clean-exit.handler';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -158,6 +159,44 @@ export class OAuthService implements IDisposable {
         const tokenSet = this.configService.tokenSet();
         const userInfo = await client.userinfo(tokenSet);
         return userInfo;
+    }
+
+    // Returns the current OAuth idtoken. Refreshes it before returning if expired
+    public async getIdToken(): Promise<string> {
+
+        const tokenSet = this.configService.tokenSet();
+
+        // decide if we need to refresh or prompt user for login
+        if(tokenSet)
+        {
+            if(this.configService.tokenSet().expired())
+            {
+                try {
+                    this.logger.debug('Refreshing oauth token');
+
+                    const newTokenSet = await this.refresh();
+                    this.configService.setTokenSet(newTokenSet);
+                    this.logger.debug('Oauth token refreshed');
+                } catch(e) {
+                    if(e instanceof errors.RPError || e instanceof errors.OPError) {
+                        this.logger.error('Stale log in detected');
+                        this.logger.info('You need to log in, please run \'zli login --help\'');
+                        this.configService.logout();
+                        await cleanExit(1, this.logger);
+                    } else {
+                        this.logger.error('Unexpected error during oauth refresh');
+                        this.logger.info('Please log in again');
+                        this.configService.logout();
+                        await cleanExit(1, this.logger);
+                    }
+                }
+            }
+        } else {
+            this.logger.warn('You need to log in, please run \'zli login --help\'');
+            await cleanExit(1, this.logger);
+        }
+
+        return this.configService.getAuth();
     }
 
     dispose(): void {

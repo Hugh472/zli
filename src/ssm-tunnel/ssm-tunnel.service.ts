@@ -6,14 +6,15 @@ import SshPK from 'sshpk';
 import async from 'async';
 import { Observable, Subject } from 'rxjs';
 
+import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { SsmTargetInfo } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
-import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import { SsmTargetService } from '../http.service/http.service';
 import { SsmTunnelWebsocketService } from '../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.service';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
-import { SsmTunnelTargetInfo } from '../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.types';
 import { ParsedTargetString } from '../types';
 
 export class SsmTunnelService
@@ -56,8 +57,8 @@ export class SsmTunnelService
             this.ssmTunnelWebsocketService = new SsmTunnelWebsocketService(
                 this.logger,
                 this.keySplittingService,
-                new ZliAuthConfigService(this.configService),
-                target as SsmTunnelTargetInfo
+                new ZliAuthConfigService(this.configService, this.logger),
+                target as SsmTargetInfo
             );
 
             // Forward errors from the SsmTunnelWebsocketService

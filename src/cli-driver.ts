@@ -244,7 +244,7 @@ export class CliDriver
                     if(! sourceParsedTarget && ! destParsedTarget)
                     {
                         this.logger.error('Either source or destination must be a valid target string');
-                        cleanExit(1, this.logger);
+                        await cleanExit(1, this.logger);
                     }
 
                     const isTargetSource = !! sourceParsedTarget;
@@ -289,7 +289,7 @@ export class CliDriver
 
                     if(! argv.host.startsWith(prefix)) {
                         this.logger.error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
-                        cleanExit(1, this.logger);
+                        await cleanExit(1, this.logger);
                     }
 
                     // modify argv to have the targetString and targetType params
@@ -299,7 +299,7 @@ export class CliDriver
                     if(argv.port < 1 || argv.port > 65535)
                     {
                         this.logger.warn(`Port ${argv.port} outside of port range [1-65535]`);
-                        cleanExit(1, this.logger);
+                        await cleanExit(1, this.logger);
                     }
 
                     const sshTunnelParameters: SshTunnelParameters = {

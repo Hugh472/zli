@@ -17,15 +17,19 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
 
     if(! response.allowed)
     {
-        logger.error('You do not have sufficient permission to file transfer with the target');
-        cleanExit(1, logger);
+        const errorMessage = 'You do not have sufficient permission to open a ssh tunnel to the target';
+        logger.error(errorMessage);
+        process.stderr.write(`\n${errorMessage}\n`);
+        await cleanExit(1, logger);
     }
 
     const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
     if(response.allowedTargetUsers && ! _.includes(allowedTargetUsers, sshTunnelParameters.parsedTarget.user)) {
-        logger.error(`You do not have permission to tunnel as targetUser: ${sshTunnelParameters.parsedTarget.user}`);
-        logger.info(`Current allowed users for you: ${allowedTargetUsers}`);
-        cleanExit(1, logger);
+        const errorMessage = `You do not have permission to tunnel as targetUser: ${sshTunnelParameters.parsedTarget.user}. Current allowed users for you: ${allowedTargetUsers}`;
+        logger.error(errorMessage);
+        process.stderr.write(`\n${errorMessage}\n`);
+
+        await cleanExit(1, logger);
     }
 
     const ssmTunnelService = new SsmTunnelService(logger, configService, keySplittingService, envMap['enableKeysplitting'] == 'true');

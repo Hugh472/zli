@@ -31,21 +31,21 @@ export async function copyHandler(
     if(! response.allowed)
     {
         logger.error('You do not have sufficient permission to file transfer with the target');
-        cleanExit(1, logger);
+        await cleanExit(1, logger);
     }
 
     const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
     if(response.allowedTargetUsers && ! _.includes(allowedTargetUsers, parsedTarget.user)) {
         logger.error(`You do not have permission to file transfer as targetUser: ${parsedTarget.user}`);
         logger.info(`Current allowed users for you: ${allowedTargetUsers}`);
-        cleanExit(1, logger);
+        await cleanExit(1, logger);
     }
 
     if(parsedTarget.type == TargetType.DYNAMIC)
     {
         logger.error('Cannot file transfer with a dynamic access config');
         logger.warn('Please create a new dynamic access target or fetch an existing one (zli lt)');
-        cleanExit(1, this.logger);
+        await cleanExit(1, logger);
     }
 
     // figure out upload or download
