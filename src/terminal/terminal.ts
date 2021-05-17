@@ -8,7 +8,7 @@ import { ConfigService } from '../config.service/config.service';
 import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
-import { ConnectionService, SsmTargetService } from '../http.service/http.service';
+import { SsmTargetService } from '../http.service/http.service';
 import { TargetType } from '../types';
 import { SsmTargetSummary } from '../http.service/http.service.types';
 
@@ -25,20 +25,16 @@ export class ShellTerminal implements IDisposable
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(private logger: Logger, private configService: ConfigService, private connectionService: ConnectionService, private connectionId: string)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private targetType: TargetType, private serverId: string)
     {
     }
 
     private async createShellWebsocketService() : Promise<IShellWebsocketService> {
-        const connectionInfo = await this.connectionService.GetConnection(this.connectionId);
-        const targetType = connectionInfo.serverType;
-        const targetId = connectionInfo.serverId;
-
-        if(targetType === TargetType.SSH) {
+        if(this.targetType === TargetType.SSH) {
             return this.createSshShellWebsocketService();
-        } else if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
+        } else if(this.targetType === TargetType.SSM || this.targetType === TargetType.DYNAMIC) {
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(targetId);
+            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.serverId);
             if( isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
                 return this.createSsmShellWebsocketService(ssmTargetInfo);
             } else {
@@ -46,7 +42,7 @@ export class ShellTerminal implements IDisposable
                 return this.createSshShellWebsocketService();
             }
         } else {
-            throw new Error(`Unhandled target type ${targetType}`);
+            throw new Error(`Unhandled target type ${this.targetType}`);
         }
     }
 
@@ -97,16 +93,18 @@ export class ShellTerminal implements IDisposable
                 case ShellEventType.Start:
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
+                    // Trigger resize to force the terminal to refresh the output
+                    const tempTerminalSize : TerminalSize = {rows: this.currentTerminalSize.rows + 1, columns: this.currentTerminalSize.columns + 1};
+                    this.resizeSubject.next({rows: tempTerminalSize.rows, columns: tempTerminalSize.columns});
                     // Send initial terminal dimensions
                     this.resize(this.currentTerminalSize);
                     break;
                 case ShellEventType.Unattached:
-                    // When another client connects (web app) handle this by
+                    // When another client connects handle this by
                     // exiting this ZLI process without closing the
                     // connection and effectively transferring ownership of
-                    // the connection to the web app. We do not support
-                    // re-attaching within the same ZLI command.
-                    this.logger.error('Web App session has been detected.');
+                    // the connection to the other client
+                    this.logger.error('Another client has attached to this connection.');
                     this.terminalRunningStream.complete();
                     break;
                 case ShellEventType.Disconnect:

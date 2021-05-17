@@ -1,4 +1,4 @@
-import { ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
+import { ConnectionDetails, ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
 import { max } from 'lodash';
 import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
@@ -74,8 +74,7 @@ export function parseTargetString(targetString: string) : ParsedTargetString
     const targetSomething = colonSplit[0];
 
     // test if targetSomething is GUID
-    const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
-    if(guidPattern.test(targetSomething))
+    if(isGuid(targetSomething))
         result.id = targetSomething;
     else
         result.name = targetSomething;
@@ -84,6 +83,12 @@ export function parseTargetString(targetString: string) : ParsedTargetString
         result.path = colonSplit[1];
 
     return result;
+}
+
+// Checks whether the passed argument is a valid Guid
+export function isGuid(id: string): boolean{
+    const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
+    return guidPattern.test(id);
 }
 
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
@@ -126,6 +131,25 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     );
 
     return table.toString();
+}
+
+export function getTableOfConnections(connections: ConnectionDetails[], allTargets: TargetSummary[]) : string
+{
+    const targetNameLength = max(allTargets.map(t => t.name.length).concat(16));
+    const connIdLength = max(connections.map(c => c.id.length).concat(36));
+    const targetUserLength = max(connections.map(c => c.userName.length).concat(16));
+    const header: string[] = ['Connection ID', 'Target User', 'Target', 'Time Created'];
+    const columnWidths = [connIdLength + 2, targetUserLength + 2, targetNameLength + 2, 20];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    const dateOptions = {year: '2-digit', month: 'numeric', day: 'numeric', hour:'numeric', minute:'numeric', hour12: true};
+    connections.forEach(connection => {
+        const row = [connection.id, connection.userName, allTargets.filter(t => t.id == connection.targetId).pop().name, new Date(connection.timeCreated).toLocaleString('en-US', dateOptions as any)];
+        table.push(row);
+    });
+
+    return table.toString();
+
 }
 
 // Figure out target id based on target name and target type.

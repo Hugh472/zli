@@ -1,6 +1,7 @@
 import { IdP, SsmTargetStatus, TargetSummary, TargetType } from './types';
 import {
     disambiguateTarget,
+    isGuid,
     targetStringExample
 } from './utils';
 import { ConfigService } from './config.service/config.service';
@@ -27,6 +28,9 @@ import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-handler';
+import { listConnectionsHandler } from './handlers/list-connections.handler';
+import { attachHandler } from './handlers/attach.handler';
+import { closeConnectionHandler } from './handlers/close-connection.handler';
 
 
 export class CliDriver
@@ -43,6 +47,7 @@ export class CliDriver
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
+    private cliSpaceId: Promise<string>;
 
     // use the following to shortcut middleware according to command
     private noOauthCommands: string[] = ['config', 'login', 'logout'];
@@ -148,6 +153,42 @@ export class CliDriver
                 }
             )
             .command(
+                'attach <connectionId>',
+                'Attach to an open zli connection',
+                (yargs) => {
+                    return yargs
+                        .positional('connectionId', {
+                            type: 'string',
+                        })
+                        .example('attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id');
+                },
+                async (argv) => {
+                    if (!isGuid(argv.connectionId)){
+                        this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
+                        await cleanExit(1, this.logger);
+                    }
+                    await attachHandler(this.configService, this.logger, argv.connectionId);
+                }
+            )
+            .command(
+                'close <connectionId>',
+                'Close an open zli connection',
+                (yargs) => {
+                    return yargs
+                        .positional('connectionId', {
+                            type: 'string',
+                        })
+                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id');
+                },
+                async (argv) => {
+                    if (!isGuid(argv.connectionId)){
+                        this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
+                        await cleanExit(1, this.logger);
+                    }
+                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
+                }
+            )
+            .command(
                 ['list-targets', 'lt'],
                 'List all targets (filters available)',
                 (yargs) => {
@@ -219,6 +260,26 @@ export class CliDriver
                 },
                 async (argv) => {
                     await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                }
+            )
+            .command(
+                ['list-connections', 'lc'],
+                'List all open zli connections',
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('lc --json', 'List all open zli connections, output as json, pipeable');
+                },
+                async (argv) => {
+                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets);
                 }
             )
             .command(
