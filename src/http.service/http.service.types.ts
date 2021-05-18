@@ -102,7 +102,6 @@ export interface SshTargetSummary {
     port: number;
     authenticationType: AuthenticationType;
     color: string;
-    vpnId?: string;
     environmentId?: string;
 }
 
