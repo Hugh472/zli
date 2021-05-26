@@ -120,7 +120,7 @@ export class CliDriver
                             }
                         )
                         .example('login Google', 'Login with Google')
-                        .example('login Google --mfa 123456', 'Login with Microsoft and enter MFA');
+                        .example('login Microsoft --mfa 123456', 'Login with Microsoft and enter MFA');
                 },
                 async (argv) => {
                     await loginHandler(this.configService, this.logger, argv, this.keySplittingService);
