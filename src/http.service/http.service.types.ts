@@ -177,6 +177,11 @@ export interface MfaClearRequest
     userId: string;
 }
 
+export interface MfaResetRequest
+{
+    forceSetup: boolean;
+}
+
 export interface MfaResetResponse
 {
     mfaSecretUrl: string;
