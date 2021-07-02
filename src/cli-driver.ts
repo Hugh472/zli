@@ -29,6 +29,7 @@ import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-hand
 import { listConnectionsHandler } from './handlers/list-connections.handler';
 import { attachHandler } from './handlers/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection.handler';
+import { generateKubeconfigHandler } from './handlers/generate-kubeconfig.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -149,9 +150,16 @@ export class CliDriver
                         .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example, unique id of ssh target');
                 },
                 async (argv) => {
-                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    if (argv.targetType == 'cluster') {
+                        // TODO make this smart parsing
+                        const connectUser = argv.targetString.split('@')[0];
+                        const connectCluster = argv.targetString.split('@')[1];
+                        await startKubeDaemonHandler(connectUser, connectCluster, this.configService, this.logger);
+                    } else {
+                        const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
 
-                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                        await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                    }
                 }
             )
             .command(
@@ -427,19 +435,19 @@ export class CliDriver
                 }
             )
             .command(
-                'getKubeToken',
-                'Get Kube Token for kubectl requests',
+                'generateKubeconfig',
+                'Generate a Kubeconfig',
                 (_) => {},
                 async (_) => {
-                    await getKubeTokenHandler(this.configService);
+                    await generateKubeconfigHandler(this.configService, this.logger);
                 }
             )
             .command(
-                'startKubeDaemon',
-                'Start Kube Daemon',
+                'getKubeToken',
+                'Get the Kube Token',
                 (_) => {},
                 async (_) => {
-                    await startKubeDaemonHandler(this.configService);
+                    await getKubeTokenHandler(this.configService);
                 }
             )
             .command(

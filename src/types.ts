@@ -3,7 +3,8 @@ import { ConnectionState } from './http.service/http.service.types';
 export enum TargetType {
     SSM = 'SSM',
     SSH = 'SSH',
-    DYNAMIC = 'DYNAMIC'
+    DYNAMIC = 'DYNAMIC',
+    CLUSTER = 'CLUSTER'
 }
 
 export enum SessionState {
