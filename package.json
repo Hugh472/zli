@@ -75,6 +75,7 @@
     "spdy": "^4.0.2",
     "stream-to-pull-stream": "^1.7.3",
     "term-size": "^2.2.1",
+    "tree-kill": "^1.2.2",
     "ts-node": "^9.0.0",
     "uuid": "^8.3.2",
     "winston": "^3.3.3",
