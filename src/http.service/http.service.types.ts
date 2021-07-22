@@ -1,5 +1,5 @@
 import { ReadStream } from 'fs';
-import { SessionState, SsmTargetStatus, TargetType } from '../types';
+import { SessionState, SsmTargetStatus, KubeClusterStatus, TargetType } from '../types';
 
 export interface CreateSessionRequest {
     displayName?: string;
@@ -103,6 +103,12 @@ export interface SshTargetSummary {
     authenticationType: AuthenticationType;
     color: string;
     environmentId?: string;
+}
+
+export interface ClusterSummary {
+    id: string;
+    clusterName: string;
+    status: KubeClusterStatus;
 }
 
 export interface EnvironmentDetails {
@@ -257,4 +263,11 @@ export interface GetAutodiscoveryScriptRequest {
 
 export interface GetAutodiscoveryScriptResponse {
     autodiscoveryScript: string;
+}
+
+export interface GetKubeUnregisteredAgentYamlRequest {
+    clusterName: string;
+}
+export interface GetKubeUnregisteredAgentYamlResponse {
+    yaml: string;
 }
