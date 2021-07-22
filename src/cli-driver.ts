@@ -154,6 +154,7 @@ export class CliDriver
                 },
                 async (argv) => {
                     if (argv.targetType == 'cluster') {
+                        // TODO make an opa policy check here
                         // TODO make this smart parsing
                         const connectUser = argv.targetString.split('@')[0];
                         const connectCluster = argv.targetString.split('@')[1];
