@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"bastionzero.com/bctl/v1/bzerolib/keysplitting/hasher"
+	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
 
 type DataAckPayload struct {
@@ -14,24 +14,24 @@ type DataAckPayload struct {
 	Type          string `json:"type"`
 	Action        string `json:"action"`
 
-	//Unique to DataAck
+	// Unique to DataAck Payload
 	TargetPublicKey       string `json:"targetPublicKey"`
 	HPointer              string `json:"hPointer"`
 	ActionResponsePayload []byte `json:"actionResponsePayload"`
 }
 
-func (d DataAckPayload) BuildResponsePayload(action string, actionPayload []byte) (DataPayload, error) {
-	hashBytes, _ := hasher.HashPayload((d))
+func (d DataAckPayload) BuildResponsePayload(action string, actionPayload []byte, bzCertHash string) (DataPayload, string, error) {
+	hashBytes, _ := util.HashPayload(d)
 	hash := base64.StdEncoding.EncodeToString(hashBytes)
 
 	return DataPayload{
 		Timestamp:     fmt.Sprint(time.Now().Unix()),
 		SchemaVersion: d.SchemaVersion,
 		Type:          string(Data),
-		Action:        d.Action,
+		Action:        action,
 		TargetId:      d.TargetPublicKey, //TODO: Make this come from storage
 		HPointer:      hash,
 		ActionPayload: actionPayload,
-		BZCertHash:    "", // TODO: Make this come from storage
-	}, nil
+		BZCertHash:    bzCertHash, // TODO: Make this come from storage
+	}, hash, nil
 }

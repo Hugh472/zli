@@ -9,8 +9,9 @@ import (
 
 	controlws "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket"
 	controlwsmsg "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/controlWebsocketTypes"
-	dc "bastionzero.com/bctl/v1/bzerolib/channels/datachannel"
+	dc "bastionzero.com/bctl/v1/bctl/agent/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
+	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
 var (
@@ -21,6 +22,9 @@ var (
 const (
 	hubEndpoint = "/api/v1/hub/kube-server"
 	token       = "1234" // TODO: figure this out
+
+	// Disable auto-reconnect
+	autoReconnect = false
 )
 
 func main() {
@@ -58,19 +62,42 @@ func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel(message.Role, "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dc.NewDataChannel(message.Role, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
-	var payload map[string]interface{}
-	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
-		p := payload["keysplittingPayload"].(map[string]interface{})
-		switch p["action"] {
-		case "kube/restapi":
-			return "ResponseToBastionFromCluster", nil
+	// First check if its a keysplitting message
+	var keysplittingPayload map[string]interface{}
+	if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
+		if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
+			switch keysplittingPayloadVal["action"] {
+			case "kube/restapi":
+				return "ResponseToBastionFromCluster", nil
+			case "kube/exec/start":
+				return "ResponseToBastionFromCluster", nil
+			case "kube/exec/input":
+				return "ResponseToBastionFromCluster", nil
+			case "kube/exec/resize":
+				return "ResponseToBastionFromCluster", nil
+			}
 		}
 	}
-	return "", fmt.Errorf("")
+
+	// Else check if its a stream message
+	var messagePayload smsg.StreamMessage
+	if err := json.Unmarshal(agentMessage.MessagePayload, &messagePayload); err == nil {
+		// p := payload["keysplittingPayload"].(map[string]interface{})
+		switch messagePayload.Type {
+		case "kube/exec/stdout":
+			return "StdoutToBastionFromCluster", nil
+		case "kube/exec/stderr":
+			return "StderrToBastionFromCluster", nil
+		case "kube/log":
+			return "ResponseLogToBastionFromCluster", nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to determine SignalR endpoint")
 }
 
 func parseFlags() {

@@ -41,8 +41,22 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         killDaemon(configService);
     }
 
+    const configPath = configService.configPath()
+
     // Build our args and cwd
-    let args = [`-sessionId=${configService.sessionId()}`, `-assumeRole=${assumeUser}`, `-assumeClusterId=${clusterTarget.id}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`, `-authHeader="${configService.getAuthHeader()}"`, `-localhostToken="${kubeConfig['token']}"`, `-environmentId="${clusterTarget.environmentId}"`, `-certPath="${kubeConfig['certPath']}"`, `-keyPath="${kubeConfig['keyPath']}"`];
+    let args = [
+        `-sessionId=${configService.sessionId()}`, 
+        `-assumeRole=${assumeUser}`, 
+        `-assumeClusterId=${clusterTarget.id}`, 
+        `-daemonPort=${kubeConfig['localPort']}`, 
+        `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`, 
+        `-authHeader="${configService.getAuthHeader()}"`, 
+        `-localhostToken="${kubeConfig['token']}"`, 
+        `-environmentId="${clusterTarget.environmentId}"`, 
+        `-certPath="${kubeConfig['certPath']}"`, 
+        `-keyPath="${kubeConfig['keyPath']}"`,
+        `-configPath="${configPath}"`
+    ];
     let cwd = process.cwd();
 
 

@@ -6,14 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"bastionzero.com/bctl/v1/bzerolib/keysplitting/hasher"
+	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
-
-// Syn, SynAck, Data, and DataAck all implement this payload
-// type IKeysplittingPayload interface {
-// 	GetSenderId() (string, time.Time, error)
-// 	BuildReplyPayload(payload interface{}, pubKey string) ([]byte, error)
-// }
 
 // Type restrictions for keysplitting messages
 type KeysplittingPayloadType string
@@ -23,6 +17,10 @@ const (
 	SynAck  KeysplittingPayloadType = "SynAck"
 	Data    KeysplittingPayloadType = "Data"
 	DataAck KeysplittingPayloadType = "DataAck"
+)
+
+const (
+	SchemaVersion = "1.0"
 )
 
 type IKeysplittingMessage interface {
@@ -37,66 +35,43 @@ type KeysplittingMessage struct {
 	Signature           string                  `json:"signature"`
 }
 
-func (k *KeysplittingMessage) BuildResponse(action string, actionPayload []byte, publickey string, privatekey string) (KeysplittingMessage, error) {
-	var ksMessage KeysplittingMessage
-	switch k.Type {
-	case Data:
-		dataPayload := k.KeysplittingPayload.(DataPayload)
-		if dataAckPayload, err := dataPayload.BuildResponsePayload(actionPayload, publickey); err != nil {
-			return KeysplittingMessage{}, err
-		} else {
-			ksMessage = KeysplittingMessage{
-				Type:                DataAck,
-				KeysplittingPayload: dataAckPayload,
-			}
-		}
-	case DataAck:
-		dataAckPayload := k.KeysplittingPayload.(DataAckPayload)
-		if dataPayload, err := dataAckPayload.BuildResponsePayload(action, actionPayload); err != nil {
-			return KeysplittingMessage{}, err
-		} else {
-			ksMessage = KeysplittingMessage{
-				Type:                Data,
-				KeysplittingPayload: dataPayload,
-			}
-		}
-	}
-	//return ksMessage.Sign(privatekey), nil
-	return ksMessage, nil
-}
-
 func (k *KeysplittingMessage) VerifySignature(publicKey string) error {
 	pubKeyBits, _ := base64.StdEncoding.DecodeString(publicKey)
 	if len(pubKeyBits) != 32 {
-		return fmt.Errorf("Public Key has invalid length %v", len(pubKeyBits))
+		return fmt.Errorf("public key has invalid length %v", len(pubKeyBits))
 	}
 	pubkey := ed.PublicKey(pubKeyBits)
 
-	hashBits, ok := hasher.HashPayload(k.KeysplittingPayload)
+	hashBits, ok := util.HashPayload(k.KeysplittingPayload)
 	if !ok {
-		return fmt.Errorf("Could not hash the keysplitting payload")
+		return fmt.Errorf("could not hash the keysplitting payload")
 	}
 
 	sigBits, _ := base64.StdEncoding.DecodeString(k.Signature)
 
+	//log.Printf("\npubkey: %v\nhash: %v\nsignature: %v", publicKey, string(hashBits), k.Signature)
+
 	if ok := ed.Verify(pubkey, hashBits, sigBits); ok {
 		return nil
 	} else {
-		return fmt.Errorf("Failed to verify signature on rand")
+		return fmt.Errorf("failed to verify signature")
 	}
 }
 
 func (k *KeysplittingMessage) Sign(privateKey string) error {
 	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
 	if len(keyBytes) != 64 {
-		return fmt.Errorf("Invalid private key length: %v", len(keyBytes))
+		return fmt.Errorf("invalid private key length: %v", len(keyBytes))
 	}
 	privkey := ed.PrivateKey(keyBytes)
 
-	hashBits, _ := hasher.HashPayload(k.KeysplittingPayload)
+	hashBits, _ := util.HashPayload(k.KeysplittingPayload)
 
 	sig := ed.Sign(privkey, hashBits)
 	k.Signature = base64.StdEncoding.EncodeToString(sig)
+
+	//log.Printf("\nprivatekey: %v\nhash: %v\nsignature: %v", privateKey, string(hashBits), k.Signature)
+
 	return nil
 }
 
@@ -125,34 +100,34 @@ func (k *KeysplittingMessage) UnmarshalJSON(data []byte) error {
 	case Syn:
 		var synPayload SynPayload
 		if err := json.Unmarshal(kPayload, &synPayload); err != nil {
-			return fmt.Errorf("Malformed Syn Payload")
+			return fmt.Errorf("malformed Syn Payload")
 		} else {
 			k.KeysplittingPayload = synPayload
 		}
 	case SynAck:
 		var synAckPayload SynAckPayload
 		if err := json.Unmarshal(kPayload, &synAckPayload); err != nil {
-			return fmt.Errorf("Malformed SynAck Payload")
+			return fmt.Errorf("malformed SynAck Payload")
 		} else {
 			k.KeysplittingPayload = synAckPayload
 		}
 	case Data:
 		var dataPayload DataPayload
 		if err := json.Unmarshal(kPayload, &dataPayload); err != nil {
-			return fmt.Errorf("Malformed Data Payload")
+			return fmt.Errorf("malformed Data Payload")
 		} else {
 			k.KeysplittingPayload = dataPayload
 		}
 	case DataAck:
 		var dataAckPayload DataAckPayload
 		if err := json.Unmarshal(kPayload, &dataAckPayload); err != nil {
-			return fmt.Errorf("Malformed DataAck Payload")
+			return fmt.Errorf("malformed DataAck Payload")
 		} else {
 			k.KeysplittingPayload = dataAckPayload
 		}
 	default:
 		// TODO: explicitly check type of outer vs. inner payload
-		return fmt.Errorf("Type mismatch in keysplitting message and actual message payload")
+		return fmt.Errorf("type mismatch in keysplitting message and actual message payload")
 	}
 
 	return nil

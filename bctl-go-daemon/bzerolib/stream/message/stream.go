@@ -4,7 +4,8 @@ package message
 
 type StreamMessage struct {
 	Type           string `json:"type"` // either stdout or stderr, see "StreamType"
-	RequestId      int    `json:"requestId"`
+	LogId          string `json:"logId"`
+	RequestId      string `json:"requestId"`
 	SequenceNumber int    `json:"sequenceId"`
 	Content        []byte `json:"content"`
 }
@@ -15,7 +16,9 @@ type StreamMessage struct {
 type StreamType string
 
 const (
-	StdErr StreamType = "stderr"
-	StdOut StreamType = "stdout"
-	StdIn  StreamType = "stdin"
+	StdErr StreamType = "kube/exec/stderr"
+	StdOut StreamType = "kube/exec/stdout"
+	StdIn  StreamType = "kube/exec/stdin"
+
+	LogOut StreamType = "kube/log"
 )

@@ -6,19 +6,21 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
-	dc "bastionzero.com/bctl/v1/bzerolib/channels/datachannel"
+	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 )
 
 // Declaring flags as package-accesible variables
 var (
-	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl string
-	daemonPort, localhostToken, environmentId, certPath, keyPath   string
+	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl           string
+	daemonPort, localhostToken, environmentId, certPath, keyPath, configPath string
 )
 
 const (
-	hubEndpoint = "/api/v1/hub/kube"
+	hubEndpoint   = "/api/v1/hub/kube"
+	autoReconnect = true
 )
 
 func main() {
@@ -42,12 +44,16 @@ func startDatachannel() {
 	params["assume_cluster_id"] = assumeClusterId
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel(assumeRole, "", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dataChannel, _ := dc.NewDataChannel(configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	// TODO: Integrate this with existing messaging
+	time.Sleep(3 * time.Second)
+	dataChannel.SendSyn()
+
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
 		log.Printf("Error starting Kube Daemon plugin: %s", err.Error())
 		return
 	}
-	dataChannel.SendSyn()
+
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
@@ -57,6 +63,14 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 			switch p["action"] {
 			case "kube/restapi":
 				return "RequestToBastionFromDaemon", nil
+			case "kube/exec/start":
+				return "StartExecToBastionFromDaemon", nil
+			case "kube/exec/input":
+				return "StdinToBastionFromDaemon", nil
+			case "kube/exec/resize":
+				return "ResizeTerminalToBastionFromDaemon", nil
+			case "kube/log":
+				return "RequestLogToBastionFromDaemon", nil
 			}
 		} else {
 			return "", fmt.Errorf("Fail on expected payload: %v", payload["keysplittingPayload"])
@@ -80,6 +94,9 @@ func parseFlags() {
 	flag.StringVar(&daemonPort, "daemonPort", "", "Daemon Port To Use")
 	flag.StringVar(&certPath, "certPath", "", "Path to cert to use for our localhost server")
 	flag.StringVar(&keyPath, "keyPath", "", "Path to key to use for our localhost server")
+	flag.StringVar(&configPath, "configPath", "", "Local storage path to zli config")
+
+	log.Printf("configPath: %v", configPath)
 
 	flag.Parse()
 
