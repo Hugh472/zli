@@ -79,6 +79,8 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 				return "ResponseToBastionFromCluster", nil
 			case "kube/exec/resize":
 				return "ResponseToBastionFromCluster", nil
+			case "kube/log":
+				return "ResponseToBastionFromCluster", nil
 			}
 		}
 	}
