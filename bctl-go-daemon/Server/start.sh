@@ -2,6 +2,6 @@
 if [ $DEV == "true" ]; then
     sleep infinity
 else
-    cd /bctl-server/Server/ && go get k8s.io/apimachinery/pkg/apis/meta/v1@v0.21.3
-    cd /bctl-server/Server/ && go run /bctl-server/Server/main.go -serviceURL=$SERVICE_URL
+    cd /bctl-server/bctl/agent && go mod download github.com/Azure/go-autorest/autorest
+    cd /bctl-server/bctl/agent && go run /bctl-server/bctl/agent/agent.go -serviceUrl=$SERVICE_URL
 fi

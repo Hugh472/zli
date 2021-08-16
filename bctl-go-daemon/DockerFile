@@ -7,7 +7,7 @@ WORKDIR /bctl-server
 ARG PROD_TRUE="false"
 
 COPY . .
-RUN cd Server && \
+RUN cd bctl/agent && \
     go get k8s.io/client-go/kubernetes && \
     go get k8s.io/client-go/tools/remotecommand && \
     go get k8s.io/client-go/rest && \
@@ -16,7 +16,9 @@ RUN cd Server && \
     go get github.com/gorilla/websocket && \
     go get github.com/NYTimes/gziphandler && \
     go get k8s.io/apimachinery/pkg/apis/meta/v1@v0.21.3 && \
-    go install bastionzero.com/bctl/v1/Server 
+    go get github.com/Azure/go-autorest/autorest && \
+    go get k8s.io/api/core/v1@v0.21.3 
+    # go install bastionzero.com/bctl/v1/bctl
 
 # Install rsync for devs, and python3 for our systemd alt
 RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
