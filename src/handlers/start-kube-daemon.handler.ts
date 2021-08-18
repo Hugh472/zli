@@ -41,8 +41,22 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         killDaemon(configService);
     }
 
+    const configPath = configService.configPath();
+
     // Build our args and cwd
-    let args = [`-sessionId=${configService.sessionId()}`, `-assumeRole=${assumeUser}`, `-assumeClusterId=${clusterTarget.id}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`, `-authHeader="${configService.getAuthHeader()}"`, `-localhostToken="${kubeConfig['token']}"`, `-environmentId="${clusterTarget.environmentId}"`, `-certPath="${kubeConfig['certPath']}"`, `-keyPath="${kubeConfig['keyPath']}"`];
+    let args = [
+        `-sessionId=${configService.sessionId()}`,
+        `-assumeRole=${assumeUser}`,
+        `-assumeClusterId=${clusterTarget.id}`,
+        `-daemonPort=${kubeConfig['localPort']}`,
+        `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
+        `-authHeader="${configService.getAuthHeader()}"`,
+        `-localhostToken="${kubeConfig['token']}"`,
+        `-environmentId="${clusterTarget.environmentId}"`,
+        `-certPath="${kubeConfig['certPath']}"`,
+        `-keyPath="${kubeConfig['keyPath']}"`,
+        `-configPath="${configPath}"`
+    ];
     let cwd = process.cwd();
 
 
@@ -52,7 +66,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         // If we set a custom path, we will try to start the daemon from the source code
         cwd = process.env.ZLI_CUSTOM_BCTL_PATH;
         finalDaemonPath = 'go';
-        args = ['run', 'main.go'].concat(args);
+        args = ['run', 'daemon.go'].concat(args);
     } else {
         finalDaemonPath = await copyExecutableToTempDir();
     }
@@ -141,7 +155,7 @@ async function copyExecutableToTempDir(): Promise<string> {
     }
 
     // We have to go up 1 more directory bc when we compile we are inside /dist
-    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/Daemon/Daemon');
+    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
 
     // Create our temp file
     const tmpobj = tmp.fileSync();
