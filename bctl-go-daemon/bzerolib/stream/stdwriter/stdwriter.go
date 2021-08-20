@@ -1,6 +1,8 @@
 package stdwriter
 
 import (
+	"encoding/base64"
+
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
@@ -16,6 +18,7 @@ type StdWriter struct {
 	logId          string
 }
 
+// Stdout or Stderr
 func NewStdWriter(streamType smsg.StreamType, ch chan smsg.StreamMessage, requestId string, logId string) *StdWriter {
 	return &StdWriter{
 		StdType:        streamType,
@@ -27,11 +30,12 @@ func NewStdWriter(streamType smsg.StreamType, ch chan smsg.StreamMessage, reques
 }
 
 func (w *StdWriter) Write(p []byte) (int, error) {
+	str := base64.StdEncoding.EncodeToString(p)
 	message := smsg.StreamMessage{
 		Type:           string(w.StdType),
 		RequestId:      w.RequestId,
 		SequenceNumber: w.SequenceNumber,
-		Content:        p,
+		Content:        str,
 		LogId:          w.logId,
 	}
 	w.outputChannel <- message
