@@ -67,6 +67,7 @@ import { EnvironmentDetails } from './services/environment/environment.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/policy/policy.types';
 import { ClusterDetails } from './services/kube/kube.types';
+import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
 
 export class CliDriver
 {
@@ -243,7 +244,8 @@ export class CliDriver
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
-                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                    const exitCode = await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                    await cleanExit(exitCode, this.logger);
                 }
             )
             .command(
@@ -468,6 +470,19 @@ export class CliDriver
                 async (argv) => {
                     await generateBashHandler(argv, this.logger, this.configService, this.envs);
                 },
+            )
+            .command(
+                `quickstart [--sshConfigFile <path>]`,
+                `Start an interactive onboarding session to add your SSH hosts to BastionZero.
+
+This command will scan your ~/.ssh/config file by default. Pass the --sshConfigFile flag to scan a different file. The file must follow the ssh_config(5) format.
+                `,
+                (yargs) => {
+                   return quickstartCmdBuilder(yargs);
+                },
+                async (argv) => {
+                    await quickstartHandler(argv, this.logger, this.configService, this.mixpanelService);
+                }
             )
             .command(
                 'autodiscovery-script <operatingSystem> <targetName> <environmentName> [agentVersion]',
