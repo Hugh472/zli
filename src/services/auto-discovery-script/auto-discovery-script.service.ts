@@ -12,14 +12,14 @@ export class AutoDiscoveryScriptService extends HttpService
 
     public getAutodiscoveryScript(
         operatingSystem: string,
-        targetName: string,
+        targetNameScript: string,
         environmentId: string,
         agentVersion: string
     ): Promise<GetAutodiscoveryScriptResponse>
     {
         const request: GetAutodiscoveryScriptRequest = {
             apiUrl: `${this.configService.serviceUrl()}api/v1/`,
-            targetNameScript: `TARGET_NAME=\"${targetName}\"`,
+            targetNameScript: targetNameScript,
             envId: environmentId,
             agentVersion: agentVersion
         };
