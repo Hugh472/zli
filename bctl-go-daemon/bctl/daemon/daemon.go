@@ -10,6 +10,7 @@ import (
 
 	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
 // Declaring flags as package-accesible variables
@@ -21,10 +22,12 @@ var (
 const (
 	hubEndpoint   = "/api/v1/hub/kube"
 	autoReconnect = true
+	version       = "1.0.0" // TODO: Change this?
+	logFilePath   = "/var/log/cwc"
 )
 
 func main() {
-	parseFlags()
+	parseFlags() // TODO: Output missing args error
 
 	// Setup our loggers
 	// TODO: Pass in debug level as flag
@@ -42,7 +45,7 @@ func main() {
 	select {} // sleep forever?
 }
 
-func startDatachannel() {
+func startDatachannel(logger *lggr.Logger) {
 	// Create our headers and params
 	headers := make(map[string]string)
 	headers["Authorization"] = authHeader
@@ -54,16 +57,16 @@ func startDatachannel() {
 	params["assume_cluster_id"] = assumeClusterId
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel(configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	dataChannel, _ := dc.NewDataChannel(logger, configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+
 	// TODO: Integrate this with existing messaging
 	time.Sleep(3 * time.Second)
+	// TODO: Trigger this via datachannel when sending the first message
 	dataChannel.SendSyn()
 
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
-		log.Printf("Error starting Kube Daemon plugin: %s", err.Error())
 		return
 	}
-
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
@@ -107,8 +110,6 @@ func parseFlags() {
 	flag.StringVar(&certPath, "certPath", "", "Path to cert to use for our localhost server")
 	flag.StringVar(&keyPath, "keyPath", "", "Path to key to use for our localhost server")
 	flag.StringVar(&configPath, "configPath", "", "Local storage path to zli config")
-
-	log.Printf("configPath: %v", configPath)
 
 	flag.Parse()
 
