@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -94,7 +93,7 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	return "", fmt.Errorf("")
 }
 
-func parseFlags() {
+func parseFlags() error {
 	flag.StringVar(&sessionId, "sessionId", "", "Session ID From Zli")
 	flag.StringVar(&authHeader, "authHeader", "", "Auth Header From Zli")
 
@@ -116,7 +115,8 @@ func parseFlags() {
 	// Check we have all required flags
 	if sessionId == "" || authHeader == "" || assumeRole == "" || assumeClusterId == "" || serviceUrl == "" ||
 		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" {
-		log.Printf("Missing flags!")
-		os.Exit(1)
+		return fmt.Errorf("missing flags!")
+	} else {
+		return nil
 	}
 }
