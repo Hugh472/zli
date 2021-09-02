@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
@@ -22,7 +23,7 @@ const (
 	hubEndpoint   = "/api/v1/hub/kube"
 	autoReconnect = true
 	version       = "1.0.0" // TODO: Change this?
-	logFilePath   = "/var/log/cwc"
+	logFileName   = "bctl-daemon.log"
 )
 
 func main() {
@@ -87,7 +88,7 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 				return "RequestLogDaemonToBastion", nil
 			}
 		} else {
-			return "", fmt.Errorf("Fail on expected payload: %v", payload["keysplittingPayload"])
+			return "", fmt.Errorf("fail on expected payload: %v", payload["keysplittingPayload"])
 		}
 	}
 	return "", fmt.Errorf("")
@@ -115,8 +116,12 @@ func parseFlags() error {
 	// Check we have all required flags
 	if sessionId == "" || authHeader == "" || assumeRole == "" || assumeClusterId == "" || serviceUrl == "" ||
 		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" {
-		return fmt.Errorf("missing flags!")
+		return fmt.Errorf("missing flags")
 	} else {
 		return nil
 	}
+}
+
+func getLogFilePath() string {
+	return filepath.Join(filepath.Dir(configPath), logFileName)
 }
