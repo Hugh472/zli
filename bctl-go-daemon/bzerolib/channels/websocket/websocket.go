@@ -189,7 +189,9 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	// Select target
 	target, err := w.targetSelectHandler(agentMessage) // Agent and Daemon specify their own function to choose target
 	if err != nil {
-		return fmt.Errorf("error in selecting SignalR Endpoint target name: %s", err)
+		rerr := fmt.Errorf("error in selecting SignalR Endpoint target name: %s", err)
+		w.logger.Error(rerr)
+		return rerr
 	}
 
 	msg := fmt.Sprintf("Sending %s message to the Bastion", target)

@@ -110,7 +110,7 @@ func (d *DataChannel) sendError(errType rrr.ErrorType, err error) {
 	errMsg := rrr.ErrorMessage{
 		Type:     string(errType),
 		Message:  err.Error(),
-		HPointer: d.keysplitting.HPointer,
+		HPointer: d.keysplitting.GetHpointer(),
 	}
 	d.Send(wsmsg.Error, errMsg)
 }
@@ -148,6 +148,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 			d.sendError(rrr.KeysplittingValidationError, rerr)
 		} else {
 			// Start plugin
+			d.sendError(rrr.ComponentStartupError, fmt.Errorf("IT'SA MARIO!"))
 			if err := d.startPlugin(plgn.PluginName(x[0])); err != nil {
 				d.sendError(rrr.ComponentStartupError, err)
 			}

@@ -9,6 +9,7 @@ import (
 	kube "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
+	rrr "bastionzero.com/bctl/v1/bzerolib/error"
 	ksmsg "bastionzero.com/bctl/v1/bzerolib/keysplitting/message"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
@@ -84,8 +85,8 @@ func NewDataChannel(logger *lggr.Logger,
 				ret.logger.Info("Websocket has been closed, closing datachannel")
 				cancel()
 
-				// Send a message to our done channel to the kubectl can get the message
-				ret.doneChannel <- "true"
+				// Send a message to our done channel so kubectl can display it
+				ret.doneChannel <- "Websocket has been closed, closing datachannel"
 				return
 			}
 		}
@@ -125,14 +126,14 @@ func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interfa
 	return nil
 }
 
+// TODO: Datachannel should check/know whether we need to send a syn
 func (d *DataChannel) SendSyn() { // TODO: have this return an error
 	payload := map[string]string{
 		"Role": d.role,
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
-	// TODO: have the action be something more meaningful, probably passed in as a flag
-	action := "kube/restapi"
+	action := "kube/restapi" // placeholder
 	if synMessage, err := d.keysplitting.BuildSyn(action, payloadBytes); err != nil {
 		rerr := fmt.Errorf("error building Syn: %s", err)
 		d.logger.Error(rerr)
@@ -170,6 +171,18 @@ func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 				d.logger.Error(err)
 				return err
 			}
+		}
+	case wsmsg.Error:
+		var errMessage rrr.ErrorMessage
+		if err := json.Unmarshal(agentMessage.MessagePayload, &errMessage); err != nil {
+			rerr := fmt.Errorf("malformed Error message")
+			d.logger.Error(rerr)
+			return rerr
+		} else {
+			rerr := fmt.Errorf("received error from agent: %s", errMessage.Message)
+			d.logger.Error(rerr)
+			d.doneChannel <- rerr.Error()
+			return rerr
 		}
 	default:
 		rerr := fmt.Errorf("unhandled Message type: %v", agentMessage.MessageType)

@@ -12,22 +12,19 @@ import (
 	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
 
-const (
-	schemaVersion = "1.0"
-)
-
 type BZCertMetadata struct {
 	Cert bzcrt.BZCert
 	Exp  time.Time
 }
 
 type IKeysplitting interface {
+	GetHpointer() string
 	Validate(ksMessage *ksmsg.KeysplittingMessage) error
 	BuildResponse(ksMessage *ksmsg.KeysplittingMessage, action string, actionPayload []byte) (ksmsg.KeysplittingMessage, error)
 }
 
 type Keysplitting struct {
-	HPointer         string
+	hPointer         string
 	expectedHPointer string
 	bzCerts          map[string]BZCertMetadata // only for agent
 	publickey        string
@@ -49,7 +46,7 @@ func NewKeysplitting() (IKeysplitting, error) {
 		config, _ := vault.LoadVault()
 
 		return &Keysplitting{
-			HPointer:         "",
+			hPointer:         "",
 			expectedHPointer: "",
 			bzCerts:          make(map[string]BZCertMetadata),
 			publickey:        pubkeyString,
@@ -59,6 +56,10 @@ func NewKeysplitting() (IKeysplitting, error) {
 			orgId:            config.Data.OrgId,
 		}, nil
 	}
+}
+
+func (k *Keysplitting) GetHpointer() string {
+	return k.hPointer
 }
 
 func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
@@ -123,7 +124,7 @@ func (k *Keysplitting) BuildResponse(ksMessage *ksmsg.KeysplittingMessage, actio
 		if synAckPayload, hash, err := synPayload.BuildResponsePayload(actionPayload, k.publickey); err != nil {
 			return ksmsg.KeysplittingMessage{}, err
 		} else {
-			k.HPointer = hash
+			k.hPointer = hash
 			responseMessage = ksmsg.KeysplittingMessage{
 				Type:                ksmsg.SynAck,
 				KeysplittingPayload: synAckPayload,
@@ -134,7 +135,7 @@ func (k *Keysplitting) BuildResponse(ksMessage *ksmsg.KeysplittingMessage, actio
 		if dataAckPayload, hash, err := dataPayload.BuildResponsePayload(actionPayload, k.publickey); err != nil {
 			return ksmsg.KeysplittingMessage{}, err
 		} else {
-			k.HPointer = hash
+			k.hPointer = hash
 			responseMessage = ksmsg.KeysplittingMessage{
 				Type:                ksmsg.DataAck,
 				KeysplittingPayload: dataAckPayload,
