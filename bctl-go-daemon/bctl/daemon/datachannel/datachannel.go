@@ -194,6 +194,14 @@ func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 			d.logger.Error(rerr)
 			return rerr
 		} else {
+			// In order to get back on the keysplitting train, we need to resend the syn, get the synack
+			// so that our input message handler is pointing to the right thing.
+			d.handshook = false
+			if err := d.sendSyn(); err != nil {
+				d.logger.Error(err)
+				return err
+			}
+
 			rerr := fmt.Errorf("received error from agent: %s", errMessage.Message)
 			d.logger.Error(rerr)
 			d.doneChannel <- rerr.Error()
