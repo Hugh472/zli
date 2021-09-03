@@ -119,13 +119,10 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 	// and send any new messages with the same request ID to the existing action object
 	if act, ok := k.actions[rid]; ok {
 		action, payload, err := act.InputMessageHandler(action, actionPayloadSafe)
-		k.logger.Info("Returning after LOG CLOSED")
 
 		// Check if that last message closed the action, if so delete from map
 		if act.Closed() {
 			delete(k.actions, rid)
-
-			k.logger.Info("Returning after LOG CLOSED")
 		}
 		return action, payload, err
 	} else {

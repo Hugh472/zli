@@ -26,6 +26,7 @@ type DataChannel struct {
 	websocket    *ws.Websocket
 	logger       *lggr.Logger
 	ctx          context.Context
+	cancel       context.CancelFunc
 	plugin       plgn.IPlugin
 	keysplitting ks.IKeysplitting
 	handshook    bool // aka whether we need to send a syn
@@ -38,7 +39,8 @@ type DataChannel struct {
 
 	// If we need to send a SYN, then we need a way to keep
 	// track of whatever message that triggered the send SYN
-	onDeck plgn.ActionWrapper
+	onDeck      plgn.ActionWrapper
+	lastMessage wsmsg.AgentMessage
 }
 
 func NewDataChannel(logger *lggr.Logger,
@@ -72,6 +74,7 @@ func NewDataChannel(logger *lggr.Logger,
 		websocket:    wsClient,
 		logger:       logger,
 		ctx:          ctx,
+		cancel:       cancel,
 		keysplitting: keysplitter,
 		handshook:    false,
 		doneChannel:  make(chan string),
@@ -137,6 +140,7 @@ func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interfa
 
 	// Push message to websocket channel output
 	d.websocket.OutputChannel <- agentMessage
+	d.lastMessage = agentMessage
 	return nil
 }
 
@@ -194,17 +198,18 @@ func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 			d.logger.Error(rerr)
 			return rerr
 		} else {
-			// In order to get back on the keysplitting train, we need to resend the syn, get the synack
-			// so that our input message handler is pointing to the right thing.
-			d.handshook = false
-			if err := d.sendSyn(); err != nil {
-				d.logger.Error(err)
-				return err
-			}
-
 			rerr := fmt.Errorf("received error from agent: %s", errMessage.Message)
 			d.logger.Error(rerr)
 			d.doneChannel <- rerr.Error()
+			d.cancel()
+
+			// In order to get back on the keysplitting train, we need to resend the syn, get the synack
+			// so that our input message handler is pointing to the right thing.
+			// d.handshook = false
+			// if err := d.sendSyn(); err != nil {
+			// 	d.logger.Error(err)
+			// 	return err
+			// }
 			return rerr
 		}
 	default:
