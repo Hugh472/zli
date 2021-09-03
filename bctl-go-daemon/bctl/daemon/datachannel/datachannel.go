@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	ks "bastionzero.com/bctl/v1/bctl/daemon/keysplitting"
 	kube "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube"
@@ -52,20 +51,22 @@ func NewDataChannel(logger *lggr.Logger,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
 	autoReconnect bool) (*DataChannel, error) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	subLogger := logger.GetWebsocketLogger()
-	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
+	wsClient, err := ws.NewWebsocket(ctx, subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
 	if err != nil {
+		cancel()
 		logger.Error(err)
 		return &DataChannel{}, err // TODO: how tf are we going to report these?
 	}
 
 	keysplitter, err := ks.NewKeysplitting("", configPath)
 	if err != nil {
+		cancel()
 		logger.Error(err)
 		return &DataChannel{}, err
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	ret := &DataChannel{
 		websocket:    wsClient,
@@ -113,7 +114,6 @@ func (d *DataChannel) StartKubeDaemonPlugin(localhostToken string, daemonPort st
 	} else {
 		d.plugin = plugin
 
-		time.Sleep(time.Second * 4)
 		if err := d.sendSyn(); err != nil {
 			return err
 		}

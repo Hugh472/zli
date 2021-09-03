@@ -44,19 +44,21 @@ func NewDataChannel(logger *lggr.Logger,
 	autoReconnect bool) (*DataChannel, error) {
 	subLogger := logger.GetWebsocketLogger()
 
-	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	wsClient, err := ws.NewWebsocket(ctx, subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
 	if err != nil {
+		cancel()
 		logger.Error(err)
 		return &DataChannel{}, err // TODO: how are we going to report these? control channel, bro
 	}
 
 	keysplitter, err := ks.NewKeysplitting()
 	if err != nil {
+		cancel()
 		logger.Error(err)
 		return &DataChannel{}, err
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	ret := &DataChannel{
 		websocket:    wsClient,
