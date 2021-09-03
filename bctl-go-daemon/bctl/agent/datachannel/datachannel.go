@@ -147,19 +147,16 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 			rerr := fmt.Errorf("malformed action: %s", synPayload.Action)
 			d.sendError(rrr.KeysplittingValidationError, rerr)
 		} else {
+			if d.plugin != nil { // Don't start plugin if there's already one started
+				return
+			}
+
 			// Start plugin
-			d.sendError(rrr.ComponentStartupError, fmt.Errorf("IT'SA MARIO!"))
 			if err := d.startPlugin(plgn.PluginName(x[0])); err != nil {
 				d.sendError(rrr.ComponentStartupError, err)
 			}
 
-			// Build reply message with empty payload
-			if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, "", []byte{}); err != nil {
-				rerr := fmt.Errorf("could not build response message: %s", err)
-				d.sendError(rrr.KeysplittingExecutionError, rerr)
-			} else {
-				d.Send(wsmsg.Keysplitting, respKSMessage)
-			}
+			d.sendKeysplittingMessage(keysplittingMessage, "", []byte{}) // empty payload
 		}
 	case ksmsg.Data:
 		dataPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataPayload)
@@ -168,12 +165,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		if _, returnPayload, err := d.plugin.InputMessageHandler(dataPayload.Action, dataPayload.ActionPayload); err == nil {
 
 			// Build and send response
-			if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, dataPayload.Action, returnPayload); err != nil {
-				rerr := fmt.Errorf("could not build response message: %s", err)
-				d.sendError(rrr.KeysplittingExecutionError, rerr)
-			} else {
-				d.Send(wsmsg.Keysplitting, respKSMessage)
-			}
+			d.sendKeysplittingMessage(keysplittingMessage, dataPayload.Action, returnPayload)
 		} else {
 			rerr := fmt.Errorf("unrecognized keysplitting message type: %s", keysplittingMessage.Type)
 			d.sendError(rrr.KeysplittingValidationError, rerr)
@@ -210,5 +202,17 @@ func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
 		return nil
 	default:
 		return fmt.Errorf("tried to start an unhandled plugin")
+	}
+}
+
+func (d *DataChannel) sendKeysplittingMessage(keysplittingMessage *ksmsg.KeysplittingMessage, action string, payload []byte) error {
+	// Build and send response
+	if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, payload); err != nil {
+		rerr := fmt.Errorf("could not build response message: %s", err)
+		d.logger.Error(rerr)
+		return rerr
+	} else {
+		d.Send(wsmsg.Keysplitting, respKSMessage)
+		return nil
 	}
 }

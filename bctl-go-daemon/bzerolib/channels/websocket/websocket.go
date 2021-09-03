@@ -97,7 +97,7 @@ func NewWebsocket(logger *lggr.Logger,
 
 	ret.Connect()
 
-	// Listener for any outgoing messages
+	// Listener for any messages that need to be sent
 	go func() {
 		for {
 			select {
@@ -109,7 +109,7 @@ func NewWebsocket(logger *lggr.Logger,
 		}
 	}()
 
-	// Set up our listener to alert on the channel when we get a message
+	// Listener for any incoming messages
 	go func() {
 		for {
 			select {

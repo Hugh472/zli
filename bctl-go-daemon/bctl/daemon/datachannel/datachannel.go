@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	ks "bastionzero.com/bctl/v1/bctl/daemon/keysplitting"
 	kube "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube"
@@ -28,12 +29,17 @@ type DataChannel struct {
 	ctx          context.Context
 	plugin       plgn.IPlugin
 	keysplitting ks.IKeysplitting
+	handshook    bool // aka whether we need to send a syn
 
 	// Kube-specific vars aka to-be-removed
 	role string
 
 	// Done channel to bubble up messages to kubectl
 	doneChannel chan string
+
+	// If we need to send a SYN, then we need a way to keep
+	// track of whatever message that triggered the send SYN
+	onDeck plgn.ActionWrapper
 }
 
 func NewDataChannel(logger *lggr.Logger,
@@ -66,7 +72,9 @@ func NewDataChannel(logger *lggr.Logger,
 		logger:       logger,
 		ctx:          ctx,
 		keysplitting: keysplitter,
+		handshook:    false,
 		doneChannel:  make(chan string),
+		onDeck:       plgn.ActionWrapper{},
 	}
 
 	// Subscribe to our input channel
@@ -82,11 +90,12 @@ func NewDataChannel(logger *lggr.Logger,
 				}()
 			case <-ret.websocket.DoneChannel:
 				// The websocket has been closed
-				ret.logger.Info("Websocket has been closed, closing datachannel")
+				msg := "Websocket has been closed, closing datachannel"
+				ret.logger.Info(msg)
 				cancel()
 
 				// Send a message to our done channel so kubectl can display it
-				ret.doneChannel <- "Websocket has been closed, closing datachannel"
+				ret.doneChannel <- msg
 				return
 			}
 		}
@@ -103,6 +112,11 @@ func (d *DataChannel) StartKubeDaemonPlugin(localhostToken string, daemonPort st
 		return rerr
 	} else {
 		d.plugin = plugin
+
+		time.Sleep(time.Second * 4)
+		if err := d.sendSyn(); err != nil {
+			return err
+		}
 		return nil
 	}
 }
@@ -126,8 +140,8 @@ func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interfa
 	return nil
 }
 
-// TODO: Datachannel should check/know whether we need to send a syn
-func (d *DataChannel) SendSyn() { // TODO: have this return an error
+func (d *DataChannel) sendSyn() error {
+	d.logger.Info("Sending SYN.........")
 	payload := map[string]string{
 		"Role": d.role,
 	}
@@ -137,10 +151,11 @@ func (d *DataChannel) SendSyn() { // TODO: have this return an error
 	if synMessage, err := d.keysplitting.BuildSyn(action, payloadBytes); err != nil {
 		rerr := fmt.Errorf("error building Syn: %s", err)
 		d.logger.Error(rerr)
-		return
+		return rerr
 	} else {
 		d.Send(wsmsg.Keysplitting, synMessage)
 	}
+	return nil
 }
 
 func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
@@ -207,6 +222,15 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		synAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.SynAckPayload)
 		action = synAckPayload.Action
 		actionResponsePayload = synAckPayload.ActionResponsePayload
+
+		d.handshook = true
+		if d.onDeck.Action != "" {
+			err := d.sendKeysplittingMessage(keysplittingMessage, d.onDeck.Action, d.onDeck.ActionPayload)
+			if err == nil {
+				d.onDeck.Action = ""
+			}
+			return err
+		}
 	case ksmsg.DataAck:
 		dataAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataAckPayload)
 		action = dataAckPayload.Action
@@ -220,17 +244,35 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 	// Send message to plugin's input message handler
 	if action, returnPayload, err := d.plugin.InputMessageHandler(action, actionResponsePayload); err == nil {
 
-		// Build and send response
-		if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, returnPayload); err != nil {
-			rerr := fmt.Errorf("could not build response message: %s", err)
-			d.logger.Error(rerr)
-			return rerr
-		} else {
-			d.Send(wsmsg.Keysplitting, respKSMessage)
-			return nil
+		// If we need to send a new SYN message, then we need to hold on to the message we want to send without building
+		// it because the SYNACK will change the hpointer we will need our desired DATA message to point to
+		if !d.handshook {
+			d.onDeck = plgn.ActionWrapper{
+				Action:        action,
+				ActionPayload: returnPayload,
+			}
+			if err := d.sendSyn(); err != nil {
+				d.logger.Error(err)
+				return err
+			}
 		}
+
+		return d.sendKeysplittingMessage(keysplittingMessage, action, returnPayload)
+
 	} else {
 		d.logger.Error(err)
 		return err
+	}
+}
+
+func (d *DataChannel) sendKeysplittingMessage(keysplittingMessage *ksmsg.KeysplittingMessage, action string, payload []byte) error {
+	// Build and send response
+	if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, payload); err != nil {
+		rerr := fmt.Errorf("could not build response message: %s", err)
+		d.logger.Error(rerr)
+		return rerr
+	} else {
+		d.Send(wsmsg.Keysplitting, respKSMessage)
+		return nil
 	}
 }
