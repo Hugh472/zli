@@ -27,7 +27,7 @@ type IKeysplitting interface {
 }
 
 type Keysplitting struct {
-	hPointer         string
+	HPointer         string
 	expectedHPointer string
 	bzCerts          map[string]BZCertMetadata // only for agent
 	publickey        string
@@ -49,7 +49,7 @@ func NewKeysplitting() (IKeysplitting, error) {
 		config, _ := vault.LoadVault()
 
 		return &Keysplitting{
-			hPointer:         "",
+			HPointer:         "",
 			expectedHPointer: "",
 			bzCerts:          make(map[string]BZCertMetadata),
 			publickey:        pubkeyString,
@@ -123,7 +123,7 @@ func (k *Keysplitting) BuildResponse(ksMessage *ksmsg.KeysplittingMessage, actio
 		if synAckPayload, hash, err := synPayload.BuildResponsePayload(actionPayload, k.publickey); err != nil {
 			return ksmsg.KeysplittingMessage{}, err
 		} else {
-			k.hPointer = hash
+			k.HPointer = hash
 			responseMessage = ksmsg.KeysplittingMessage{
 				Type:                ksmsg.SynAck,
 				KeysplittingPayload: synAckPayload,
@@ -134,7 +134,7 @@ func (k *Keysplitting) BuildResponse(ksMessage *ksmsg.KeysplittingMessage, actio
 		if dataAckPayload, hash, err := dataPayload.BuildResponsePayload(actionPayload, k.publickey); err != nil {
 			return ksmsg.KeysplittingMessage{}, err
 		} else {
-			k.hPointer = hash
+			k.HPointer = hash
 			responseMessage = ksmsg.KeysplittingMessage{
 				Type:                ksmsg.DataAck,
 				KeysplittingPayload: dataAckPayload,
