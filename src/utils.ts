@@ -10,6 +10,9 @@ import { GroupSummary } from './services/groups/groups.types';
 import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext } from './services/policy/policy.types';
 import { UserSummary } from './services/user/user.types';
 
+import util from 'util';
+import fs from 'fs'
+
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
 {
@@ -444,4 +447,8 @@ export async function disambiguateTarget(
     }
 
     return parsedTarget;
+}
+
+export function readFile(filePath: string): Promise<string> {
+    return util.promisify(fs.readFile)(filePath, 'utf8');
 }

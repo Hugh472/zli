@@ -1,5 +1,5 @@
 import { cleanExit } from '../../handlers/clean-exit.handler';
-import { SSHConfigHostBlock, SSHHost, SSHHostConfig } from './quickstart-ssm.service.types';
+import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost } from './quickstart-ssm.service.types';
 import { EnvironmentService } from '../environment/environment.service';
 import { getAutodiscoveryScript } from '../auto-discovery-script/auto-discovery-script.service';
 import { ConfigService } from '../config/config.service';
@@ -12,6 +12,7 @@ import SSHConnection from 'ssh2-promise/lib/sshConnection';
 import path from 'path';
 import os from 'os';
 import pRetry from 'p-retry';
+import prompts, { PromptObject } from 'prompts';
 
 export class QuickstartSsmService {
     constructor(
@@ -24,7 +25,7 @@ export class QuickstartSsmService {
      * @param ssmTargetId The ID of the target to poll
      * @returns Information about the target
      */
-    public async pollSsmTargetOnline(ssmTargetId : string) {
+    public async pollSsmTargetOnline(ssmTargetId: string) {
         const run = async () => {
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
 
@@ -123,60 +124,190 @@ export class QuickstartSsmService {
             });
     }
 
+    public async promptFixParseErrorsForHost(sshHostName: string, parseErrors: SSHConfigParseError[]): Promise<ValidSSHHost | undefined> {
+        this.logger.info(`Please answer the following ${parseErrors.length} question(s) so that ${sshHostName} can be considered as a valid host to connect with BastionZero`);
+
+        // Iterate through all parse errors for the passed in host and prompt
+        // user to fix the problem.
+        //
+        // If the prompt is cancelled, undefined will be returned. We check for
+        // this on each missing parameter, and return undefined as the return
+        // value in order to short-circuit any remaining parse errors.
+        let validSSHHost = {} as ValidSSHHost;
+        validSSHHost.name = sshHostName;
+        for (const parseError of parseErrors) {
+            switch (parseError.error) {
+                case "missing_host_name":
+                    const hostName = await this.handleMissingHostName();
+                    if (hostName === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.hostIp = hostName;
+                    }
+                    break;
+                case "missing_port":
+                    const port = await this.handleMissingPort();
+                    if (port === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.port = port;
+                    }
+                    break;
+                case "missing_user":
+                    const user = await this.handleMissingUser();
+                    if (user === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.username = user;
+                    }
+                    break;
+                case "missing_identity_file":
+                    const identityFilePath = await this.handleMissingIdentityFile();
+                    if (identityFilePath === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.identityFile = identityFilePath;
+                    }
+                    break;
+                default:
+                    // Note: This error is never thrown at runtime. It is an
+                    // exhaustive check at compile-time.
+                    const exhaustiveCheck: never = parseError;
+                    throw new Error(`Unhandled parse error type: ${exhaustiveCheck}`);
+            }
+        }
+
+        return validSSHHost;
+    }
+
+    private async handleMissingHostName(): Promise<string | undefined> {
+        return new Promise<string | undefined>(async (resolve, _) => {
+            const onCancel = () => resolve(undefined);
+            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
+            await prompts({
+                type: 'text',
+                name: 'value',
+                message: 'Enter HostName (IP address or DNS name):',
+                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
+            }, { onSubmit: onSubmit, onCancel: onCancel });
+        });
+    }
+
+    private async handleMissingPort(): Promise<number | undefined> {
+        return new Promise<number | undefined>(async (resolve, _) => {
+            const onCancel = () => resolve(undefined);
+            const onSubmit = (_: PromptObject, answer: number) => resolve(answer);
+            await prompts({
+                type: 'number',
+                name: 'value',
+                message: 'Enter Port number:',
+                initial: 22
+            }, { onSubmit: onSubmit, onCancel: onCancel });
+        });
+    }
+
+    private async handleMissingUser(): Promise<string | undefined> {
+        return new Promise<string | undefined>(async (resolve, _) => {
+            const onCancel = () => resolve(undefined);
+            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
+            await prompts({
+                type: 'text',
+                name: 'value',
+                message: 'Enter User:',
+                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
+            }, { onSubmit: onSubmit, onCancel: onCancel });
+        });
+    }
+
+    private async handleMissingIdentityFile(): Promise<string | undefined> {
+        return new Promise<string | undefined>(async (resolve, _) => {
+            const onCancel = () => resolve(undefined);
+            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
+            await prompts({
+                type: 'text',
+                name: 'value',
+                message: 'Enter path to IdentityFile:',
+                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
+            }, { onSubmit: onSubmit, onCancel: onCancel });
+        });
+    }
+
     /**
-     * Parse SSH hosts from a valid ssh_config(5) (https://linux.die.net/man/5/ssh_config)
+     * Parse SSH hosts from a valid ssh_config(5)
+     * (https://linux.die.net/man/5/ssh_config)
      * @param sshConfig Contents of the ssh config file
-     * @returns A tuple of Maps. The first tuple contains a mapping of valid SSH host name:Valid SSHHost. The second tuple contains a mapping of SSH host name:string[], where string[] is a list of parse errors that occurred.
+     * @returns A tuple of Maps.
+     *
+     * The first element contains a mapping of all valid SSH hosts. The key is
+     * the SSH host's name. The value is an interface containing information
+     * about the host. A valid SSH host is defined as one that has enough
+     * information about it in the config file, so that it can be used with the
+     * ssh2-promise library. There is no guarantee that a valid ssh host is
+     * successfully connectable (e.g. network issue, encrypted key file, invalid
+     * IP/host, file not found at path, etc.).
+     *
+     * The second tuple contains a mapping of all invalid SSH hosts. The key is
+     * the invalid SSH host's name. The value is a list of parse errors that
+     * occurred when reading the host from the config file.
      */
-    public parseSSHHosts(sshConfig: string): [hosts: Map<string, SSHHost>, parseErrors: Map<string, string[]>] {
-        // Parse valid ssh hosts 
+    public parseSSHHosts(sshConfig: string): [hosts: Map<string, ValidSSHHost>, invalidSSHHosts: InvalidSSHHost[]] {
+        // Parse sshConfig content to usable HostBlock types
         const SSHConfig = require('ssh-config');
         const config: [] = SSHConfig.parse(sshConfig);
         const hostBlocks: SSHConfigHostBlock[] = config.filter((elem: any) => elem.param === "Host");
 
-        let hosts: Map<string, SSHHost> = new Map();
-        let parseErrorsMap: Map<string, string[]> = new Map();
+        let seen: Map<string, boolean> = new Map();
+        let validHosts: Map<string, ValidSSHHost> = new Map();
+        let invalidSSHHosts: InvalidSSHHost[] = [];
 
         for (const hostBlock of hostBlocks) {
             let name = hostBlock.value;
-            if (hosts.has(name) || parseErrorsMap.has(name)) {
-                this.logger.warn(`Warning: Already seen SSH host with Host == ${name}. Keeping the first one.`);
-                continue;
-            }
-
             // Skip global directive
-            // TODO-Yuval: Should we support the global directive. E.g. global IdentityFile?
             if (name === "*") {
                 continue;
             }
-            let parseErrors: string[] = [];
+
+            // Skip host if already found. Print warning to user. This behavior
+            // is on par with how ssh works with duplicate hosts (the first host
+            // is used and the second is skipped).
+            if (seen.has(name)) {
+                this.logger.warn(`Warning: Already seen SSH host with Host == ${name}. Keeping the first one seen.`);
+                continue;
+            }
+            seen.set(name, true);
+
+            // Array holds all config parse errors found while parsing
+            let parseErrors: SSHConfigParseError[] = [];
             const config = hostBlock.config;
 
+            // Parse required SSH config parameters
             const hostIp = this.getSSHHostConfigValue("HostName", config);
             if (hostIp === undefined) {
-                parseErrors.push('Missing required parameter: HostName');
+                parseErrors.push({ error: "missing_host_name" });
             }
-            let port = this.getSSHHostConfigValue("Port", config);
+            const port = this.getSSHHostConfigValue("Port", config);
             if (port === undefined) {
-                this.logger.warn(`Warning: Missing Port parameter for host: ${name}. Assuming port 22.`);
-                port = '22';
+                parseErrors.push({ error: "missing_port" });
             }
             const user = this.getSSHHostConfigValue("User", config);
             if (user === undefined) {
-                parseErrors.push('Missing required parameter: User');
+                parseErrors.push({ error: "missing_user" });
             }
             const identityFilePath = this.getSSHHostConfigValue("IdentityFile", config);
             if (identityFilePath === undefined) {
-                parseErrors.push('Missing required parameter: IdentityFile');
+                parseErrors.push({ error: "missing_identity_file" })
             }
 
             if (parseErrors.length > 0) {
-                parseErrorsMap.set(name, parseErrors);
+                invalidSSHHosts.push({
+                    name: name,
+                    parseErrors: parseErrors
+                });
                 this.logger.debug(`Failed to parse host: ${name}`);
                 continue;
             }
 
-            hosts.set(name, {
+            validHosts.set(name, {
                 name: name,
                 hostIp: hostIp,
                 port: parseInt(port),
@@ -185,10 +316,10 @@ export class QuickstartSsmService {
             });
         }
 
-        return [hosts, parseErrorsMap];
+        return [validHosts, invalidSSHHosts];
     }
 
-    private getSSHHostConfigValue(matchingParameter: string, hostConfig: SSHHostConfig[]): string {
+    private getSSHHostConfigValue(matchingParameter: string, hostConfig: SSHHostConfig[]): string | undefined {
         const value = hostConfig.find(elem => elem.param === matchingParameter);
         if (value === undefined) {
             return undefined;

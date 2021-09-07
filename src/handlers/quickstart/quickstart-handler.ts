@@ -2,18 +2,65 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { SSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
+import { InvalidSSHHost, ValidSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { ParsedTargetString, TargetType } from '../../services/common.types';
 import { EnvironmentService } from '../../services/environment/environment.service';
 import { connectHandler } from '../connect/connect.handler';
+import { readFile } from '../../utils';
 
 import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
 import SSHConfig from 'ssh2-promise/lib/sshConfig';
-import prompts from 'prompts';
-import util from 'util';
-import fs from 'fs';
-import _ from 'lodash';
+import prompts, { PromptObject } from 'prompts';
+
+async function interactiveDebugSession(
+    invalidSSHHosts: InvalidSSHHost[],
+    quickstartService: QuickstartSsmService,
+    logger: Logger,
+    onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
+
+    let fixedSSHHosts : ValidSSHHost[] = [];
+    const confirmDebugSessionResponse = await prompts({
+        type: 'toggle',
+        name: 'value',
+        message: 'Do you want the zli to help you fix the issues?',
+        initial: true,
+        active: 'yes',
+        inactive: 'no',
+    }, { onCancel: onCancel });
+    const shouldStartDebugSession: boolean = confirmDebugSessionResponse.value;
+
+    if (!shouldStartDebugSession)
+        return fixedSSHHosts;
+
+    logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart');
+
+    for (const invalidSSHHost of invalidSSHHosts) {
+        const fixedHost = await quickstartService.promptFixParseErrorsForHost(invalidSSHHost.name, invalidSSHHost.parseErrors);
+        if (fixedHost === undefined) {
+            const confirmSkipOrExit = await prompts({
+                type: 'toggle',
+                name: 'value',
+                message: 'Do you want to skip this host or exit?',
+                initial: true,
+                active: 'skip',
+                inactive: 'exit',
+            }, { onCancel: onCancel });
+            const shouldSkip: boolean = confirmSkipOrExit.value;
+
+            if (shouldSkip) {
+                continue;
+            } else {
+                logger.info('Prompt cancelled. Exiting out of quickstart...');
+                await cleanExit(1, logger);
+            }
+        } else {
+            fixedSSHHosts.push(fixedHost);
+        }
+    }
+
+    return fixedSSHHosts;
+}
 
 export async function quickstartHandler(
     argv: any,
@@ -28,25 +75,7 @@ export async function quickstartHandler(
     // Parse SSH config file
     logger.info(`\nParsing SSH config file: ${sshConfigFilePath}`);
     const sshConfigFileAsStr = await readFile(sshConfigFilePath);
-    const [parsed, parseErrors] = quickstartService.parseSSHHosts(sshConfigFileAsStr);
-
-    // Print parse errors
-    if (showParseErrors && parseErrors.size > 0) {
-        logger.warn(`Warning: Failed parsing some hosts from SSH config file. ${parseErrors.size} invalid host(s):`);
-        for (let [name, errors] of parseErrors) {
-            logger.warn(`Host: ${name}`);
-            errors.forEach(value => logger.warn(`\t${value}`));
-        }
-    }
-    if (!showParseErrors && parseErrors.size > 0) {
-        logger.warn(`Warning: Failed parsing some hosts from SSH config file. ${parseErrors.size} invalid host(s). Pass --showParseErrors flag for more information.`);
-    }
-
-    // Fail early if there are no valid hosts to choose from
-    if (parsed.size == 0) {
-        logger.error('Found zero valid SSH hosts');
-        await cleanExit(1, logger);
-    }
+    const [validSSHHosts, invalidSSHHosts] = quickstartService.parseSSHHosts(sshConfigFileAsStr);
 
     // Callback on cancel prompt
     const onCancelPrompt = async () => {
@@ -54,15 +83,38 @@ export async function quickstartHandler(
         await cleanExit(1, logger);
     }
 
+    logger.info(`\nFound ${validSSHHosts.size} valid SSH hosts!`);
+
+    logger.warn(`${invalidSSHHosts.length} host(s) in the SSH config file are missing required parameters used to connect them with BastionZero.`)
+
+
+    // Handle parse errors
+    if (showParseErrors && invalidSSHHosts.length > 0) {
+        const fixedSSHHosts = await interactiveDebugSession(invalidSSHHosts, quickstartService, logger, onCancelPrompt);
+        // Add them to the valid mapping
+        fixedSSHHosts.forEach(validHost => validSSHHosts.set(validHost.name, validHost));
+        if (fixedSSHHosts.length > 0)
+            logger.info(`Added ${fixedSSHHosts.length} more valid host(s) for a total of ${validSSHHosts.size} valid SSH hosts!`);
+    }
+    if (!showParseErrors && invalidSSHHosts.length > 0) {
+        logger.warn('Skipping interactive debug session because --skipDebug flag was passed.')
+    }
+
+    // Fail early if there are no valid hosts to choose from
+    if (validSSHHosts.size == 0) {
+        logger.error('Exiting because there are no valid hosts to connect to');
+        await cleanExit(1, logger);
+    }
+
     logger.info('\nPress CTRL-C to exit at any time.');
 
     // Prompt user with selection of hosts
-    logger.info(`\nFound ${parsed.size} valid SSH hosts`);
+    logger.info(`\nFound ${validSSHHosts.size} valid SSH hosts`);
     const hostsResponse = await prompts({
         type: 'multiselect',
         name: 'value',
         message: 'Which SSH hosts do you want to connect with BastionZero?',
-        choices: Array.from(parsed.keys()).map(hostName => ({ title: hostName, value: hostName } as prompts.Choice)),
+        choices: Array.from(validSSHHosts.keys()).map(hostName => ({ title: hostName, value: hostName } as prompts.Choice)),
         instructions: 'Use space to select and up/down to navigate. Return to submit.'
     }, { onCancel: onCancelPrompt });
     const selectedHostsNames: string[] = hostsResponse.value;
@@ -84,7 +136,7 @@ export async function quickstartHandler(
         instructions: 'Use tab or arrow keys to switch between options. Return to submit.',
     }, { onCancel: onCancelPrompt });
     const shouldConnectAfter: boolean = connectAfterResponse.value;
-    let targetToConnectToAtEnd: SSHHost = undefined;
+    let targetToConnectToAtEnd: ValidSSHHost = undefined;
 
     // If the user selected more than one host, then ask which host they want to connect to
     if (shouldConnectAfter && selectedHostsNames.length > 1) {
@@ -97,12 +149,12 @@ export async function quickstartHandler(
             initial: 1,
             instructions: 'Use up/down to navigate. Use tab to cycle the list. Return to submit.'
         }, { onCancel: onCancelPrompt });
-        targetToConnectToAtEnd = parsed.get(targetToConnectAfterResponse.value);
+        targetToConnectToAtEnd = validSSHHosts.get(targetToConnectAfterResponse.value);
     }
 
     // Otherwise, we know which host it is
     if (shouldConnectAfter && selectedHostsNames.length == 1) {
-        targetToConnectToAtEnd = parsed.get(selectedHostsNames[0]);
+        targetToConnectToAtEnd = validSSHHosts.get(selectedHostsNames[0]);
     }
 
     // Run autodiscovery script sequentially.
@@ -110,14 +162,14 @@ export async function quickstartHandler(
     // TODO: Run this forloop concurrently (I/O bound work) for each SSH host.
     // Collect results as they come in.
     let targetToConnectToAtEndAsParsedTargetString: ParsedTargetString = undefined;
-    let didRegisterAtLeastOne : boolean;
+    let didRegisterAtLeastOne: boolean;
     for (const selectedHostName of selectedHostsNames) {
-        const selectedHost = parsed.get(selectedHostName);
+        const selectedHost = validSSHHosts.get(selectedHostName);
         try {
             logger.info(`Attempting to add SSH host ${selectedHost.name} to BastionZero...`);
 
             // Special logic to handle encrypted SSH key file
-            var passphraseKeyFile : undefined;
+            var passphraseKeyFile: undefined;
             var keyFile = await readFile(selectedHost.identityFile);
             try {
                 parsePrivateKey(keyFile, 'auto');
@@ -193,8 +245,4 @@ export async function quickstartHandler(
         logger.info('Use `zli connect` to connect to your registered targets.')
 
     await cleanExit(exitCode, logger);
-}
-
-function readFile(filePath: string): Promise<string> {
-    return util.promisify(fs.readFile)(filePath, 'utf8');
 }
