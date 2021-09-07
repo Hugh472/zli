@@ -139,6 +139,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 	if err := d.keysplitting.Validate(keysplittingMessage); err != nil {
 		rerr := fmt.Errorf("invalid keysplitting message: %s", err)
 		d.sendError(rrr.KeysplittingValidationError, rerr)
+		return
 	}
 
 	switch keysplittingMessage.Type {
