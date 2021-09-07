@@ -167,8 +167,8 @@ func (w *Websocket) Receive() error {
 
 			// push to channel
 			if wrappedMessage.Type != signalRTypeNumber {
-				// msg := fmt.Sprintf("Ignoring SignalR message with type %v", wrappedMessage.Type)
-				// w.logger.Debug(msg)
+				msg := fmt.Sprintf("Ignoring SignalR message with type %v", wrappedMessage.Type)
+				w.logger.Trace(msg)
 			} else if len(wrappedMessage.Arguments) != 0 {
 				if wrappedMessage.Target == "CloseConnection" {
 					return errors.New("closing message received; websocket closed")
