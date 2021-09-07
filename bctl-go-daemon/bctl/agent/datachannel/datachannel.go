@@ -149,6 +149,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		if x := strings.Split(synPayload.Action, "/"); len(x) <= 1 {
 			rerr := fmt.Errorf("malformed action: %s", synPayload.Action)
 			d.sendError(rrr.KeysplittingValidationError, rerr)
+			return
 		} else {
 			if d.plugin != nil { // Don't start plugin if there's already one started
 				return
@@ -157,6 +158,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 			// Start plugin
 			if err := d.startPlugin(plgn.PluginName(x[0])); err != nil {
 				d.sendError(rrr.ComponentStartupError, err)
+				return
 			}
 
 			d.sendKeysplittingMessage(keysplittingMessage, "", []byte{}) // empty payload
