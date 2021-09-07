@@ -187,11 +187,11 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 	// Subscribe to our done channel
 	go func() {
 		for {
+			defer stream.Close()
 			select {
 			case <-l.ctx.Done():
 				return
 			case <-l.doneChannel:
-				stream.Close()
 				return
 			}
 		}
