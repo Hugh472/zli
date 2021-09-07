@@ -16,6 +16,10 @@ import (
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
+const (
+	maxRetries = 3
+)
+
 type IDataChannel interface {
 	Send(messageType wsmsg.MessageType, messagePayload interface{}) error
 	Receive(agentMessage wsmsg.AgentMessage) error
@@ -41,6 +45,7 @@ type DataChannel struct {
 	// track of whatever message that triggered the send SYN
 	onDeck      plgn.ActionWrapper
 	lastMessage plgn.ActionWrapper
+	retry       int
 }
 
 func NewDataChannel(logger *lggr.Logger,
@@ -79,6 +84,7 @@ func NewDataChannel(logger *lggr.Logger,
 		handshook:    false,
 		doneChannel:  make(chan string),
 		onDeck:       plgn.ActionWrapper{},
+		retry:        0,
 	}
 
 	// Subscribe to our input channel
@@ -205,6 +211,7 @@ func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 			// we don't want to break every time that happens so we need to get back on the ks train
 			// executive decision: we don't retry if we get an error on a syn aka d.handshook == false
 			if rrr.ErrorType(errMessage.Type) == rrr.KeysplittingValidationError && d.handshook {
+				d.retry++
 				d.onDeck = d.lastMessage
 
 				// In order to get back on the keysplitting train, we need to resend the syn, get the synack
@@ -255,6 +262,8 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 	case ksmsg.DataAck:
 		// If we had something on deck, then this was the ack for it and we can remove it
 		d.onDeck = plgn.ActionWrapper{}
+		// If we're here, it means that the previous data message that caused the error was accepted
+		d.retry = 0
 
 		dataAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataAckPayload)
 		action = dataAckPayload.Action
