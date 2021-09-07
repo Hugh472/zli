@@ -40,7 +40,7 @@ type DataChannel struct {
 	// If we need to send a SYN, then we need a way to keep
 	// track of whatever message that triggered the send SYN
 	onDeck      plgn.ActionWrapper
-	lastMessage wsmsg.AgentMessage
+	lastMessage plgn.ActionWrapper
 }
 
 func NewDataChannel(logger *lggr.Logger,
@@ -140,12 +140,12 @@ func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interfa
 
 	// Push message to websocket channel output
 	d.websocket.OutputChannel <- agentMessage
-	d.lastMessage = agentMessage
 	return nil
 }
 
 func (d *DataChannel) sendSyn() error {
-	d.logger.Info("Sending SYN.........")
+	d.logger.Info("Sending SYN")
+	d.handshook = false
 	payload := map[string]string{
 		"Role": d.role,
 	}
@@ -200,16 +200,25 @@ func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 		} else {
 			rerr := fmt.Errorf("received error from agent: %s", errMessage.Message)
 			d.logger.Error(rerr)
+
+			// Keysplitting validation errors are probably going to be mostly bzcert renewals and
+			// we don't want to break every time that happens so we need to get back on the ks train
+			// executive decision: we don't retry if we get an error on a syn aka d.handshook == false
+			if rrr.ErrorType(errMessage.Type) == rrr.KeysplittingValidationError && d.handshook {
+				d.onDeck = d.lastMessage
+
+				// In order to get back on the keysplitting train, we need to resend the syn, get the synack
+				// so that our input message handler is pointing to the right thing.
+				if err := d.sendSyn(); err != nil {
+					d.logger.Error(err)
+					return err
+				} else {
+					return rerr
+				}
+			}
+
 			d.doneChannel <- rerr.Error()
 			d.cancel()
-
-			// In order to get back on the keysplitting train, we need to resend the syn, get the synack
-			// so that our input message handler is pointing to the right thing.
-			// d.handshook = false
-			// if err := d.sendSyn(); err != nil {
-			// 	d.logger.Error(err)
-			// 	return err
-			// }
 			return rerr
 		}
 	default:
@@ -237,14 +246,16 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		actionResponsePayload = synAckPayload.ActionResponsePayload
 
 		d.handshook = true
+
+		// If there is a message that wasn't sent because we got a keysplitting validation error on it, send it now
 		if d.onDeck.Action != "" {
 			err := d.sendKeysplittingMessage(keysplittingMessage, d.onDeck.Action, d.onDeck.ActionPayload)
-			if err == nil {
-				d.onDeck.Action = ""
-			}
 			return err
 		}
 	case ksmsg.DataAck:
+		// If we had something on deck, then this was the ack for it and we can remove it
+		d.onDeck = plgn.ActionWrapper{}
+
 		dataAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataAckPayload)
 		action = dataAckPayload.Action
 		actionResponsePayload = dataAckPayload.ActionResponsePayload
@@ -257,17 +268,10 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 	// Send message to plugin's input message handler
 	if action, returnPayload, err := d.plugin.InputMessageHandler(action, actionResponsePayload); err == nil {
 
-		// If we need to send a new SYN message, then we need to hold on to the message we want to send without building
-		// it because the SYNACK will change the hpointer we will need our desired DATA message to point to
-		if !d.handshook {
-			d.onDeck = plgn.ActionWrapper{
-				Action:        action,
-				ActionPayload: returnPayload,
-			}
-			if err := d.sendSyn(); err != nil {
-				d.logger.Error(err)
-				return err
-			}
+		// We need to know the last message for invisible response to keysplitting validation errors
+		d.lastMessage = plgn.ActionWrapper{
+			Action:        action,
+			ActionPayload: returnPayload,
 		}
 
 		return d.sendKeysplittingMessage(keysplittingMessage, action, returnPayload)
