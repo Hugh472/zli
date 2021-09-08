@@ -223,6 +223,9 @@ export async function quickstartHandler(
 
     if (didRegisterAtLeastOne) {
         logger.info('Use `zli connect` to connect to your registered targets.');
+        for (const ssmTarget of ssmTargetsSuccessfullyAdded) {
+            logger.info(`\tzli connect ssm-user@${ssmTarget.name}`);
+        }
     }
 
     await cleanExit(exitCode, logger);
