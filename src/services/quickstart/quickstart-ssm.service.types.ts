@@ -1,3 +1,5 @@
+import SSHConfig from "ssh2-promise/lib/sshConfig"
+
 // Interface types for SSHConfig parsing package
 export interface SSHHostConfig {
     param: string;
@@ -16,6 +18,11 @@ export interface ValidSSHHost {
     port: number;
     username: string;
     identityFile: string;
+}
+
+export interface ValidSSHConfig {
+    config: SSHConfig;
+    sshHostName: string;
 }
 
 type SSHConfigParseErrorType = "missing_host_name" | "missing_port" | "missing_user" | "missing_identity_file"

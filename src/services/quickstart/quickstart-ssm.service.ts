@@ -1,11 +1,12 @@
 import { cleanExit } from '../../handlers/clean-exit.handler';
-import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost } from './quickstart-ssm.service.types';
+import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHConfig } from './quickstart-ssm.service.types';
 import { EnvironmentService } from '../environment/environment.service';
 import { getAutodiscoveryScript } from '../auto-discovery-script/auto-discovery-script.service';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 import { SsmTargetService } from '../ssm-target/ssm-target.service';
 import { TargetStatus } from '../common.types';
+import { readFile } from '../../utils';
 
 import SSHConfig from 'ssh2-promise/lib/sshConfig';
 import SSHConnection from 'ssh2-promise/lib/sshConnection';
@@ -13,6 +14,7 @@ import path from 'path';
 import os from 'os';
 import pRetry from 'p-retry';
 import prompts, { PromptObject } from 'prompts';
+import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
 
 export class QuickstartSsmService {
     constructor(
@@ -112,7 +114,7 @@ export class QuickstartSsmService {
                     });
                 })
                 .catch(err => {
-                    reject(`Failed to start autodiscovery script on host: ${hostName}. ${err}`);
+                    reject(`Error when attempting to execute autodiscovery script on host: ${hostName}. ${err}`);
                 });
         });
 
@@ -122,6 +124,85 @@ export class QuickstartSsmService {
                 await conn.close();
                 this.logger.debug(`Closed SSH connection with host: ${hostName}`);
             });
+    }
+
+    public async promptSkipHostOrExit(hostName: string, onCancel: (prompt: PromptObject, answers: any) => void): Promise<boolean> {
+        const confirmSkipOrExit = await prompts({
+            type: 'toggle',
+            name: 'value',
+            message: `Do you want to skip host ${hostName} or exit?`,
+            initial: true,
+            active: 'skip',
+            inactive: 'exit',
+        }, { onCancel: onCancel });
+
+        return confirmSkipOrExit.value;
+    }
+
+    public async promptConvertValidSSHHostsToSSHConfigs(hosts: ValidSSHHost[], onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHConfig[]> {
+        let sshConfigs: ValidSSHConfig[] = [];
+        for (const host of hosts) {
+            // Try to read the IdentityFile and store its contents in keyFile variable
+            let keyFile: string;
+            try {
+                keyFile = await readFile(host.identityFile);
+            } catch (err) {
+                this.logger.error(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to error when reading IdentityFile: ${err}`);
+                continue;
+            }
+
+            // Check if IdentityFile is encrypted.
+            let passphraseKeyFile: string;
+            try {
+                parsePrivateKey(keyFile, 'auto');
+            } catch (err) {
+                if (err instanceof KeyEncryptedError) {
+                    this.logger.info(`${host.name}'s IdentityFile (${host.identityFile}) is encrypted!`);
+
+                    // Ask user for password to decrypt the key file
+                    const passwordResponse = await this.handleEncryptedIdentityFile(host.identityFile);
+
+                    // Check if user wants to skip this host or exit immediately
+                    if (passwordResponse === undefined) {
+                        const shouldSkip = await this.promptSkipHostOrExit(host.name, onCancel);
+
+                        if (shouldSkip) {
+                            this.logger.warn(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to user not providing password to encrypted IdentityFile`);
+                            continue;
+                        } else {
+                            this.logger.info('Prompt cancelled. Exiting out of quickstart...');
+                            await cleanExit(1, this.logger);
+                        }
+                    } else {
+                        // One final check to see if private key is decryptable
+                        try {
+                            parsePrivateKey(keyFile, 'auto', { passphrase: passwordResponse })
+                        } catch (err) {
+                            this.logger.error(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to error when reading IdentityFile with provided passphrase: ${err}`);
+                            continue;
+                        }
+                        passphraseKeyFile = passwordResponse;
+                    }
+                } else {
+                    this.logger.error(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to error when parsing IdentityFile: ${err}`);
+                    continue;
+                }
+            }
+
+            // Convert from ValidSSHHost to ValidSSHConfig
+            sshConfigs.push({
+                sshHostName: host.name,
+                config: {
+                    host: host.hostIp,
+                    username: host.username,
+                    identity: host.identityFile,
+                    port: host.port,
+                    passphrase: passphraseKeyFile
+                }
+            });
+        }
+
+        return sshConfigs;
     }
 
     public async promptFixParseErrorsForHost(sshHostName: string, parseErrors: SSHConfigParseError[]): Promise<ValidSSHHost | undefined> {
@@ -180,6 +261,20 @@ export class QuickstartSsmService {
         return validSSHHost;
     }
 
+    private async handleEncryptedIdentityFile(identityFilePath: string): Promise<string | undefined> {
+        return new Promise<string | undefined>(async (resolve, _) => {
+            const onCancel = () => resolve(undefined);
+            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
+
+            await prompts({
+                type: 'password',
+                name: 'value',
+                message: `Enter the passphrase for the encrypted SSH key ${identityFilePath}:`,
+                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
+            }, { onSubmit: onSubmit, onCancel: onCancel });
+        });
+    }
+
     private async handleMissingHostName(): Promise<string | undefined> {
         return new Promise<string | undefined>(async (resolve, _) => {
             const onCancel = () => resolve(undefined);
@@ -200,8 +295,8 @@ export class QuickstartSsmService {
             await prompts({
                 type: 'number',
                 name: 'value',
-                message: 'Enter Port number:',
-                initial: 22
+                message: 'Enter Port number (default 22):',
+                initial: 22,
             }, { onSubmit: onSubmit, onCancel: onCancel });
         });
     }
@@ -271,7 +366,7 @@ export class QuickstartSsmService {
             // is on par with how ssh works with duplicate hosts (the first host
             // is used and the second is skipped).
             if (seen.has(name)) {
-                this.logger.warn(`Warning: Already seen SSH host with Host == ${name}. Keeping the first one seen.`);
+                this.logger.warn(`Notice: Already seen SSH host with Host == ${name}. Keeping the first one seen.`);
                 continue;
             }
             seen.set(name, true);

@@ -9,8 +9,6 @@ import { EnvironmentService } from '../../services/environment/environment.servi
 import { connectHandler } from '../connect/connect.handler';
 import { readFile } from '../../utils';
 
-import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
-import SSHConfig from 'ssh2-promise/lib/sshConfig';
 import prompts, { PromptObject } from 'prompts';
 
 async function interactiveDebugSession(
@@ -19,7 +17,11 @@ async function interactiveDebugSession(
     logger: Logger,
     onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
 
-    let fixedSSHHosts : ValidSSHHost[] = [];
+    // Get pretty string of invalid SSH hosts' names
+    const prettyInvalidSSHHosts: string = invalidSSHHosts.map(host => host.name).join(", ");
+    logger.warn(`Hosts missing required parameters: ${prettyInvalidSSHHosts}`);
+
+    let fixedSSHHosts: ValidSSHHost[] = [];
     const confirmDebugSessionResponse = await prompts({
         type: 'toggle',
         name: 'value',
@@ -33,22 +35,15 @@ async function interactiveDebugSession(
     if (!shouldStartDebugSession)
         return fixedSSHHosts;
 
-    logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart');
+    logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart\n');
 
     for (const invalidSSHHost of invalidSSHHosts) {
         const fixedHost = await quickstartService.promptFixParseErrorsForHost(invalidSSHHost.name, invalidSSHHost.parseErrors);
         if (fixedHost === undefined) {
-            const confirmSkipOrExit = await prompts({
-                type: 'toggle',
-                name: 'value',
-                message: 'Do you want to skip this host or exit?',
-                initial: true,
-                active: 'skip',
-                inactive: 'exit',
-            }, { onCancel: onCancel });
-            const shouldSkip: boolean = confirmSkipOrExit.value;
+            const shouldSkip = await quickstartService.promptSkipHostOrExit(invalidSSHHost.name, onCancel);
 
             if (shouldSkip) {
+                logger.info(`Skipping host ${invalidSSHHost.name}...`);
                 continue;
             } else {
                 logger.info('Prompt cancelled. Exiting out of quickstart...');
@@ -87,16 +82,16 @@ export async function quickstartHandler(
 
     logger.warn(`${invalidSSHHosts.length} host(s) in the SSH config file are missing required parameters used to connect them with BastionZero.`)
 
-
     // Handle parse errors
     if (showParseErrors && invalidSSHHosts.length > 0) {
         const fixedSSHHosts = await interactiveDebugSession(invalidSSHHosts, quickstartService, logger, onCancelPrompt);
         // Add them to the valid mapping
         fixedSSHHosts.forEach(validHost => validSSHHosts.set(validHost.name, validHost));
-        if (fixedSSHHosts.length > 0)
+        if (fixedSSHHosts.length > 0) {
             logger.info(`Added ${fixedSSHHosts.length} more valid host(s) for a total of ${validSSHHosts.size} valid SSH hosts!`);
+        }
     }
-    if (!showParseErrors && invalidSSHHosts.length > 0) {
+    else if (!showParseErrors && invalidSSHHosts.length > 0) {
         logger.warn('Skipping interactive debug session because --skipDebug flag was passed.')
     }
 
@@ -109,7 +104,6 @@ export async function quickstartHandler(
     logger.info('\nPress CTRL-C to exit at any time.');
 
     // Prompt user with selection of hosts
-    logger.info(`\nFound ${validSSHHosts.size} valid SSH hosts`);
     const hostsResponse = await prompts({
         type: 'multiselect',
         name: 'value',
@@ -120,7 +114,7 @@ export async function quickstartHandler(
     const selectedHostsNames: string[] = hostsResponse.value;
 
     if (selectedHostsNames.length == 0) {
-        logger.info('No hosts selected.');
+        logger.info('No hosts selected. Exiting out of quickstart...');
         await cleanExit(1, logger);
     }
 
@@ -133,13 +127,12 @@ export async function quickstartHandler(
         initial: true,
         active: 'yes',
         inactive: 'no',
-        instructions: 'Use tab or arrow keys to switch between options. Return to submit.',
     }, { onCancel: onCancelPrompt });
     const shouldConnectAfter: boolean = connectAfterResponse.value;
     let targetToConnectToAtEnd: ValidSSHHost = undefined;
-
-    // If the user selected more than one host, then ask which host they want to connect to
     if (shouldConnectAfter && selectedHostsNames.length > 1) {
+        // If the user selected more than one host, then ask which host they
+        // want to connect to
         const choices = selectedHostsNames.map(hostName => ({ title: hostName, value: hostName } as prompts.Choice));
         const targetToConnectAfterResponse = await prompts({
             type: 'select',
@@ -151,10 +144,40 @@ export async function quickstartHandler(
         }, { onCancel: onCancelPrompt });
         targetToConnectToAtEnd = validSSHHosts.get(targetToConnectAfterResponse.value);
     }
-
-    // Otherwise, we know which host it is
-    if (shouldConnectAfter && selectedHostsNames.length == 1) {
+    else if (shouldConnectAfter && selectedHostsNames.length == 1) {
+        // Otherwise, we know which host it is
         targetToConnectToAtEnd = validSSHHosts.get(selectedHostsNames[0]);
+    }
+
+    // Convert list of selected ValidSSHHosts to SSHConfigs to use with the
+    // ssh2-promise library. This conversion is interactive. It will prompt the
+    // user to provide a passphrase if any of the selected hosts' IdentityFiles
+    // are encrypted.
+    let validSSHConfigs = await quickstartService.promptConvertValidSSHHostsToSSHConfigs(
+        selectedHostsNames.map(hostName => validSSHHosts.get(hostName)),
+        onCancelPrompt);
+
+    // Fail early if the validation check above removed all valid hosts
+    if (validSSHConfigs.length == 0) {
+        logger.info('All selected hosts were removed from list of SSH hosts to add to BastionZero. Exiting out of quickstart...');
+        await cleanExit(1, logger);
+    }
+
+    // Ask the user if they're ready to begin
+    const prettyHostsToAttemptAutodisocvery: string = validSSHConfigs.map(config => config.sshHostName).join(", ");
+    const readyResponse = await prompts({
+        type: 'toggle',
+        name: 'value',
+        message: `Please confirm that you want to add ${prettyHostsToAttemptAutodisocvery} to BastionZero:`,
+        initial: true,
+        active: 'yes',
+        inactive: 'no',
+    }, { onCancel: onCancelPrompt });
+    const isReady: boolean = readyResponse.value;
+
+    if (! isReady) {
+        logger.info('Exiting out of quickstart...');
+        await cleanExit(1, logger);
     }
 
     // Run autodiscovery script sequentially.
@@ -163,63 +186,24 @@ export async function quickstartHandler(
     // Collect results as they come in.
     let targetToConnectToAtEndAsParsedTargetString: ParsedTargetString = undefined;
     let didRegisterAtLeastOne: boolean;
-    for (const selectedHostName of selectedHostsNames) {
-        const selectedHost = validSSHHosts.get(selectedHostName);
+    for (const validSSHConfig of validSSHConfigs) {
         try {
-            logger.info(`Attempting to add SSH host ${selectedHost.name} to BastionZero...`);
+            logger.info(`Attempting to add SSH host ${validSSHConfig.sshHostName} to BastionZero...`);
 
-            // Special logic to handle encrypted SSH key file
-            var passphraseKeyFile: undefined;
-            var keyFile = await readFile(selectedHost.identityFile);
-            try {
-                parsePrivateKey(keyFile, 'auto');
-            } catch (e) {
-                if (e instanceof KeyEncryptedError) {
-                    logger.info(`${selectedHost.name}'s IdentityFile (${selectedHost.identityFile}) is encrypted!`);
-
-                    // Custom onCancelPrompt which continues with the next host in selectedHostNames rather than exiting the process.
-                    let canceled: boolean;
-                    const onCancelPrompt = async () => {
-                        canceled = true;
-                    }
-                    const identityKeyFilePasswordResponse = await prompts({
-                        type: 'password',
-                        name: 'value',
-                        message: `Enter the passphrase for encrypted SSH key ${selectedHost.identityFile}:`
-                    }, { onCancel: onCancelPrompt });
-                    passphraseKeyFile = identityKeyFilePasswordResponse.value;
-
-                    if (canceled) {
-                        logger.info(`Skipping ${selectedHost.name} because password for IdentityFile was not provided.`);
-                        continue;
-                    }
-                } else {
-                    logger.error(`Failed parsing ${selectedHost.name}'s IdentityFile ${selectedHost.identityFile}: ${e}`);
-                    continue;
-                }
-            }
-
-            // Build SSH configuration and run the script on the host
-            var sshConfig: SSHConfig = {
-                host: selectedHost.hostIp,
-                username: selectedHost.username,
-                identity: selectedHost.identityFile,
-                port: selectedHost.port,
-                passphrase: passphraseKeyFile
-            }
-            logger.info(`Running autodiscovery script on SSH host ${selectedHost.name} (could take several minutes)...`);
-            const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(sshConfig, selectedHost.name);
-            logger.info(`Bastion assigned SSH host ${selectedHost.name} with the following unique target id: ${ssmTargetId}`);
+            const sshConfig = validSSHConfig.config;
+            logger.info(`Running autodiscovery script on SSH host ${validSSHConfig.sshHostName} (could take several minutes)...`);
+            const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(sshConfig, validSSHConfig.sshHostName);
+            logger.info(`Bastion assigned SSH host ${validSSHConfig.sshHostName} with the following unique target id: ${ssmTargetId}`);
 
             // Poll for "Online" status
-            logger.info(`Waiting for target ${selectedHost.name} to become online (could take several minutes)...`);
+            logger.info(`Waiting for target ${validSSHConfig.sshHostName} to become online (could take several minutes)...`);
             const ssmTarget = await quickstartService.pollSsmTargetOnline(ssmTargetId);
-            logger.info(`SSH host ${selectedHost.name} successfully added to BastionZero!`);
+            logger.info(`SSH host ${validSSHConfig.sshHostName} successfully added to BastionZero!`);
             didRegisterAtLeastOne = true;
 
             // Gather some extra information from Bastion if this is the target
             // user specified to connect to at the end.
-            if (shouldConnectAfter && selectedHostName === targetToConnectToAtEnd.name) {
+            if (shouldConnectAfter && validSSHConfig.sshHostName === targetToConnectToAtEnd.name) {
                 const envService = new EnvironmentService(configService, logger);
                 const envs = await envService.ListEnvironments();
                 const environment = envs.find(envDetails => envDetails.id == ssmTarget.environmentId);
@@ -231,7 +215,7 @@ export async function quickstartHandler(
                 } as ParsedTargetString;
             }
         } catch (error) {
-            logger.error(`Failed to add SSH host: ${selectedHost.name} to BastionZero. ${error}`);
+            logger.error(`Failed to add SSH host: ${validSSHConfig.sshHostName} to BastionZero. ${error}`);
         }
     }
 
@@ -241,8 +225,9 @@ export async function quickstartHandler(
         exitCode = await connectHandler(configService, logger, mixpanelService, targetToConnectToAtEndAsParsedTargetString);
     }
 
-    if (didRegisterAtLeastOne)
-        logger.info('Use `zli connect` to connect to your registered targets.')
+    if (didRegisterAtLeastOne) {
+        logger.info('Use `zli connect` to connect to your registered targets.');
+    }
 
     await cleanExit(exitCode, logger);
 }
