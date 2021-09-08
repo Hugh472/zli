@@ -2,12 +2,13 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { InvalidSSHHost, ValidSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
+import { InvalidSSHHost, ValidSSHConfig, ValidSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { ParsedTargetString, TargetType } from '../../services/common.types';
 import { EnvironmentService } from '../../services/environment/environment.service';
 import { connectHandler } from '../connect/connect.handler';
 import { readFile } from '../../utils';
+import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
 
 import prompts, { PromptObject } from 'prompts';
 
@@ -18,7 +19,7 @@ async function interactiveDebugSession(
     onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
 
     // Get pretty string of invalid SSH hosts' names
-    const prettyInvalidSSHHosts: string = invalidSSHHosts.map(host => host.name).join(", ");
+    const prettyInvalidSSHHosts: string = invalidSSHHosts.map(host => host.incompleteValidSSHHost.name).join(", ");
     logger.warn(`Hosts missing required parameters: ${prettyInvalidSSHHosts}`);
 
     let fixedSSHHosts: ValidSSHHost[] = [];
@@ -38,12 +39,12 @@ async function interactiveDebugSession(
     logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart\n');
 
     for (const invalidSSHHost of invalidSSHHosts) {
-        const fixedHost = await quickstartService.promptFixParseErrorsForHost(invalidSSHHost.name, invalidSSHHost.parseErrors);
+        const fixedHost = await quickstartService.promptFixInvalidSSHHost(invalidSSHHost);
         if (fixedHost === undefined) {
-            const shouldSkip = await quickstartService.promptSkipHostOrExit(invalidSSHHost.name, onCancel);
+            const shouldSkip = await quickstartService.promptSkipHostOrExit(invalidSSHHost.incompleteValidSSHHost.name, onCancel);
 
             if (shouldSkip) {
-                logger.info(`Skipping host ${invalidSSHHost.name}...`);
+                logger.info(`Skipping host ${invalidSSHHost.incompleteValidSSHHost.name}...`);
                 continue;
             } else {
                 logger.info('Prompt cancelled. Exiting out of quickstart...');
@@ -175,47 +176,42 @@ export async function quickstartHandler(
     }, { onCancel: onCancelPrompt });
     const isReady: boolean = readyResponse.value;
 
-    if (! isReady) {
+    if (!isReady) {
         logger.info('Exiting out of quickstart...');
         await cleanExit(1, logger);
     }
 
-    // Run autodiscovery script sequentially.
-    //
-    // TODO: Run this forloop concurrently (I/O bound work) for each SSH host.
-    // Collect results as they come in.
+    // Run autodiscovery script hosts in parallel.
+    const autodiscoveryResultsPromise = Promise.allSettled(validSSHConfigs.map(config => addSSHHostToBastionZero(config, quickstartService, logger)));
+
+    // Await for **all** hosts to either come "Online" or error
+    const autodiscoveryResults = await autodiscoveryResultsPromise;
+    const ssmTargetsSuccessfullyAdded = autodiscoveryResults.reduce<SsmTargetSummary[]>((acc, result) => {
+        if (result.status === "fulfilled") {
+            acc.push(result.value);
+            return acc;
+        } else {
+            return acc;
+        }
+    }, []);
+    const didRegisterAtLeastOne = ssmTargetsSuccessfullyAdded.length > 0;
+
+    // Gather extra information if user said to connect to specific
+    // target after registration completes.
     let targetToConnectToAtEndAsParsedTargetString: ParsedTargetString = undefined;
-    let didRegisterAtLeastOne: boolean;
-    for (const validSSHConfig of validSSHConfigs) {
-        try {
-            logger.info(`Attempting to add SSH host ${validSSHConfig.sshHostName} to BastionZero...`);
-
-            const sshConfig = validSSHConfig.config;
-            logger.info(`Running autodiscovery script on SSH host ${validSSHConfig.sshHostName} (could take several minutes)...`);
-            const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(sshConfig, validSSHConfig.sshHostName);
-            logger.info(`Bastion assigned SSH host ${validSSHConfig.sshHostName} with the following unique target id: ${ssmTargetId}`);
-
-            // Poll for "Online" status
-            logger.info(`Waiting for target ${validSSHConfig.sshHostName} to become online (could take several minutes)...`);
-            const ssmTarget = await quickstartService.pollSsmTargetOnline(ssmTargetId);
-            logger.info(`SSH host ${validSSHConfig.sshHostName} successfully added to BastionZero!`);
-            didRegisterAtLeastOne = true;
-
-            // Gather some extra information from Bastion if this is the target
-            // user specified to connect to at the end.
-            if (shouldConnectAfter && validSSHConfig.sshHostName === targetToConnectToAtEnd.name) {
-                const envService = new EnvironmentService(configService, logger);
-                const envs = await envService.ListEnvironments();
-                const environment = envs.find(envDetails => envDetails.id == ssmTarget.environmentId);
-                targetToConnectToAtEndAsParsedTargetString = {
-                    id: ssmTarget.id,
-                    user: "ssm-user",
-                    type: TargetType.SSM,
-                    envName: environment.name
-                } as ParsedTargetString;
-            }
-        } catch (error) {
-            logger.error(`Failed to add SSH host: ${validSSHConfig.sshHostName} to BastionZero. ${error}`);
+    if (shouldConnectAfter) {
+        // targetToConnectToAtEnd is guaranteed to be defined if shouldConnectAfter == true
+        const ssmTargetToConnectToAtEnd = ssmTargetsSuccessfullyAdded.find(target => target.name === targetToConnectToAtEnd.name);
+        if (ssmTargetToConnectToAtEnd) {
+            const envService = new EnvironmentService(configService, logger);
+            const envs = await envService.ListEnvironments();
+            const environment = envs.find(envDetails => envDetails.id == ssmTargetToConnectToAtEnd.environmentId);
+            targetToConnectToAtEndAsParsedTargetString = {
+                id: ssmTargetToConnectToAtEnd.id,
+                user: "ssm-user",
+                type: TargetType.SSM,
+                envName: environment.name
+            } as ParsedTargetString;
         }
     }
 
@@ -230,4 +226,30 @@ export async function quickstartHandler(
     }
 
     await cleanExit(exitCode, logger);
+}
+
+async function addSSHHostToBastionZero(
+    validSSHConfig: ValidSSHConfig,
+    quickstartService: QuickstartSsmService,
+    logger: Logger): Promise<SsmTargetSummary> {
+
+    return new Promise<SsmTargetSummary>(async (resolve, reject) => {
+        try {
+            logger.info(`Attempting to add SSH host ${validSSHConfig.sshHostName} to BastionZero...`);
+
+            logger.info(`Running autodiscovery script on SSH host ${validSSHConfig.sshHostName} (could take several minutes)...`);
+            const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(validSSHConfig.config, validSSHConfig.sshHostName);
+            logger.info(`Bastion assigned SSH host ${validSSHConfig.sshHostName} with the following unique target id: ${ssmTargetId}`);
+
+            // Poll for "Online" status
+            logger.info(`Waiting for target ${validSSHConfig.sshHostName} to become online (could take several minutes)...`);
+            const ssmTarget = await quickstartService.pollSsmTargetOnline(ssmTargetId);
+            logger.info(`SSH host ${validSSHConfig.sshHostName} successfully added to BastionZero!`);
+
+            resolve(ssmTarget);
+        } catch (error) {
+            logger.error(`Failed to add SSH host: ${validSSHConfig.sshHostName} to BastionZero. ${error}`);
+            reject(error);
+        }
+    });
 }

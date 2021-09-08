@@ -48,6 +48,6 @@ export type SSHConfigParseError =
     | MissingIdentityFileParseError
 
 export interface InvalidSSHHost {
-    name: string;
+    incompleteValidSSHHost: ValidSSHHost;
     parseErrors: SSHConfigParseError[]
 }

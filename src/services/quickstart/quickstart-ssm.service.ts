@@ -212,7 +212,10 @@ export class QuickstartSsmService {
         return sshConfigs;
     }
 
-    public async promptFixParseErrorsForHost(sshHostName: string, parseErrors: SSHConfigParseError[]): Promise<ValidSSHHost | undefined> {
+    public async promptFixInvalidSSHHost(invalidSSHHost : InvalidSSHHost): Promise<ValidSSHHost | undefined> {
+        const parseErrors = invalidSSHHost.parseErrors;
+        const sshHostName = invalidSSHHost.incompleteValidSSHHost.name;
+
         this.logger.info(`Please answer the following ${parseErrors.length} question(s) so that ${sshHostName} can be considered as a valid host to connect with BastionZero`);
 
         // Iterate through all parse errors for the passed in host and prompt
@@ -221,8 +224,7 @@ export class QuickstartSsmService {
         // If the prompt is cancelled, undefined will be returned. We check for
         // this on each missing parameter, and return undefined as the return
         // value in order to short-circuit any remaining parse errors.
-        let validSSHHost = {} as ValidSSHHost;
-        validSSHHost.name = sshHostName;
+        let validSSHHost = invalidSSHHost.incompleteValidSSHHost;
         for (const parseError of parseErrors) {
             switch (parseError.error) {
                 case "missing_host_name":
@@ -378,6 +380,10 @@ export class QuickstartSsmService {
             }
             seen.set(name, true);
 
+            // Rolling build of valid SSH host
+            let validSSHHost = {} as ValidSSHHost;
+            validSSHHost.name = name;
+
             // Array holds all config parse errors found while parsing
             let parseErrors: SSHConfigParseError[] = [];
             const config = hostBlock.config;
@@ -386,36 +392,38 @@ export class QuickstartSsmService {
             const hostIp = this.getSSHHostConfigValue("HostName", config);
             if (hostIp === undefined) {
                 parseErrors.push({ error: "missing_host_name" });
+            } else {
+                validSSHHost.hostIp = hostIp;
             }
             const port = this.getSSHHostConfigValue("Port", config);
             if (port === undefined) {
                 parseErrors.push({ error: "missing_port" });
+            } else {
+                validSSHHost.port = parseInt(port);
             }
             const user = this.getSSHHostConfigValue("User", config);
             if (user === undefined) {
                 parseErrors.push({ error: "missing_user" });
+            } else {
+                validSSHHost.username = user;
             }
             const identityFilePath = this.getSSHHostConfigValue("IdentityFile", config);
             if (identityFilePath === undefined) {
                 parseErrors.push({ error: "missing_identity_file" })
+            } else {
+                validSSHHost.identityFile = this.resolveHome(identityFilePath);
             }
 
             if (parseErrors.length > 0) {
                 invalidSSHHosts.push({
-                    name: name,
+                    incompleteValidSSHHost: validSSHHost,
                     parseErrors: parseErrors
                 });
                 this.logger.debug(`Failed to parse host: ${name}`);
                 continue;
             }
 
-            validHosts.set(name, {
-                name: name,
-                hostIp: hostIp,
-                port: parseInt(port),
-                username: user,
-                identityFile: this.resolveHome(identityFilePath)
-            });
+            validHosts.set(name, validSSHHost);
         }
 
         return [validHosts, invalidSSHHosts];
