@@ -25,25 +25,19 @@ export interface ValidSSHConfig {
     sshHostName: string;
 }
 
-type SSHConfigParseErrorType = "missing_host_name" | "missing_port" | "missing_user" | "missing_identity_file"
-
-export type SSHConfigParseErrorBase = {
-    error: SSHConfigParseErrorType;
-}
-
-export interface MissingHostNameParseError extends SSHConfigParseErrorBase {
+export type MissingHostNameParseError = {
     error: "missing_host_name"
 };
 
-export interface MissingPortParseError extends SSHConfigParseErrorBase {
+export type MissingPortParseError = {
     error: "missing_port"
 }
 
-export interface MissingUserParseError extends SSHConfigParseErrorBase {
+export type MissingUserParseError = {
     error: "missing_user"
 }
 
-export interface MissingIdentityFileParseError extends SSHConfigParseErrorBase {
+export type MissingIdentityFileParseError = {
     error: "missing_identity_file"
 }
 
