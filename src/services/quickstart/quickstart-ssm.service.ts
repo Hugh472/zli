@@ -77,6 +77,13 @@ export class QuickstartSsmService {
         }
         let script = await getAutodiscoveryScript(this.logger, this.configService, defaultEnv, { scheme: 'hostname' }, 'universal', 'latest');
 
+        // Check that we can run at least one command before attempting to run
+        // the whole autodiscovery script
+        const sanityCheckResult = await conn.exec('whoami');
+        if (sanityCheckResult.trim() !== sshConfig.username!.toString().trim()) {
+            throw new Error(`Sanity check failed! Want: ${sshConfig.username!.toString().trim()}. Got: ${sanityCheckResult.trim()}`);
+        }
+
         // Run script on target
         const execAutodiscoveryScriptCmd = `bash << 'endmsg'\n${script}\nendmsg`
         const execAutodiscoveryScript = new Promise<string>(async (resolve, reject) => {
