@@ -3,9 +3,10 @@ import { ConfigService } from '../config.service/config.service';
 import {
     DynamicAccessConfigService,
     EnvironmentService,
-    SsmTargetService
+    SsmTargetService,
+    KubeService
 } from '../http.service/http.service';
-import { TargetSummary, TargetType } from '../types';
+import { TargetSummary, ClusterSummary, TargetType } from '../types';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
@@ -16,6 +17,7 @@ import { KeySplittingService } from '../../webshell-common-ts/keysplitting.servi
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
     const ssmTargetService = new SsmTargetService(configService, logger);
+    const kubeService = new KubeService(configService, logger);
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
 
@@ -24,7 +26,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await dynamicConfigService.ListDynamicAccessConfigs();
             const results = response.map<TargetSummary>((config, _index, _array) => {
-                return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined};
+                return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
             });
 
             res(results);
@@ -42,7 +44,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await ssmTargetService.ListSsmTargets(true);
             const results = response.map<TargetSummary>((ssm, _index, _array) => {
-                return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status};
+                return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
             });
 
             res(results);
@@ -52,11 +54,19 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         }
     });
 
+    const clusterTargets = kubeService.ListKubeClusters()
+        .then(result =>
+            result.map<ClusterSummary>((cluster, _index, _array) => {
+                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, targetUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate};
+            })
+        );
+
     const envs = envService.ListEnvironments();
 
     return {
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
+        clusterTargets: clusterTargets,
         envs: envs
     };
 }

@@ -2,7 +2,9 @@ import { ConnectionState } from './http.service/http.service.types';
 
 export enum TargetType {
     SSM = 'SSM',
-    DYNAMIC = 'DYNAMIC'
+    SSH = 'SSH',
+    DYNAMIC = 'DYNAMIC',
+    CLUSTER = 'CLUSTER'
 }
 
 export enum SessionState {
@@ -16,7 +18,15 @@ export enum IdP {
     Microsoft = 'Microsoft'
 }
 
-export enum SsmTargetStatus {
+export enum TargetStatus {
+    NotActivated = 'NotActivated',
+    Offline = 'Offline',
+    Online = 'Online',
+    Terminated = 'Terminated',
+    Error = 'Error'
+}
+
+export enum KubeClusterStatus {
     NotActivated = 'NotActivated',
     Offline = 'Offline',
     Online = 'Online',
@@ -31,7 +41,19 @@ export interface TargetSummary
     environmentId: string;
     type: TargetType;
     agentVersion: string;
-    status: SsmTargetStatus;
+    status: TargetStatus;
+    targetUsers: string[];
+}
+
+export interface ClusterSummary
+{
+    id: string;
+    name: string;
+    status: KubeClusterStatus;
+    environmentId: string;
+    targetUsers: string[];
+    lastAgentUpdate: Date;
+    agentVersion: string;
 }
 
 export interface ConnectionDetails
