@@ -10,7 +10,7 @@ export type generateBashArgs = { environment: string } &
 { targetName: string } &
 { outputFile: string }
 
-export function generateBashCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<generateBashArgs> {
+export function generateBashCmdBuilder(processArgs : string[], yargs: yargs.Argv<{}>): yargs.Argv<generateBashArgs> {
     return yargs
         .option(
             'environment',
@@ -72,7 +72,7 @@ export function generateBashCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<genera
             }
         )
         .check(function (argv) {
-            if (process.argv.find(arg => new RegExp('targetNameScheme').test(arg)) === undefined && argv.targetName !== undefined) {
+            if (processArgs.find(arg => new RegExp('targetNameScheme').test(arg)) === undefined && argv.targetName !== undefined) {
                 // If user did not pass --targetNameScheme but
                 // did pass something for the targetName flag
 
