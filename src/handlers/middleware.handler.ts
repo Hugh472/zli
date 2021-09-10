@@ -1,17 +1,16 @@
-import { Logger } from '../logger.service/logger';
-import { ConfigService } from '../config.service/config.service';
-import {
-    DynamicAccessConfigService,
-    EnvironmentService,
-    SsmTargetService,
-    KubeService
-} from '../http.service/http.service';
-import { TargetSummary, ClusterSummary, TargetType } from '../types';
-import { MixpanelService } from '../mixpanel.service/mixpanel.service';
+import { Logger } from '../services/logger/logger.service';
+import { ConfigService } from '../services/config/config.service';
 import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
-import { LoggerConfigService } from '../logger-config.service/logger-config.service';
+import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { TargetSummary, TargetType } from '../services/common.types';
+import { DynamicAccessConfigService } from '../services/dynamic-access-config/dynamic-access-config.service';
+import { EnvironmentService } from '../services/environment/environment.service';
+import { KubeService } from '../services/kube/kube.service';
+import { ClusterDetails } from '../services/kube/kube.types';
+import { MixpanelService } from '../services/mixpanel/mixpanel.service';
+import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
@@ -56,7 +55,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
     const clusterTargets = kubeService.ListKubeClusters()
         .then(result =>
-            result.map<ClusterSummary>((cluster, _index, _array) => {
+            result.map<ClusterDetails>((cluster, _index, _array) => {
                 return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, targetUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate};
             })
         );

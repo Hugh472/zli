@@ -1,9 +1,14 @@
-import { ConnectionDetails, ParsedTargetString, TargetStatus, TargetSummary, TargetType} from './types';
 import { max, filter, concat, map } from 'lodash';
-import { ApiKeyDetails, EnvironmentDetails, GroupSummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext, UserSummary } from './http.service/http.service.types';
 import Table from 'cli-table3';
-import { Logger } from './logger.service/logger';
+import { Logger } from './services/logger/logger.service';
 import { cleanExit } from './handlers/clean-exit.handler';
+import { ApiKeyDetails } from './services/api-key/api-key.types';
+import { TargetType, TargetStatus, ParsedTargetString, TargetSummary } from './services/common.types';
+import { ConnectionDetails } from './services/connection/connection.types';
+import { EnvironmentDetails } from './services/environment/environment.types';
+import { GroupSummary } from './services/groups/groups.types';
+import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext } from './services/policy/policy.types';
+import { UserSummary } from './services/user/user.types';
 
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
@@ -113,8 +118,8 @@ export function isGuid(id: string): boolean{
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
 {
     // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
-    const targetNameLength = max(targets.map(t => t.name.length)) + 2;
-    const envNameLength = max(envs.map(e => e.name.length)) + 2;
+    const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16; // || 16 here means that when there are no targets default the length to 16
+    const envNameLength = max(envs.map(e => e.name.length)) + 2 < 16 ? 16 : max(envs.map(e => e.name.length));
 
     const header: string[] = ['Type', 'Name', 'Environment'];
     const columnWidths = [];
@@ -165,9 +170,9 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
 
 export function getTableOfConnections(connections: ConnectionDetails[], allTargets: TargetSummary[]) : string
 {
-    const targetNameLength = max(allTargets.map(t => t.name.length).concat(16));
     const connIdLength = max(connections.map(c => c.id.length).concat(36));
     const targetUserLength = max(connections.map(c => c.userName.length).concat(16));
+    const targetNameLength = max(allTargets.map(t => t.name.length).concat(16));
     const header: string[] = ['Connection ID', 'Target User', 'Target', 'Time Created'];
     const columnWidths = [connIdLength + 2, targetUserLength + 2, targetNameLength + 2, 20];
 
@@ -225,6 +230,25 @@ export function getTableOfTargetUsers(targetUsers: string[]) : string
     const table = new Table({ head: header, colWidths: columnWidths });
     targetUsers.forEach(u => {
         const row = [u];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfDescribeCluster(policies: PolicySummary[], targetUsers: string[], environmentName : string) : string {
+    const header: string[] = ['Policy', 'Environment', 'Target Users'];
+
+    const policyLength = max(policies.map(p => p.name.length).concat(16));
+    const targetUserLength = max(targetUsers.map(u => u.length).concat(16));
+
+    const columnWidths = [policyLength + 2, environmentName.length + 2, targetUserLength + 4];
+
+    const formattedTargetUsers = targetUsers.join( ', \n');
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    policies.forEach(p => {
+        const row = [p.name, environmentName, formattedTargetUsers];
         table.push(row);
     });
 
