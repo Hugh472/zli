@@ -9,8 +9,10 @@ import { EnvironmentService } from '../../services/environment/environment.servi
 import { connectHandler } from '../connect/connect.handler';
 import { readFile } from '../../utils';
 import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
+import { quickstartArgs } from './quickstart.command-builder';
 
 import prompts, { PromptObject } from 'prompts';
+import yargs from 'yargs';
 
 async function interactiveDebugSession(
     invalidSSHHosts: InvalidSSHHost[],
@@ -59,18 +61,16 @@ async function interactiveDebugSession(
 }
 
 export async function quickstartHandler(
-    argv: any,
+    argv: yargs.Arguments<quickstartArgs>,
     logger: Logger,
     configService: ConfigService,
     mixpanelService: MixpanelService,
 ) {
     const quickstartService = new QuickstartSsmService(logger, configService);
-    const sshConfigFilePath: string = argv.sshConfigFile;
-    const showParseErrors: boolean = argv.showParseErrors;
 
     // Parse SSH config file
-    logger.info(`\nParsing SSH config file: ${sshConfigFilePath}`);
-    const sshConfigFileAsStr = await readFile(sshConfigFilePath);
+    logger.info(`\nParsing SSH config file: ${argv.sshConfigFile}`);
+    const sshConfigFileAsStr = await readFile(argv.sshConfigFile);
     const [validSSHHosts, invalidSSHHosts] = quickstartService.parseSSHHosts(sshConfigFileAsStr);
 
     // Callback on cancel prompt
@@ -84,7 +84,7 @@ export async function quickstartHandler(
     logger.warn(`${invalidSSHHosts.length} host(s) in the SSH config file are missing required parameters used to connect them with BastionZero.`)
 
     // Handle parse errors
-    if (showParseErrors && invalidSSHHosts.length > 0) {
+    if (argv.showParseErrors && invalidSSHHosts.length > 0) {
         const fixedSSHHosts = await interactiveDebugSession(invalidSSHHosts, quickstartService, logger, onCancelPrompt);
         // Add them to the valid mapping
         fixedSSHHosts.forEach(validHost => validSSHHosts.set(validHost.name, validHost));
@@ -92,7 +92,7 @@ export async function quickstartHandler(
             logger.info(`Added ${fixedSSHHosts.length} more valid host(s) for a total of ${validSSHHosts.size} valid SSH hosts!`);
         }
     }
-    else if (!showParseErrors && invalidSSHHosts.length > 0) {
+    else if (!argv.showParseErrors && invalidSSHHosts.length > 0) {
         logger.warn('Skipping interactive debug session because --skipDebug flag was passed.')
     }
 
