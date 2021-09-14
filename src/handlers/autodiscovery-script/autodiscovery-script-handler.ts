@@ -16,6 +16,9 @@ export async function autoDiscoveryScriptHandler(
     configService: ConfigService,
     environments: Promise<EnvironmentDetails[]>
 ) {
+    // Print deprecation warning
+    logger.warn('Warning: zli autodiscovery-script is no longer supported and will be removed in a future release. Please use zli generate-bash instead.');
+
     const environmentNameArg = argv.environmentName;
     const outputFileArg = argv.outputFile;
     const agentVersionArg = argv.agentVersion;
@@ -28,7 +31,7 @@ export async function autoDiscoveryScriptHandler(
     }
 
     const autodiscoveryScriptService = new AutoDiscoveryScriptService(configService, logger);
-    const autodiscoveryScriptResponse = await autodiscoveryScriptService.getAutodiscoveryScript(argv.operatingSystem, argv.targetName, environment.id, agentVersionArg);
+    const autodiscoveryScriptResponse = await autodiscoveryScriptService.getAutodiscoveryScript(argv.operatingSystem, `TARGET_NAME=\"${argv.targetName}\"`, environment.id, agentVersionArg);
 
     if(outputFileArg) {
         await util.promisify(fs.writeFile)(outputFileArg, autodiscoveryScriptResponse.autodiscoveryScript);

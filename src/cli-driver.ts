@@ -37,6 +37,7 @@ import { bctlHandler } from './handlers/bctl.handler';
 import { listPoliciesHandler } from './handlers/policy/list-policies.handler';
 import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler';
 import { fetchGroupsHandler } from './handlers/group/fetch-groups.handler';
+import { generateBashHandler } from './handlers/generate-bash/generate-bash.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -60,6 +61,7 @@ import { targetUserCmdBuilder } from './handlers/target-user/target-user.command
 import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-builder';
 import { autoDiscoveryScriptCommandBuilder } from './handlers/autodiscovery-script/autodiscovery-script.command-builder';
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
+import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
 import { EnvironmentDetails } from './services/environment/environment.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
@@ -103,7 +105,8 @@ export class CliDriver
         'autodiscovery-script',
         'generate',
         'policy',
-        'group'
+        'group',
+        'generate-bash'
     ];
 
     private mixpanelCommands: string[] = [
@@ -128,7 +131,8 @@ export class CliDriver
         'autodiscovery-script',
         'generate',
         'policy',
-        'group'
+        'group',
+        'generate-bash'
     ];
 
     private fetchCommands: string[] = [
@@ -151,7 +155,8 @@ export class CliDriver
         'autodiscovery-script',
         'generate',
         'policy',
-        'group'
+        'group',
+        'generate-bash'
     ];
 
     private adminOnlyCommands: string[] = [
@@ -455,8 +460,18 @@ export class CliDriver
                 }
             )
             .command(
+                'generate-bash',
+                'Returns a bash script to autodiscover a target.',
+                (yargs) => {
+                    return generateBashCmdBuilder(process.argv, yargs) ;
+                },
+                async (argv) => {
+                    await generateBashHandler(argv, this.logger, this.configService, this.envs);
+                },
+            )
+            .command(
                 'autodiscovery-script <operatingSystem> <targetName> <environmentName> [agentVersion]',
-                'Returns autodiscovery script',
+                'Returns autodiscovery script. [deprecated. Use generate-bash instead]',
                 (yargs) => {
                     return autoDiscoveryScriptCommandBuilder(yargs);
                 },
