@@ -92,7 +92,7 @@ export class CliDriver
         'targetUser',
         'describe-cluster',
         'disconnect',
-        'attach-to-connection',
+        'attach',
         'close',
         'list-targets',
         'lt',
@@ -118,7 +118,7 @@ export class CliDriver
         'targetUser',
         'describe-cluster',
         'disconnect',
-        'attach-to-connection',
+        'attach',
         'close',
         'list-targets',
         'lt',
@@ -142,7 +142,7 @@ export class CliDriver
         'targetUser',
         'describe-cluster',
         'disconnect',
-        'attach-to-connection',
+        'attach',
         'close',
         'list-targets',
         'lt',
@@ -293,7 +293,7 @@ export class CliDriver
                 }
             )
             .command(
-                'attach-to-connection <connectionId>',
+                'attach <connectionId>',
                 'Attach to an open zli connection',
                 (yargs) => {
                     return attachCmdBuilder(yargs);
