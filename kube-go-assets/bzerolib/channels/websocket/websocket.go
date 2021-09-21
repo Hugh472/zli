@@ -248,6 +248,19 @@ func (w *Websocket) Connect() {
 
 			// Add the solved challenge to the params
 			w.params["solved_challenge"] = solvedChallenge
+
+			// And sign our agent version
+			signedAgentVersion, err := signString(config.Data.PrivateKey, w.params["agent_version"])
+			if err != nil {
+				w.logger.Error(fmt.Errorf("error in signing agent version: %s", err))
+
+				// Sleep in between
+				w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
+				continue
+			}
+
+			// Add the agent version to the params
+			w.params["signed_agent_version"] = signedAgentVersion
 		}
 
 		// First negotiate in order to get a url to connect to
