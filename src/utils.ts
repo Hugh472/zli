@@ -9,6 +9,7 @@ import { EnvironmentDetails } from './services/environment/environment.types';
 import { GroupSummary } from './services/groups/groups.types';
 import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext } from './services/policy/policy.types';
 import { UserSummary } from './services/user/user.types';
+import { IdentityProvider } from '../webshell-common-ts/auth-service/auth.types';
 
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
@@ -44,6 +45,18 @@ export function parsePolicyType(policyType: string) : PolicyType
         return PolicyType.SessionRecording;
     case PolicyType.TargetConnect.toLowerCase():
         return PolicyType.TargetConnect;
+    default:
+        return undefined;
+    }
+}
+
+export function parseIdpType(idp: IdentityProvider) : IdentityProvider
+{
+    switch (idp) {
+    case IdentityProvider.Google:
+        return IdentityProvider.Google;
+    case IdentityProvider.Microsoft:
+        return IdentityProvider.Microsoft;
     default:
         return undefined;
     }
