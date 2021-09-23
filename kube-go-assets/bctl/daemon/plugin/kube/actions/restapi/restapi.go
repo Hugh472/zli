@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	kuberest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -18,13 +18,14 @@ const (
 )
 
 type RestApiAction struct {
-	requestId         string
-	logId             string
-	ksResponseChannel chan plgn.ActionWrapper
-	RequestChannel    chan plgn.ActionWrapper
-	commandBeingRun   string
-	logger            *lggr.Logger
-	ctx               context.Context
+	requestId             string
+	logId                 string
+	ksResponseChannel     chan plgn.ActionWrapper
+	RequestChannel        chan plgn.ActionWrapper
+	commandBeingRun       string
+	streamResponseChannel chan smsg.StreamMessage
+	logger                *lggr.Logger
+	ctx                   context.Context
 }
 
 func NewRestApiAction(ctx context.Context,
@@ -32,34 +33,30 @@ func NewRestApiAction(ctx context.Context,
 	requestId string,
 	logId string,
 	ch chan plgn.ActionWrapper,
+	streamResponseChannel chan smsg.StreamMessage,
 	commandBeingRun string) (*RestApiAction, error) {
 
 	return &RestApiAction{
-		requestId:         requestId,
-		logId:             logId,
-		RequestChannel:    ch,
-		ksResponseChannel: make(chan plgn.ActionWrapper),
-		commandBeingRun:   commandBeingRun,
-		logger:            logger,
-		ctx:               ctx,
+		requestId:             requestId,
+		logId:                 logId,
+		RequestChannel:        ch,
+		ksResponseChannel:     make(chan plgn.ActionWrapper),
+		streamResponseChannel: make(chan smsg.StreamMessage, 100),
+		commandBeingRun:       commandBeingRun,
+		logger:                logger,
+		ctx:                   ctx,
 	}, nil
 }
 
 func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
 	// First extract the headers out of the request
-	headers := make(map[string]string)
-	for name, values := range request.Header {
-		for _, value := range values {
-			headers[name] = value
-		}
-	}
+	headers := kubeutils.GetHeaders(request.Header)
 
 	// Now extract the body
-	bodyInBytes, err := ioutil.ReadAll(request.Body)
+	bodyInBytes, err := kubeutils.GetBodyBytes(request.Body)
 	if err != nil {
-		rerr := fmt.Errorf("error building body: %s", err)
-		r.logger.Error(rerr)
-		return rerr
+		r.logger.Error(err)
+		return err
 	}
 
 	// Build the action payload
@@ -116,4 +113,5 @@ func (r *RestApiAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 }
 
 func (r *RestApiAction) PushStreamResponse(message smsg.StreamMessage) {
+	r.streamResponseChannel <- message
 }

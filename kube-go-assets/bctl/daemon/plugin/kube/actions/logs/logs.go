@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"net/http"
 
 	kubelogs "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/logs"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -26,7 +26,6 @@ type LogsAction struct {
 	logId                 string
 	ksResponseChannel     chan plgn.ActionWrapper
 	RequestChannel        chan plgn.ActionWrapper
-	writer                http.ResponseWriter
 	streamResponseChannel chan smsg.StreamMessage
 	logger                *lggr.Logger
 	ctx                   context.Context
@@ -50,23 +49,14 @@ func NewLogAction(ctx context.Context,
 }
 
 func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
-	// Set this so that we know how to write the response when we get it later
-	r.writer = writer
-
 	// First extract the headers out of the request
-	headers := make(map[string]string)
-	for name, values := range request.Header {
-		for _, value := range values {
-			headers[name] = value
-		}
-	}
+	headers := getHeaders(request.Header)
 
 	// Now extract the body
-	bodyInBytes, err := ioutil.ReadAll(request.Body)
+	bodyInBytes, err := getBodyBytes(request.Body)
 	if err != nil {
-		rerr := fmt.Errorf("error building body: %s", err)
-		r.logger.Error(rerr)
-		return rerr
+		r.logger.Error(err)
+		return err
 	}
 
 	// Build the action payload
@@ -87,7 +77,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	}
 
 	// Now subscribe to the response
-	// Keep this as a non-go function so we hold onto the http request
+	// Keep this as a non-go routine so we hold onto the http request
 	for {
 		select {
 		case <-r.ctx.Done():
@@ -114,25 +104,12 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 			return nil
 		case logData := <-r.streamResponseChannel:
-			// for name, value := range responseLogBastionToDaemon.Headers {
-			// 	if name != "Content-Length" {
-			// 		w.Header().Set(name, value)
-			// 	}
-			// }
-
 			// Then stream the response to kubectl
 			contentBytes, _ := base64.StdEncoding.DecodeString(logData.Content)
-			src := bytes.NewReader(contentBytes)
-			_, err = io.Copy(writer, src)
+			err := kubeutils.WriteToHttpRequest(contentBytes, writer)
 			if err != nil {
-				rerr := fmt.Errorf("error streaming the log to kubectl: %s", err)
-				r.logger.Error(rerr)
-				break
-			}
-			// This is required, don't touch - not sure why
-			flush, ok := writer.(http.Flusher)
-			if ok {
-				flush.Flush()
+				r.logger.Error(err)
+				return nil
 			}
 		}
 	}
@@ -144,4 +121,25 @@ func (r *LogsAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 
 func (r *LogsAction) PushStreamResponse(message smsg.StreamMessage) {
 	r.streamResponseChannel <- message
+}
+
+// Helper function to extract headers from a http request
+func getHeaders(headers http.Header) map[string]string {
+	toReturn := make(map[string]string)
+	for name, values := range headers {
+		for _, value := range values {
+			toReturn[name] = value
+		}
+	}
+	return toReturn
+}
+
+// Helper function to extract the body of a http request
+func getBodyBytes(body io.ReadCloser) ([]byte, error) {
+	bodyInBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		rerr := fmt.Errorf("error building body: %s", err)
+		return nil, rerr
+	}
+	return bodyInBytes, nil
 }

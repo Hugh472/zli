@@ -13,6 +13,7 @@ import (
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
 	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
+	watchaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/watch"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -36,6 +37,7 @@ type KubeDaemonAction string
 const (
 	Exec    KubeDaemonAction = "exec"
 	Log     KubeDaemonAction = "log"
+	Watch   KubeDaemonAction = "watch"
 	RestApi KubeDaemonAction = "restapi"
 )
 
@@ -210,14 +212,13 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	tokensSplit := strings.Split(tokenToValidate, securityTokenDelimiter)
 	if tokensSplit[0] != k.localhostToken {
 		w.WriteHeader(http.StatusInternalServerError)
-		msg := "Localhost token did not validate. Ensure you are using the right Kube config file!"
+		msg := "localhost token did not validate. Ensure you are using the right Kube config file"
 		w.Write([]byte(msg))
 		k.logger.Error(errors.New(msg))
 		return
 	}
 
 	// Check if we have a command to extract
-	// TODO: Maybe we can push this work to the bastion
 	commandBeingRun := "N/A"
 	logId := "N/A"
 	if len(tokensSplit) == 3 {
@@ -231,7 +232,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	// Always generate requestId
 	requestId := generateRequestId()
 
-	if strings.Contains(r.URL.Path, "exec") {
+	if strings.HasSuffix(r.URL.Path, "/exec") {
 		subLogger := k.logger.GetActionLogger(string(Exec))
 		subLogger.AddRequestId(requestId)
 
@@ -243,7 +244,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if err := execAction.InputMessageHandler(w, r); err != nil {
 			k.logger.Error(fmt.Errorf("error handling Exec call: %s", err))
 		}
-	} else if strings.Contains(r.URL.Path, "log") { // TODO : maybe ends with?
+	} else if strings.HasSuffix(r.URL.Path, "/log") && isLogFollowRequest(r) {
 		subLogger := k.logger.GetActionLogger(string(Log))
 		subLogger.AddRequestId(requestId)
 
@@ -255,11 +256,23 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if err := logAction.InputMessageHandler(w, r); err != nil {
 			k.logger.Error(fmt.Errorf("error handling Logs call: %s", err))
 		}
+	} else if isWatchRequest(r) {
+		subLogger := k.logger.GetActionLogger(string(Watch))
+		subLogger.AddRequestId(requestId)
+
+		watchAction, _ := watchaction.NewWatchAction(k.ctx, subLogger, requestId, logId, k.RequestChannel)
+
+		k.updateActionsMap(watchAction, requestId)
+
+		k.logger.Info(fmt.Sprintf("Created Watch action with requestId %v", requestId))
+		if err := watchAction.InputMessageHandler(w, r); err != nil {
+			k.logger.Error(fmt.Errorf("error handling Watch call: %s", err))
+		}
 	} else {
 		subLogger := k.logger.GetActionLogger(string(RestApi))
 		subLogger.AddRequestId(requestId)
 
-		restAction, _ := rest.NewRestApiAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
+		restAction, _ := rest.NewRestApiAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, k.streamResponseChannel, commandBeingRun)
 
 		k.updateActionsMap(restAction, requestId)
 
@@ -268,6 +281,42 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 			k.logger.Error(fmt.Errorf("error handling REST API call: %s", err))
 		}
 	}
+}
+
+func isLogFollowRequest(request *http.Request) bool {
+	// Determine if we are trying to follow the logs
+	follow, ok := request.URL.Query()["follow"]
+
+	// First check if we got any query returned
+	if !ok || len(follow[0]) < 1 {
+		return false
+	}
+
+	// Now check if follow is a valid value
+	if follow[0] == "true" || follow[0] == "1" {
+		return true
+	}
+
+	// Else return false
+	return false
+}
+
+func isWatchRequest(request *http.Request) bool {
+	// Determine if we are trying to watch the resource
+	watch, ok := request.URL.Query()["watch"]
+
+	// First check if we got any query returned
+	if !ok || len(watch[0]) < 1 {
+		return false
+	}
+
+	// Now check if watch is a valid value
+	if watch[0] == "true" || watch[0] == "1" {
+		return true
+	}
+
+	// Else return false
+	return false
 }
 
 func (k *KubeDaemonPlugin) updateActionsMap(newAction IKubeDaemonAction, id string) {
