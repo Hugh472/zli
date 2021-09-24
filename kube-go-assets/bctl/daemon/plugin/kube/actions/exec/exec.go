@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	kubeexec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -53,8 +54,11 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		return err
 	}
 
+	// Determine if this is tty
+	isTty := kubeutils.IsQueryParamPresent(request, "tty")
+
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
-	r.RequestChannel <- wrapStartPayload(r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
+	r.RequestChannel <- wrapStartPayload(isTty, r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
 
 	// Set up a go function for stdout
 	go func() {
@@ -98,7 +102,8 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 	// Set up a go function for stdin
 	go func() {
-		buf := make([]byte, 16)
+		// Keep the buffer big incase we are passing data to the pod
+		buf := make([]byte, 1024*1024)
 		for {
 			select {
 			case <-r.ctx.Done():
@@ -116,29 +121,32 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 	}()
 
-	// Set up a go function for resize
-	go func() {
-		for {
-			select {
-			case <-r.ctx.Done():
-				return
-			default:
-				decoder := json.NewDecoder(spdy.resizeStream)
+	if isTty {
+		// Set up a go function for resize if we are running interactively
+		go func() {
+			for {
+				select {
+				case <-r.ctx.Done():
+					return
+				default:
+					decoder := json.NewDecoder(spdy.resizeStream)
 
-				size := TerminalSize{}
-				if err := decoder.Decode(&size); err != nil {
-					if err == io.EOF {
-						return
+					size := TerminalSize{}
+					if err := decoder.Decode(&size); err != nil {
+						if err == io.EOF {
+							return
+						} else {
+							r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
+						}
 					} else {
-						r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
+						// Emit this as a new resize event
+						r.RequestChannel <- wrapResizePayload(r.requestId, r.logId, size.Width, size.Height)
 					}
-				} else {
-					// Emit this as a new resize event
-					r.RequestChannel <- wrapResizePayload(r.requestId, r.logId, size.Width, size.Height)
 				}
 			}
-		}
-	}()
+		}()
+	}
+
 	return nil
 }
 
@@ -150,10 +158,11 @@ func (r *ExecAction) PushStreamResponse(stream smsg.StreamMessage) {
 	r.streamChannel <- stream
 }
 
-func wrapStartPayload(requestId string, logId string, command []string, endpoint string) plgn.ActionWrapper {
+func wrapStartPayload(isTty bool, requestId string, logId string, command []string, endpoint string) plgn.ActionWrapper {
 	payload := kubeexec.KubeExecStartActionPayload{
 		RequestId: requestId,
 		LogId:     logId,
+		IsTty:     isTty,
 		Command:   command,
 		Endpoint:  endpoint,
 	}

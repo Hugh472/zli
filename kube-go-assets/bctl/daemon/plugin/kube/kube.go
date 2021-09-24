@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
-	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
-	watchaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/watch"
+	stream "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/stream"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -36,8 +36,7 @@ type KubeDaemonAction string
 
 const (
 	Exec    KubeDaemonAction = "exec"
-	Log     KubeDaemonAction = "log"
-	Watch   KubeDaemonAction = "watch"
+	Stream  KubeDaemonAction = "stream"
 	RestApi KubeDaemonAction = "restapi"
 )
 
@@ -244,29 +243,17 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if err := execAction.InputMessageHandler(w, r); err != nil {
 			k.logger.Error(fmt.Errorf("error handling Exec call: %s", err))
 		}
-	} else if strings.HasSuffix(r.URL.Path, "/log") && isLogFollowRequest(r) {
-		subLogger := k.logger.GetActionLogger(string(Log))
+	} else if isStreamRequest(r) {
+		subLogger := k.logger.GetActionLogger(string(Stream))
 		subLogger.AddRequestId(requestId)
 
-		logAction, _ := logaction.NewLogAction(k.ctx, subLogger, requestId, logId, k.RequestChannel)
+		streamAction, _ := stream.NewStreamAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
 
-		k.updateActionsMap(logAction, requestId)
+		k.updateActionsMap(streamAction, requestId)
 
-		k.logger.Info(fmt.Sprintf("Created Log action with requestId %v", requestId))
-		if err := logAction.InputMessageHandler(w, r); err != nil {
-			k.logger.Error(fmt.Errorf("error handling Logs call: %s", err))
-		}
-	} else if isWatchRequest(r) {
-		subLogger := k.logger.GetActionLogger(string(Watch))
-		subLogger.AddRequestId(requestId)
-
-		watchAction, _ := watchaction.NewWatchAction(k.ctx, subLogger, requestId, logId, k.RequestChannel)
-
-		k.updateActionsMap(watchAction, requestId)
-
-		k.logger.Info(fmt.Sprintf("Created Watch action with requestId %v", requestId))
-		if err := watchAction.InputMessageHandler(w, r); err != nil {
-			k.logger.Error(fmt.Errorf("error handling Watch call: %s", err))
+		k.logger.Info(fmt.Sprintf("Created Stream action with requestId %v", requestId))
+		if err := streamAction.InputMessageHandler(w, r); err != nil {
+			k.logger.Error(fmt.Errorf("error handling Stream call: %s", err))
 		}
 	} else {
 		subLogger := k.logger.GetActionLogger(string(RestApi))
@@ -283,40 +270,8 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func isLogFollowRequest(request *http.Request) bool {
-	// Determine if we are trying to follow the logs
-	follow, ok := request.URL.Query()["follow"]
-
-	// First check if we got any query returned
-	if !ok || len(follow[0]) < 1 {
-		return false
-	}
-
-	// Now check if follow is a valid value
-	if follow[0] == "true" || follow[0] == "1" {
-		return true
-	}
-
-	// Else return false
-	return false
-}
-
-func isWatchRequest(request *http.Request) bool {
-	// Determine if we are trying to watch the resource
-	watch, ok := request.URL.Query()["watch"]
-
-	// First check if we got any query returned
-	if !ok || len(watch[0]) < 1 {
-		return false
-	}
-
-	// Now check if watch is a valid value
-	if watch[0] == "true" || watch[0] == "1" {
-		return true
-	}
-
-	// Else return false
-	return false
+func isStreamRequest(request *http.Request) bool {
+	return (strings.HasSuffix(request.URL.Path, "/log") && kubeutils.IsQueryParamPresent(request, "follow")) || kubeutils.IsQueryParamPresent(request, "watch")
 }
 
 func (k *KubeDaemonPlugin) updateActionsMap(newAction IKubeDaemonAction, id string) {

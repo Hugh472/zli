@@ -9,12 +9,10 @@ import (
 )
 
 // Helper function to extract headers from a http request
-func GetHeaders(headers http.Header) map[string]string {
-	toReturn := make(map[string]string)
+func GetHeaders(headers http.Header) map[string][]string {
+	toReturn := make(map[string][]string)
 	for name, values := range headers {
-		for _, value := range values {
-			toReturn[name] = value
-		}
+		toReturn[name] = values
 	}
 	return toReturn
 }
@@ -42,4 +40,22 @@ func WriteToHttpRequest(contentBytes []byte, writer http.ResponseWriter) error {
 		flush.Flush()
 	}
 	return nil
+}
+
+func IsQueryParamPresent(request *http.Request, paramArg string) bool {
+	// Get the param from the query
+	param, ok := request.URL.Query()[paramArg]
+
+	// First check if we got any query returned
+	if !ok || len(param[0]) < 1 {
+		return false
+	}
+
+	// Now check if param is a valid value
+	if param[0] == "true" || param[0] == "1" {
+		return true
+	}
+
+	// Else return false
+	return false
 }
