@@ -6,6 +6,7 @@ import { spawn, exec } from 'child_process';
 
 const { v4: uuidv4 } = require('uuid');
 const execPromise = util.promisify(exec);
+const isRunning = require('is-running');
 
 
 export async function bctlHandler(configService: ConfigService, logger: Logger, listOfCommands: string[]) {
@@ -43,11 +44,30 @@ export async function bctlHandler(configService: ConfigService, logger: Logger, 
         logger.debug(`Kube command process exited with code ${code}`);
 
         if (code != 0) {
-            // Check to ensure they are using the right context
-            const currentContext = await execPromise('kubectl config current-context ');
+            // Check if the daemon has quit
+            if (kubeConfig['localPid'] == null || !isRunning(kubeConfig['localPid'])) {
+                logger.error('The Kube Daemon has quit unexpectedly.');
+                kubeConfig['localPid'] = null;
+                configService.setKubeConfig(kubeConfig);
+                await cleanExit(0, logger);
+                return;
+            }
 
-            if (currentContext.stdout != 'bctl-agent') {
+            // Then ensure we have kubectl installed
+            try {
+                await execPromise('kubectl --help');
+            } catch {
+                logger.warn('Please ensure you have kubectl installed!');
+                await cleanExit(1, logger);
+                return;
+            }
+
+            // Check to ensure they are using the right context
+            const currentContext = await execPromise('kubectl config current-context');
+            if (currentContext.stdout.trim() != 'bctl-agent') {
                 logger.warn('Make sure you using the correct kube config!');
+                await cleanExit(1, logger);
+                return;
             }
         }
     });
