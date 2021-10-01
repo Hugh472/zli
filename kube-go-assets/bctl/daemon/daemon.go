@@ -15,7 +15,7 @@ import (
 var (
 	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl           string
 	daemonPort, localhostToken, environmentId, certPath, keyPath, configPath string
-	logPath                                                                  string
+	logPath, refreshTokenCommand                                             string
 )
 
 const (
@@ -55,7 +55,7 @@ func startDatachannel(logger *lggr.Logger) {
 	params["assume_cluster_id"] = assumeClusterId
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel(logger, configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	dataChannel, _ := dc.NewDataChannel(logger, refreshTokenCommand, configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
 
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
 		return
@@ -104,6 +104,7 @@ func parseFlags() error {
 	flag.StringVar(&keyPath, "keyPath", "", "Path to key to use for our localhost server")
 	flag.StringVar(&configPath, "configPath", "", "Local storage path to zli config")
 	flag.StringVar(&logPath, "logPath", "", "Path to log file for daemon")
+	flag.StringVar(&refreshTokenCommand, "refreshTokenCommand", "", "zli constructed command for refreshing id tokens")
 
 	flag.Parse()
 

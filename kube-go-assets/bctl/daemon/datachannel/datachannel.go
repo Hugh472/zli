@@ -20,12 +20,6 @@ const (
 	maxRetries = 3
 )
 
-type IDataChannel interface {
-	Send(messageType wsmsg.MessageType, messagePayload interface{}) error
-	Receive(agentMessage wsmsg.AgentMessage) error
-	StartKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) error
-}
-
 type DataChannel struct {
 	websocket    *ws.Websocket
 	logger       *lggr.Logger
@@ -49,6 +43,7 @@ type DataChannel struct {
 }
 
 func NewDataChannel(logger *lggr.Logger,
+	refreshTokenCommand string,
 	configPath string,
 	role string,
 	serviceUrl string,
@@ -68,7 +63,7 @@ func NewDataChannel(logger *lggr.Logger,
 		return &DataChannel{}, err // TODO: how tf are we going to report these?
 	}
 
-	keysplitter, err := ks.NewKeysplitting("", configPath)
+	keysplitter, err := ks.NewKeysplitting("", configPath, refreshTokenCommand)
 	if err != nil {
 		cancel()
 		logger.Error(err)

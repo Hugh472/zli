@@ -8,6 +8,7 @@ import { checkVersionMiddleware } from './middlewares/check-version-middleware';
 import { Logger } from './services/logger/logger.service';
 import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 
 // Handlers
@@ -533,6 +534,15 @@ export class CliDriver
                 const listOfCommands = argv._.slice(1); // this removes the 'kube' part of 'zli kube -- ...'
                 await bctlHandler(this.configService, this.logger, listOfCommands);
             })
+            .command(
+                'refresh',
+                false,
+                () => {},
+                async () => {
+                    const oauth = new OAuthService(this.configService, this.logger);
+                    await oauth.getIdToken();
+                }
+            )
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
             .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all zli messages, only returns command output'})

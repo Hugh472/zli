@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	bzcrt "bastionzero.com/bctl/v1/bzerolib/keysplitting/bzcert"
@@ -52,19 +54,21 @@ type Keysplitting struct {
 	privatekey       string
 
 	// daemon variables
-	targetId   string
-	configPath string
-	bzcertHash string
+	targetId            string
+	configPath          string
+	bzcertHash          string
+	refreshTokenCommand string
 }
 
-func NewKeysplitting(targetId string, configPath string) (IKeysplitting, error) {
+func NewKeysplitting(targetId string, configPath string, refreshTokenCommand string) (IKeysplitting, error) {
 
 	// TODO: load keys from storage
 	keysplitter := &Keysplitting{
-		hPointer:         "",
-		expectedHPointer: "",
-		targetId:         targetId,
-		configPath:       configPath,
+		hPointer:            "",
+		expectedHPointer:    "",
+		targetId:            targetId,
+		configPath:          configPath,
+		refreshTokenCommand: refreshTokenCommand,
 	}
 
 	return keysplitter, nil
@@ -179,6 +183,15 @@ func (k *Keysplitting) BuildSyn(action string, payload []byte) (ksmsg.Keysplitti
 }
 
 func (k *Keysplitting) buildBZCert() (bzcrt.BZCert, error) {
+	// update the id token by calling the passed in zli command
+	if splits := strings.Split(k.refreshTokenCommand, " "); len(splits) >= 2 {
+		if out, err := exec.Command(splits[0], splits[1:]...).CombinedOutput(); err != nil {
+			return bzcrt.BZCert{}, fmt.Errorf("%s while executing zli refresh token command: %s", err, string(out))
+		}
+	} else {
+		return bzcrt.BZCert{}, fmt.Errorf("not enough arguments to refresh token zli command: %v", len(splits))
+	}
+
 	if configFile, err := os.Open(k.configPath); err != nil {
 		return bzcrt.BZCert{}, fmt.Errorf("could not open config file: %v", err.Error())
 	} else {

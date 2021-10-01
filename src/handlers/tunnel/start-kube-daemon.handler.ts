@@ -12,9 +12,6 @@ import yargs from 'yargs';
 import { tunnelArgs } from './tunnel.command-builder';
 const { spawn } = require('child_process');
 
-const WINDOWS_DAEMON_PATH : string = '../../../../kube-go-assets/bctl/daemon/daemon-windows';
-const LINUX_DAEMON_PATH : string = '../../../../kube-go-assets/bctl/daemon/daemon-linux';
-const MACOS_DAEMON_PATH : string = '../../../../kube-go-assets/bctl/daemon/daemon-macos';
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
@@ -54,6 +51,13 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
         daemonPort = argv.customPort.toString();
     }
 
+    // Build the refresh command so it works in the case of the pkg'd app which
+    // is expecting a second argument set to internal main script
+    // This is a work-around for pkg recusrive binary issue see https://github.com/vercel/pkg/issues/897
+    // https://github.com/vercel/pkg/issues/897#issuecomment-679200552
+    const execPath = getAppExecPath();
+    const entryPoint = getAppEntrypoint();
+
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
@@ -67,10 +71,10 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
         `-certPath="${kubeConfig['certPath']}"`,
         `-keyPath="${kubeConfig['keyPath']}"`,
         `-configPath=${configService.configPath()}`,
-        `-logPath="${loggerConfigService.daemonLogPath()}"`
+        `-logPath="${loggerConfigService.daemonLogPath()}"`,
+        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`
     ];
     let cwd = process.cwd();
-
 
     // Copy over our executable to a temp file
     let finalDaemonPath = '';
@@ -156,9 +160,27 @@ async function getClusterInfoFromName(clusterTargets: ClusterDetails[], clusterN
     await cleanExit(1, logger);
 }
 
+function isPkgProcess() {
+    const process1 = <any>process;
+    return process1.pkg;
+}
+
 async function copyExecutableToLocalDir(logger: Logger, configPath: string): Promise<string> {
     // Helper function to copy the Daemon executable to a local dir on the file system
     // Ref: https://github.com/vercel/pkg/issues/342
+
+    const WINDOWS_DAEMON_PATH : string = 'kube-go-assets/bctl/daemon/daemon-windows';
+    const LINUX_DAEMON_PATH   : string = 'kube-go-assets/bctl/daemon/daemon-linux';
+    const MACOS_DAEMON_PATH   : string = 'kube-go-assets/bctl/daemon/daemon-macos';
+
+    let prefix = '';
+    if(isPkgProcess()) {
+        // /snapshot/zli/dist/src/handlers/tunnel
+        prefix = path.join(__dirname, '../../../../');
+    } else {
+        // /zli/src/handlers/tunnel
+        prefix = path.join(__dirname, '../../../');
+    }
 
     // First get the parent dir of the config path
     const configFileDir = path.dirname(configPath);
@@ -182,15 +204,15 @@ async function copyExecutableToLocalDir(logger: Logger, configPath: string): Pro
     let daemonExecPath = undefined;
     let finalDaemonPath = undefined;
     if (process.platform === 'win32') {
-        daemonExecPath = path.join(__dirname, WINDOWS_DAEMON_PATH);
+        daemonExecPath = path.join(prefix, WINDOWS_DAEMON_PATH);
 
         finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe');
     }
     else if (process.platform === 'linux' || process.platform === 'darwin') {
         if (process.platform === 'linux') {
-            daemonExecPath = path.join(__dirname, LINUX_DAEMON_PATH);
+            daemonExecPath = path.join(prefix, LINUX_DAEMON_PATH);
         } else {
-            daemonExecPath = path.join(__dirname, MACOS_DAEMON_PATH);
+            daemonExecPath = path.join(prefix, MACOS_DAEMON_PATH);
         }
 
         finalDaemonPath = path.join(configFileDir, 'daemon');
@@ -220,5 +242,23 @@ async function deleteIfExists(pathToFile: string) {
     if (fs.existsSync(pathToFile)) {
         // Delete the file
         fs.unlinkSync(pathToFile);
+    }
+}
+
+function getAppEntrypoint() {
+    const pkgProcess = isPkgProcess();
+
+    if(pkgProcess) {
+        return pkgProcess.entrypoint;
+    } else {
+        return process.argv[1];
+    }
+}
+
+function getAppExecPath() {
+    if(isPkgProcess()) {
+        return process.execPath;
+    } else {
+        return 'npx ts-node';
     }
 }
