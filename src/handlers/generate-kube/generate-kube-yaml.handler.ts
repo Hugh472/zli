@@ -53,7 +53,7 @@ export async function generateKubeYamlHandler(
         await util.promisify(fs.writeFile)(outputFileArg, kubeYaml.yaml);
         logger.info(`Wrote yaml to output file: ${outputFileArg}`);
     } else {
-        logger.info(kubeYaml.yaml);
+        console.log(kubeYaml.yaml);
     }
     await cleanExit(0, logger);
 }
