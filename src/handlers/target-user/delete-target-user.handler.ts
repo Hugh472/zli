@@ -21,13 +21,13 @@ export async function deleteTargetUserHandler(targetUserName: string, policyName
 
     switch (policy.type) {
     case PolicyType.KubernetesTunnel:
-        // Now check if the role exists
+        // Now check if the targetUser exists
         const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
         if (kubernetesPolicyContext.clusterUsers[targetUserName] === undefined) {
-            logger.error(`No role ${targetUserName} exists for policy: ${policyName}`);
+            logger.error(`No target user ${targetUserName} exists for policy: ${policyName}`);
             await cleanExit(1, logger);
         }
-        // Then remove the role from the policy if it exists
+        // Then remove the targetUser from the policy if it exists
         delete kubernetesPolicyContext.clusterUsers[targetUserName];
 
         // And finally update the policy
@@ -41,7 +41,7 @@ export async function deleteTargetUserHandler(targetUserName: string, policyName
             await cleanExit(1, logger);
         }
 
-        // Then remove the role from the policy if it exists
+        // Then remove the targetUser from the policy if it exists
         delete targetUsers[targetUserName];
         targetConnectContext.targetUsers = targetUsers;
 

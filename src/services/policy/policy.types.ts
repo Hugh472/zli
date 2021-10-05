@@ -8,6 +8,12 @@ export interface PolicySummary {
     context: PolicyContext
 }
 
+export interface KubePolicySummary {
+    policy: PolicySummary,
+    targetUsers: string[],
+    targetGroups: string[]
+}
+
 export enum PolicyType {
     TargetConnect = 'TargetConnect',
     OrganizationControls = 'OrganizationControls',
@@ -41,6 +47,7 @@ export interface TargetConnectContext {
 
 export interface KubernetesPolicyContext {
     clusterUsers: { [key: string]: KubernetesPolicyClusterUsers }
+    clusterGroups: { [key: string]: KubernetesPolicyClusterGroup }
     environments: { [key: string]: PolicyEnvironment }
     clusters: { [key: string] : Cluster}
 }
@@ -50,6 +57,10 @@ export interface Cluster {
 }
 
 export interface KubernetesPolicyClusterUsers {
+    name: string;
+}
+
+export interface KubernetesPolicyClusterGroup {
     name: string;
 }
 

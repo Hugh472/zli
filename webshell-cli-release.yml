@@ -30,7 +30,7 @@ phases:
     commands:
       - echo Build started `date`
       - git submodule update --init --recursive --depth 50
-      - npm run release
+      - npm run release-prod
   post_build:
     commands:
       - echo Post build started `date`

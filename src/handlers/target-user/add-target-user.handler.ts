@@ -21,15 +21,15 @@ export async function addTargetUserHandler(targetUserName: string, policyName: s
 
     switch (policy.type) {
     case PolicyType.KubernetesTunnel:
-        // Then add the role to the policy
+        // Then add the targetUser to the policy
         const clusterUserToAdd: KubernetesPolicyClusterUsers = {
             name: targetUserName
         };
         const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
 
-        // If this cluster role exists already
+        // If this cluster targetUser exists already
         if (kubernetesPolicyContext.clusterUsers[targetUserName] !== undefined) {
-            logger.error(`Role ${targetUserName} exists already for policy: ${policyName}`);
+            logger.error(`Target user ${targetUserName} exists already for policy: ${policyName}`);
             await cleanExit(1, logger);
         }
         kubernetesPolicyContext.clusterUsers[targetUserName] = clusterUserToAdd;
@@ -38,7 +38,7 @@ export async function addTargetUserHandler(targetUserName: string, policyName: s
         policy.context = kubernetesPolicyContext;
         break;
     case PolicyType.TargetConnect:
-        // Then add the role to the policy
+        // Then add the targetUser to the policy
         const targetUserToAdd: TargetUser = {
             userName: targetUserName
         };

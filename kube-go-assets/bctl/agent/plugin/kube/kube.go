@@ -20,10 +20,6 @@ import (
 	kuberest "k8s.io/client-go/rest"
 )
 
-const (
-	impersonateGroup = "system:authenticated"
-)
-
 type IKubeAction interface {
 	InputMessageHandler(action string, actionPayload []byte) (string, []byte, error)
 	Closed() bool
@@ -42,7 +38,8 @@ const (
 )
 
 type KubePlugin struct {
-	role                string
+	targetUser          string
+	targetGroups        []string
 	streamOutputChannel chan smsg.StreamMessage
 	serviceAccountToken string
 	kubeHost            string
@@ -52,7 +49,7 @@ type KubePlugin struct {
 	ctx                 context.Context
 }
 
-func NewPlugin(ctx context.Context, logger *lggr.Logger, ch chan smsg.StreamMessage, role string) plgn.IPlugin {
+func NewPlugin(ctx context.Context, logger *lggr.Logger, ch chan smsg.StreamMessage, targetUser string, targetGroups []string) plgn.IPlugin {
 	// First load in our Kube variables
 	config, err := kuberest.InClusterConfig()
 	if err != nil {
@@ -65,7 +62,8 @@ func NewPlugin(ctx context.Context, logger *lggr.Logger, ch chan smsg.StreamMess
 	kubeHost := "https://" + os.Getenv("KUBERNETES_SERVICE_HOST")
 
 	return &KubePlugin{
-		role:                role,
+		targetUser:          targetUser,
+		targetGroups:        targetGroups,
 		streamOutputChannel: ch,
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
@@ -132,12 +130,12 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 
 		switch KubeAction(kubeAction) {
 		case RestApi:
-			a, err = rest.NewRestApiAction(subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role)
+			a, err = rest.NewRestApiAction(subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser)
 		case Exec:
-			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
 		case Stream:
-			a, err = stream.NewStreamAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+			a, err = stream.NewStreamAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
 		default:
 			msg := fmt.Sprintf("unhandled kubeAction: %s", kubeAction)

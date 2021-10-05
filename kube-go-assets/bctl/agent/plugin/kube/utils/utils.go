@@ -15,7 +15,7 @@ func ValidateRequestId(requestIdPassed string, requestIdSaved string) error {
 	return nil
 }
 
-func BuildHttpRequest(kubeHost string, endpoint string, body string, method string, headers map[string][]string, serviceAccountToken string, impersonateUser string, impersonateGroup string) *http.Request {
+func BuildHttpRequest(kubeHost string, endpoint string, body string, method string, headers map[string][]string, serviceAccountToken string, impersonateUser string, targetGroups []string) *http.Request {
 	// Perform the api request
 	kubeApiUrl := kubeHost + endpoint
 	bodyBytesReader := bytes.NewReader([]byte(body))
@@ -32,7 +32,9 @@ func BuildHttpRequest(kubeHost string, endpoint string, body string, method stri
 	// Add our impersonation and token headers
 	req.Header.Set("Authorization", "Bearer "+serviceAccountToken)
 	req.Header.Set("Impersonate-User", impersonateUser)
-	req.Header.Set("Impersonate-Group", impersonateGroup)
+	for _, impersonateGroup := range targetGroups {
+		req.Header.Set("Impersonate-Group", impersonateGroup)
+	}
 
 	// TODO: Figure out a way around this
 	// CA certs can be found here /var/run/secrets/kubernetes.io/serviceaccount/ca.crt

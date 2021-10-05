@@ -18,8 +18,8 @@ type StreamAction struct {
 	requestId           string
 	serviceAccountToken string
 	kubeHost            string
-	impersonateGroup    string
-	role                string
+	targetGroups        []string
+	targetUser          string
 	streamOutputChannel chan smsg.StreamMessage
 	closed              bool
 	doneChannel         chan bool
@@ -35,12 +35,12 @@ const (
 	StreamStop  StreamSubAction = "kube/stream/stop"
 )
 
-func NewStreamAction(ctx context.Context, logger *lggr.Logger, serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*StreamAction, error) {
+func NewStreamAction(ctx context.Context, logger *lggr.Logger, serviceAccountToken string, kubeHost string, targetGroups []string, targetUser string, ch chan smsg.StreamMessage) (*StreamAction, error) {
 	return &StreamAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
-		impersonateGroup:    impersonateGroup,
-		role:                role,
+		targetGroups:        targetGroups,
+		targetUser:          targetUser,
 		streamOutputChannel: ch,
 		doneChannel:         make(chan bool),
 		closed:              false,
@@ -193,5 +193,5 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 }
 
 func (s *StreamAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) *http.Request {
-	return kubeutils.BuildHttpRequest(s.kubeHost, endpoint, body, method, headers, s.serviceAccountToken, s.role, s.impersonateGroup)
+	return kubeutils.BuildHttpRequest(s.kubeHost, endpoint, body, method, headers, s.serviceAccountToken, s.targetUser, s.targetGroups)
 }

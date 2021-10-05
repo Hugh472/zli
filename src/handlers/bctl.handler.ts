@@ -18,7 +18,7 @@ export async function bctlHandler(configService: ConfigService, logger: Logger, 
     }
 
     // Print as what user we are running the command as, and to which container
-    logger.info(`Connected as ${kubeConfig['assumeRole']} to cluster ${kubeConfig['assumeCluster']}`);
+    logger.info(`Connected as ${kubeConfig['targetUser']} to cluster ${kubeConfig['targetCluster']}`);
 
     // Then get the token
     const token = kubeConfig['token'];

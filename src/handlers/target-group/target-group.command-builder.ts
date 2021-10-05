@@ -1,13 +1,13 @@
 import yargs from 'yargs';
 
-export type targetUserArgs = {add: boolean} &
+export type targetGroupArgs = {add: boolean} &
 {delete: boolean} &
-{user: string} &
+{group: string} &
 {policyName: string} &
 {json: boolean}
 
-export function targetUserCmdBuilder(yargs: yargs.Argv<{}>) :
-yargs.Argv<targetUserArgs> {
+export function targetGroupCmdBuilder(yargs: yargs.Argv<{}>) :
+yargs.Argv<targetGroupArgs> {
     return yargs
         .option(
             'add',
@@ -15,7 +15,7 @@ yargs.Argv<targetUserArgs> {
                 type: 'boolean',
                 demandOption: false,
                 alias: 'a',
-                implies: ['user', 'policyName']
+                implies: ['group', 'policyName']
             }
         )
         .option(
@@ -24,11 +24,11 @@ yargs.Argv<targetUserArgs> {
                 type: 'boolean',
                 demandOption: false,
                 alias: 'd',
-                implies: ['user', 'policyName']
+                implies: ['group', 'policyName']
             }
         )
         .conflicts('add', 'delete')
-        .positional('user',
+        .positional('group',
             {
                 type: 'string',
                 default: null,
@@ -51,7 +51,7 @@ yargs.Argv<targetUserArgs> {
                 alias: 'j',
             }
         )
-        .example('$0 targetUser --json', 'List all target users, output as json, pipeable')
-        .example('$0 targetUser --add cool-policy centos', 'Adds the centos user to cool-policy')
-        .example('$0 targetUser -d test-cluster admin', 'Removes the admin user from the test-cluster policy');
+        .example('$0 targetGroup --json', 'List all target users, output as json, pipeable')
+        .example('$0 targetGroup --add cool-policy system:masters', 'Adds the system:master group to cool-policy')
+        .example('$0 targetGroup -d test-cluster system:masters', 'Removes the system:masters group from the test-cluster policy');
 }

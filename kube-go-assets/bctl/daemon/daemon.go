@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
@@ -13,15 +14,16 @@ import (
 
 // Declaring flags as package-accesible variables
 var (
-	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl           string
+	sessionId, authHeader, targetUser, targetClusterId, serviceUrl           string
 	daemonPort, localhostToken, environmentId, certPath, keyPath, configPath string
-	logPath, refreshTokenCommand                                             string
+	logPath, refreshTokenCommand, targetGroupsRaw                            string
+	targetGroups                                                             []string
 )
 
 const (
 	hubEndpoint   = "/api/v1/hub/kube"
 	autoReconnect = true
-	version       = "1.0.0" // TODO: Change this?
+	version       = "$DAEMON_VERSION"
 )
 
 func main() {
@@ -51,11 +53,12 @@ func startDatachannel(logger *lggr.Logger) {
 	// Add our token to our params
 	params := make(map[string]string)
 	params["session_id"] = sessionId
-	params["assume_role"] = assumeRole
-	params["assume_cluster_id"] = assumeClusterId
+	params["target_user"] = targetUser
+	params["target_groups"] = targetGroupsRaw
+	params["target_cluster_id"] = targetClusterId
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel(logger, refreshTokenCommand, configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	dataChannel, _ := dc.NewDataChannel(logger, refreshTokenCommand, configPath, targetUser, targetGroups, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
 
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
 		return
@@ -93,8 +96,9 @@ func parseFlags() error {
 
 	// Our expected flags we need to start
 	flag.StringVar(&serviceUrl, "serviceURL", "", "Service URL to use")
-	flag.StringVar(&assumeRole, "assumeRole", "", "Kube Role to Assume")
-	flag.StringVar(&assumeClusterId, "assumeClusterId", "", "Kube Cluster Id to Connect to")
+	flag.StringVar(&targetUser, "targetUser", "", "Kube Role to Assume")
+	flag.StringVar(&targetGroupsRaw, "targetGroups", "", "Kube Group to Assume")
+	flag.StringVar(&targetClusterId, "targetClusterId", "", "Kube Cluster Id to Connect to")
 	flag.StringVar(&environmentId, "environmentId", "", "Environment Id of cluster we are connecting too")
 
 	// Plugin variables
@@ -109,13 +113,16 @@ func parseFlags() error {
 	flag.Parse()
 
 	// Check we have all required flags
-	if sessionId == "" || authHeader == "" || assumeRole == "" || assumeClusterId == "" || serviceUrl == "" ||
+	if sessionId == "" || authHeader == "" || targetUser == "" || targetGroupsRaw == "" || targetClusterId == "" || serviceUrl == "" ||
 		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" ||
 		logPath == "" || configPath == "" {
 		return fmt.Errorf("missing flags")
-	} else {
-		return nil
 	}
+
+	// Parse target groups
+	targetGroups = strings.Split(targetGroupsRaw, ",")
+
+	return nil
 }
 
 func getLogFilePath() string {

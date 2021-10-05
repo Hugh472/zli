@@ -7,12 +7,13 @@ import { TargetType, TargetStatus, ParsedTargetString, TargetSummary } from './s
 import { ConnectionDetails } from './services/connection/connection.types';
 import { EnvironmentDetails } from './services/environment/environment.types';
 import { GroupSummary } from './services/groups/groups.types';
-import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext } from './services/policy/policy.types';
+import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext, KubePolicySummary } from './services/policy/policy.types';
 import { UserSummary } from './services/user/user.types';
 import { IdentityProvider } from '../webshell-common-ts/auth-service/auth.types';
 
 import util from 'util';
 import fs from 'fs';
+import { KubeConfig } from './services/kube/kube.service';
 
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
@@ -235,9 +236,17 @@ export function getTableOfGroups(groups: GroupSummary[]) : string
     return table.toString();
 }
 
-export function getTableOfTargetUsers(targetUsers: string[]) : string
+export function getTableOfTargetUsers(targetUsers: string[]): string {
+    return getTableOfTargetObject(targetUsers, 'Allowed Target Users');
+}
+
+export function getTableOfTargetGroups(targetUsers: string[]): string {
+    return getTableOfTargetObject(targetUsers, 'Allowed Target Groups');
+}
+
+export function getTableOfTargetObject(targetUsers: string[], headerString: string) : string
 {
-    const header: string[] = ['Allowed Target Users'];
+    const header: string[] = [headerString];
     const nameLength = max(targetUsers.map(u => u.length).concat(16));
     // If the title's length is bigger than the longer user use that as the row length
     const rowLength = nameLength > header[0].length ? nameLength : header[0].length;
@@ -252,19 +261,40 @@ export function getTableOfTargetUsers(targetUsers: string[]) : string
     return table.toString();
 }
 
-export function getTableOfDescribeCluster(policies: PolicySummary[], targetUsers: string[], environmentName : string) : string {
-    const header: string[] = ['Policy', 'Environment', 'Target Users'];
+export function getTableOfKubeStatus(kubeConfig: KubeConfig) : string
+{
+    const title: string = 'Kube Daemon Running';
+    const values = [`Target Cluster: ${kubeConfig['targetCluster']}`, `Target User: ${kubeConfig['targetUser']}`, `Target Group: ${kubeConfig['targetGroups'].join(',')}`, `Local URL: ${kubeConfig['localHost']}:${kubeConfig['localPort']}`];
 
-    const policyLength = max(policies.map(p => p.name.length).concat(16));
-    const targetUserLength = max(targetUsers.map(u => u.length).concat(16));
+    const valuesLength = max(values.map(s => s.length).concat(16));
 
-    const columnWidths = [policyLength + 2, environmentName.length + 2, targetUserLength + 4];
+    // If the title's length is bigger than the longer user use that as the row length (0 index is the longest header)
+    const rowLength = valuesLength > title.length ? valuesLength : title.length;
+    const columnWidths = [rowLength + 2];
 
-    const formattedTargetUsers = targetUsers.join( ', \n');
+    const table = new Table({ head: [title], colWidths: columnWidths });
+    values.forEach( value => {
+        table.push([value]);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfDescribeCluster(policies: KubePolicySummary[]) : string {
+    const header: string[] = ['Policy', 'Target Users', 'Target Group'];
+
+    const policyLength = max(policies.map(p => p.policy.name.length).concat(16));
+    const targetUserLength = max(policies.map(p => p.targetUsers.length).concat(16));
+    const targetGroupLength = max(policies.map(p => p.targetGroups.length).concat(16));
+
+    const columnWidths = [policyLength + 2, targetUserLength + 4, targetGroupLength + 4];
+
 
     const table = new Table({ head: header, colWidths: columnWidths });
     policies.forEach(p => {
-        const row = [p.name, environmentName, formattedTargetUsers];
+        const formattedTargetUsers = p.targetUsers.join(', \n');
+        const formattedTargetGroups = p.targetGroups.join( ', \n');
+        const row = [p.policy.name, formattedTargetUsers, formattedTargetGroups];
         table.push(row);
     });
 
@@ -281,7 +311,7 @@ export function getTableOfPolicies(
     groupMap : {[id: string]: GroupSummary}
 ) : string
 {
-    const header: string[] = ['Name', 'Type', 'Subject', 'Resource', 'Target Users'];
+    const header: string[] = ['Name', 'Type', 'Subject', 'Resource', 'Target Users', 'Target Group'];
     const columnWidths = [24, 19, 26, 28, 29];
 
     const table = new Table({ head: header, colWidths: columnWidths });
@@ -317,6 +347,7 @@ export function getTableOfPolicies(
         // TODO : This should get extended to support other policy types as well
         let formattedResource = '';
         let formattedTargetUsers = '';
+        let formattedTargetGroup = '';
         if (p.type == PolicyType.KubernetesTunnel) {
             const kubernetesPolicyContext = p.context as KubernetesPolicyContext;
             // If this policy gets applied on some environments
@@ -339,7 +370,15 @@ export function getTableOfPolicies(
                 Object.values(kubernetesPolicyContext.clusterUsers).forEach(
                     clusterUser => clusterUsersNames.push(clusterUser.name)
                 );
-                formattedTargetUsers = 'Cluster Users: ' + clusterUsersNames.join( ', \n');
+                formattedTargetUsers = 'Cluster Users: ' + clusterUsersNames.join(', \n');
+            }
+
+            if (kubernetesPolicyContext.clusterGroups) {
+                const clusterGroupsName: string[] = [];
+                Object.values(kubernetesPolicyContext.clusterGroups).forEach(
+                    clusterGroup => clusterGroupsName.push(clusterGroup.name)
+                );
+                formattedTargetGroup = 'Cluster Groups: ' + clusterGroupsName.join(', \n');
             }
         } else if (p.type == PolicyType.TargetConnect) {
             const targetAccessContext = p.context as TargetConnectContext;
@@ -373,7 +412,8 @@ export function getTableOfPolicies(
             p.type,
             formattedSubjects || 'N/A',
             formattedResource || 'N/A',
-            formattedTargetUsers || 'N/A'
+            formattedTargetUsers || 'N/A',
+            formattedTargetGroup || 'N/A'
         ];
         table.push(row);
     });

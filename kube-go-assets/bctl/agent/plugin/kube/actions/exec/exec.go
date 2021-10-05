@@ -32,8 +32,8 @@ const (
 type ExecAction struct {
 	serviceAccountToken string
 	kubeHost            string
-	impersonateGroup    string
-	role                string
+	targetGroups        []string
+	targetUser          string
 	logId               string
 	requestId           string
 	closed              bool
@@ -52,15 +52,15 @@ func NewExecAction(ctx context.Context,
 	logger *lggr.Logger,
 	serviceAccountToken string,
 	kubeHost string,
-	impersonateGroup string,
-	role string,
+	targetGroups []string,
+	targetUser string,
 	ch chan smsg.StreamMessage) (*ExecAction, error) {
 
 	return &ExecAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
-		impersonateGroup:    impersonateGroup,
-		role:                role,
+		targetGroups:        targetGroups,
+		targetUser:          targetUser,
 		closed:              false,
 		streamOutputChannel: ch,
 		execStdinChannel:    make(chan []byte, 10),
@@ -148,8 +148,8 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 
 	// Add our impersonation information
 	config.Impersonate = rest.ImpersonationConfig{
-		UserName: e.role,
-		Groups:   []string{e.impersonateGroup},
+		UserName: e.targetUser,
+		Groups:   e.targetGroups,
 	}
 	config.BearerToken = e.serviceAccountToken
 

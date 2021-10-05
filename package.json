@@ -1,6 +1,6 @@
 {
   "name": "@bastionzero/zli",
-  "version": "5.1.25",
+  "version": "5.1.26",
   "description": "BastionZero cli",
   "repository": {
     "type": "git",
@@ -16,8 +16,10 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc && cd kube-go-assets/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o daemon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
+    "update-agent-version": "VERSION=\"$(cat kube-go-assets/VERSION)\" && sed -i '' 's/\\$DAEMON_VERSION/'\"$VERSION\"'/g' kube-go-assets/bctl/daemon/daemon.go",
     "package": "npm run copy-files && pkg .",
     "release": "npm run build && npm run package",
+    "release-prod": "npm run update-agent-version && npm run release",
     "release-dev": "tsc && npm run package",
     "copy-files": "copyfiles src/**/*.html src/**/*.css kube-go-assets/bctl/daemon/* dist/",
     "clean": "rimraf dist/ && rimraf bin/",

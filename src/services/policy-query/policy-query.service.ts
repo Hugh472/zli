@@ -27,6 +27,7 @@ export class PolicyQueryService extends HttpService
     public CheckKubeProxy(
         clusterName: string,
         clusterUser: string,
+        clusterGroups: string[],
         environmentId: string,
     ): Promise<KubeProxyResponse>
     {
@@ -34,9 +35,10 @@ export class PolicyQueryService extends HttpService
             clusterName: clusterName,
             clusterUser: clusterUser,
             environmentId: environmentId,
+            clusterGroups: clusterGroups,
         };
 
-        return this.FormPost('kube-tunnel', request);
+        return this.Post('kube-tunnel', request);
     }
 
     public GetAllPoliciesForClusterId(

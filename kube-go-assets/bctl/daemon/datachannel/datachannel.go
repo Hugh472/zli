@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	ks "bastionzero.com/bctl/v1/bctl/daemon/keysplitting"
 	kube "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube"
@@ -30,7 +31,8 @@ type DataChannel struct {
 	handshook    bool // aka whether we need to send a syn
 
 	// Kube-specific vars aka to-be-removed
-	role string
+	targetUser   string
+	targetGroups []string
 
 	// Done channel to bubble up messages to kubectl
 	doneChannel chan string
@@ -45,7 +47,8 @@ type DataChannel struct {
 func NewDataChannel(logger *lggr.Logger,
 	refreshTokenCommand string,
 	configPath string,
-	role string,
+	targetUser string,
+	targetGroups []string,
 	serviceUrl string,
 	hubEndpoint string,
 	params map[string]string,
@@ -150,7 +153,8 @@ func (d *DataChannel) sendSyn() error {
 	d.logger.Info("Sending SYN")
 	d.handshook = false
 	payload := map[string]string{
-		"Role": d.role,
+		"TargetUser":   d.targetUser,
+		"TargetGroups": strings.Join(d.targetGroups, ","),
 	}
 	payloadBytes, _ := json.Marshal(payload)
 

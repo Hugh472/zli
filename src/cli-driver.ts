@@ -10,6 +10,12 @@ import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
+import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
+import { EnvironmentDetails } from './services/environment/environment.types';
+import { MixpanelService } from './services/mixpanel/mixpanel.service';
+import { PolicyType } from './services/policy/policy.types';
+import { ClusterDetails } from './services/kube/kube.types';
+
 
 // Handlers
 import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
@@ -20,7 +26,7 @@ import { connectHandler } from './handlers/connect/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets/list-targets.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
-import { startKubeDaemonHandler } from './handlers/tunnel/start-kube-daemon.handler';
+import { startKubeDaemonHandler } from './handlers/tunnel/tunnel.handler';
 import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script/autodiscovery-script-handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { listUsersHandler } from './handlers/user/list-users.handler';
@@ -40,18 +46,25 @@ import { listTargetUsersHandler } from './handlers/target-user/list-target-users
 import { fetchGroupsHandler } from './handlers/group/fetch-groups.handler';
 import { generateBashHandler } from './handlers/generate-bash/generate-bash.handler';
 import { quickstartHandler } from './handlers/quickstart/quickstart-handler';
+import { describeClusterPolicyHandler } from './handlers/describe-cluster-policy/describe-cluster-policy.handler';
+import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy.handler';
+import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler';
+import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler';
+import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
+import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler';
+import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler';
+import { defaultTargetGroupHandler } from './handlers/default-target-group/default-target-group.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
-import { describeClusterHandler } from './handlers/describe-cluster/describe-cluster.handler';
-import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy.handler';
-import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler';
+
+// Cmd builders
 import { loginCmdBuilder } from './handlers/login/login.command-builder';
 import { connectCmdBuilder } from './handlers/connect/connect.command-builder';
 import { tunnelCmdBuilder } from './handlers/tunnel/tunnel.command-builder';
 import { policyCmdBuilder } from './handlers/policy/policy.command-builder';
-import { describeClusterCmdBuilder } from './handlers/describe-cluster/describe-cluster.command-builder';
+import { describeClusterPolicyCmdBuilder } from './handlers/describe-cluster-policy/describe-cluster-policy.command-builder';
 import { disconnectCmdBuilder } from './handlers/disconnect/disconnect.command-builder';
 import { attachCmdBuilder } from './handlers/attach/attach.command-builder';
 import { closeConnectionCmdBuilder } from './handlers/close-connection/close-connection.command-builder';
@@ -60,16 +73,12 @@ import { listConnectionsCmdBuilder } from './handlers/list-connections/list-conn
 import { userCmdBuilder } from './handlers/user/user.command-builder';
 import { groupCmdBuilder } from './handlers/group/group.command-builder';
 import { targetUserCmdBuilder } from './handlers/target-user/target-user.command-builder';
+import { targetGroupCmdBuilder } from './handlers/target-group/target-group.command-builder';
 import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-builder';
 import { autoDiscoveryScriptCommandBuilder } from './handlers/autodiscovery-script/autodiscovery-script.command-builder';
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
-import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
-import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
-import { EnvironmentDetails } from './services/environment/environment.types';
-import { MixpanelService } from './services/mixpanel/mixpanel.service';
-import { PolicyType } from './services/policy/policy.types';
-import { ClusterDetails } from './services/kube/kube.types';
+import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 
 export class CliDriver
 {
@@ -93,9 +102,10 @@ export class CliDriver
         'tunnel',
         'user',
         'targetUser',
-        'describe-cluster',
+        'targetGroup',
+        'describe-cluster-policy',
         'disconnect',
-        'attach-to-connection',
+        'attach',
         'close',
         'list-targets',
         'lt',
@@ -120,9 +130,10 @@ export class CliDriver
         'tunnel',
         'user',
         'targetUser',
-        'describe-cluster',
+        'targetGroup',
+        'describe-cluster-policy',
         'disconnect',
-        'attach-to-connection',
+        'attach',
         'close',
         'list-targets',
         'lt',
@@ -145,9 +156,10 @@ export class CliDriver
         'tunnel',
         'user',
         'targetUser',
-        'describe-cluster',
+        'targetGroup',
+        'describe-cluster-policy',
         'disconnect',
-        'attach-to-connection',
+        'attach',
         'close',
         'list-targets',
         'lt',
@@ -168,6 +180,7 @@ export class CliDriver
         'group',
         'user',
         'targetUser',
+        'targetGroup',
         'policy',
         'quickstart'
     ];
@@ -270,15 +283,25 @@ export class CliDriver
                     if (argv.tunnelString) {
                         const [connectUser, connectCluster] = argv.tunnelString.split('@');
 
-                        await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
+                        await startKubeDaemonHandler(argv, connectUser, argv.targetGroup, connectCluster, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
                     } else {
                         await kubeStatusHandler(this.configService, this.logger);
                     }
                 }
             )
             .command(
+                'default-targetGroup',
+                'Update the default target group',
+                (yargs) => {
+                    return defaultTargetGroupCmdBuilder(yargs);
+                },
+                async (argv) => {
+                    await defaultTargetGroupHandler(this.configService, this.logger, argv);
+                }
+            )
+            .command(
                 ['policy [type]'],
-                false, // This removes the command from the help text
+                'List the available policies and their',
                 (yargs) => {
                     return policyCmdBuilder(yargs, this.policyTypeChoices);
                 },
@@ -287,13 +310,13 @@ export class CliDriver
                 }
             )
             .command(
-                'describe-cluster <clusterName>',
-                'Get detailed information about a certain cluster',
+                'describe-cluster-policy <clusterName>',
+                'Get detailed information about what policies apply to a certain cluster',
                 (yargs) => {
-                    return describeClusterCmdBuilder(yargs);
+                    return describeClusterPolicyCmdBuilder(yargs);
                 },
                 async (argv) => {
-                    await describeClusterHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs);
+                    await describeClusterPolicyHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets);
                 }
             )
             .command(
@@ -307,7 +330,7 @@ export class CliDriver
                 }
             )
             .command(
-                'attach-to-connection <connectionId>',
+                'attach <connectionId>',
                 'Attach to an open zli connection',
                 (yargs) => {
                     return attachCmdBuilder(yargs);
@@ -358,7 +381,7 @@ export class CliDriver
             )
             .command(
                 ['user [policyName] [idpEmail]'],
-                false, // This removes the command from the help text
+                'List the available users, add them, or remove them from policies',
                 (yargs) => {
                     return userCmdBuilder(yargs);
                 },
@@ -377,7 +400,7 @@ export class CliDriver
             )
             .command(
                 ['group [policyName] [groupName]'],
-                false, // This removes the command from the help text
+                'List the available identity provider groups, add them, or remove them from policies',
                 (yargs) => {
                     return groupCmdBuilder(yargs);
                 },
@@ -396,7 +419,7 @@ export class CliDriver
             )
             .command(
                 ['targetUser <policyName> [user]'],
-                false, // This removes the command from the help text
+                'List the available targetUsers, add them, or remove them from policies',
                 (yargs) => {
                     return targetUserCmdBuilder(yargs);
                 },
@@ -407,6 +430,26 @@ export class CliDriver
                         await deleteTargetUserHandler(argv.user, argv.policyName, this.configService, this.logger);
                     } else if (!(!!argv.add && !!argv.delete)) {
                         await listTargetUsersHandler(this.configService, this.logger, argv, argv.policyName);
+                    } else {
+                        this.logger.error(`Invalid flags combination. Please see help.`);
+                        await cleanExit(1, this.logger);
+                    }
+                }
+            )
+            .command(
+                ['targetGroup <policyName> [group]'],
+                'List the available targetGroups, add them, or remove them from policies',
+                (yargs) => {
+                    return targetGroupCmdBuilder(yargs);
+                },
+                async (argv) => {
+                    if (!! argv.add) {
+                        await addTargetGroupHandler(argv.group, argv.policyName, this.configService, this.logger);
+                    }
+                    else if (!!argv.delete) {
+                        await deleteTargetGroupHandler(argv.group, argv.policyName, this.configService, this.logger);
+                    } else if (!(!!argv.add && !!argv.delete)) {
+                        await listTargetGroupHandler(this.configService, this.logger, argv, argv.policyName);
                     } else {
                         this.logger.error(`Invalid flags combination. Please see help.`);
                         await cleanExit(1, this.logger);

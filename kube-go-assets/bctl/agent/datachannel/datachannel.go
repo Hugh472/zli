@@ -31,11 +31,13 @@ type DataChannel struct {
 	keysplitting ks.IKeysplitting
 
 	// Kube-specific vars
-	role string
+	targetUser   string
+	targetGroups []string
 }
 
 func NewDataChannel(logger *lggr.Logger,
-	role string,
+	targetUser string,
+	targetGroups []string,
 	serviceUrl string,
 	hubEndpoint string,
 	params map[string]string,
@@ -63,7 +65,8 @@ func NewDataChannel(logger *lggr.Logger,
 	ret := &DataChannel{
 		websocket:    wsClient,
 		keysplitting: keysplitter,
-		role:         role,
+		targetUser:   targetUser,
+		targetGroups: targetGroups,
 		logger:       logger, // TODO: get debug level from flag
 		ctx:          ctx,
 	}
@@ -202,7 +205,7 @@ func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
 		}()
 
 		subLogger := d.logger.GetPluginLogger(plugin)
-		d.plugin = kube.NewPlugin(d.ctx, subLogger, ch, d.role)
+		d.plugin = kube.NewPlugin(d.ctx, subLogger, ch, d.targetUser, d.targetGroups)
 		d.logger.Info("Plugin started!")
 		return nil
 	default:

@@ -64,8 +64,10 @@ export async function generateKubeconfigHandler(
                     localHost: 'localhost',
                     localPort: await localPort,
                     localPid: null,
-                    assumeRole: null,
-                    assumeCluster: null
+                    targetUser: null,
+                    targetGroups: null,
+                    targetCluster: null,
+                    defaultTargetGroups: null
                 };
                 configService.setKubeConfig(kubeConfig);
                 resolve();

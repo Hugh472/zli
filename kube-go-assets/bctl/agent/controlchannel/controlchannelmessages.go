@@ -1,9 +1,10 @@
 package controlchannel
 
 type NewDatachannelMessage struct {
-	ConnectionId string `json:"connectionId"`
-	Role         string `json:"role"`
-	Token        string `json:"token"`
+	ConnectionId string   `json:"connectionId"`
+	TargetUser   string   `json:"targetUser"`
+	TargetGroups []string `json:"targetGroups"`
+	Token        string   `json:"token"`
 }
 
 type AliveCheckClusterToBastionMessage struct {

@@ -13,18 +13,18 @@ import (
 type RestApiAction struct {
 	serviceAccountToken string
 	kubeHost            string
-	impersonateGroup    string
-	role                string
+	targetGroups        []string
+	targetUser          string
 	closed              bool
 	logger              *lggr.Logger
 }
 
-func NewRestApiAction(logger *lggr.Logger, serviceAccountToken string, kubeHost string, impersonateGroup string, role string) (*RestApiAction, error) {
+func NewRestApiAction(logger *lggr.Logger, serviceAccountToken string, kubeHost string, targetGroups []string, targetUser string) (*RestApiAction, error) {
 	return &RestApiAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
-		impersonateGroup:    impersonateGroup,
-		role:                role,
+		targetGroups:        targetGroups,
+		targetUser:          targetUser,
 		logger:              logger,
 		closed:              false,
 	}, nil
@@ -81,5 +81,5 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 }
 
 func (r *RestApiAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) *http.Request {
-	return kubeutils.BuildHttpRequest(r.kubeHost, endpoint, body, method, headers, r.serviceAccountToken, r.role, r.impersonateGroup)
+	return kubeutils.BuildHttpRequest(r.kubeHost, endpoint, body, method, headers, r.serviceAccountToken, r.targetUser, r.targetGroups)
 }

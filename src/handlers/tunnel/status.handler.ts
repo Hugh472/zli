@@ -1,6 +1,7 @@
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
+import { getTableOfKubeStatus } from '../../../src/utils';
 
 export async function kubeStatusHandler(
     configService: ConfigService,
@@ -23,9 +24,8 @@ export async function kubeStatusHandler(
 
         // Pull the info from the config and show it to the user
         logger.info(`Kube Daemon running:`);
-        logger.info(`    - Assume Cluster: ${kubeConfig['assumeCluster']}`);
-        logger.info(`    - Assume Role: ${kubeConfig['assumeRole']}`);
-        logger.info(`    - Local URL: ${kubeConfig['localHost']}:${kubeConfig['localPort']}`);
+        const tableString = getTableOfKubeStatus(kubeConfig);
+        console.log(tableString);
     }
     await cleanExit(0, logger);
 }

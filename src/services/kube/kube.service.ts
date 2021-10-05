@@ -12,8 +12,10 @@ export interface KubeConfig {
     localHost: string,
     localPort: number,
     localPid: number,
-    assumeRole: string,
-    assumeCluster: string,
+    targetUser: string,
+    targetGroups: string[],
+    targetCluster: string,
+    defaultTargetGroups: string[]
 }
 
 export class KubeService extends HttpService
@@ -87,7 +89,9 @@ export function getDefaultKubeConfig(): KubeConfig {
         localHost: null,
         localPort: null,
         localPid: null,
-        assumeRole: null,
-        assumeCluster: null,
+        targetUser: null,
+        targetGroups: null,
+        targetCluster: null,
+        defaultTargetGroups: null,
     };
 }

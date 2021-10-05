@@ -94,7 +94,7 @@ func startDatachannel(logger *lggr.Logger, message cc.NewDatachannelMessage) {
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel(logger, message.Role, serviceUrl, hubEndpoint, params, headers, datachannelTargetSelectHandler, autoReconnect)
+	dc.NewDataChannel(logger, message.TargetUser, message.TargetGroups, serviceUrl, hubEndpoint, params, headers, datachannelTargetSelectHandler, autoReconnect)
 }
 
 func controlchannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {

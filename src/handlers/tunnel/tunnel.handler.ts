@@ -13,25 +13,15 @@ import { tunnelArgs } from './tunnel.command-builder';
 const { spawn } = require('child_process');
 
 
-export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
-    const clusterTarget = await getClusterInfoFromName(await clusterTargets, assumeCluster, logger);
+    const clusterTarget = await getClusterInfoFromName(await clusterTargets, targetCluster, logger);
     if (clusterTarget.status != KubeClusterStatus.Online) {
         logger.error('Target cluster is offline!');
         await cleanExit(1, logger);
     }
 
-    // Make our API client
-    const policyService = new PolicyQueryService(configService, logger);
-
-    // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.CheckKubeProxy(assumeCluster, assumeUser, clusterTarget.environmentId);
-    if (response.allowed != true) {
-        logger.error(`You do not have the correct policy setup to access ${assumeCluster} as ${assumeUser}`);
-        await cleanExit(1, logger);
-    }
-
-    // Check if we've already started a process
+    // Open up our zli kubeConfig
     const kubeConfig = configService.getKubeConfig();
 
     // Make sure the user has created a kubeConfig before
@@ -40,7 +30,22 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
         await cleanExit(1, logger);
     }
 
+    // If they have not passed targetGroups attempt to use the default ones stored
+    if (targetGroups.length == 0 && kubeConfig['defaultTargetGroups'] !== null) {
+        targetGroups = kubeConfig['defaultTargetGroups'];
+    }
 
+    // Make our API client
+    const policyService = new PolicyQueryService(configService, logger);
+
+    // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
+    const response = await policyService.CheckKubeProxy(targetCluster, targetUser, targetGroups, clusterTarget.environmentId);
+    if (response.allowed != true) {
+        logger.error(`You do not have the correct policy setup to access ${targetCluster} as ${targetUser} in the group(s): ${targetGroups}`);
+        await cleanExit(1, logger);
+    }
+
+    // Check if we've already started a process
     if (kubeConfig['localPid'] != null) {
         killDaemon(configService);
     }
@@ -61,8 +66,9 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
-        `-assumeRole=${assumeUser}`,
-        `-assumeClusterId=${clusterTarget.id}`,
+        `-targetUser=${targetUser}`,
+        `-targetGroups=${targetGroups}`,
+        `-targetClusterId=${clusterTarget.id}`,
         `-daemonPort=${daemonPort}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
@@ -102,12 +108,13 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
             // Now save the Pid so we can kill the process next time we start it
             kubeConfig['localPid'] = daemonProcess.pid;
 
-            // Save the info about assume cluster and role
-            kubeConfig['assumeRole'] = assumeUser;
-            kubeConfig['assumeCluster'] = assumeCluster;
+            // Save the info about target user and group
+            kubeConfig['targetUser'] = targetUser;
+            kubeConfig['targetGroups'] = targetGroups;
+            kubeConfig['targetCluster'] = targetCluster;
             configService.setKubeConfig(kubeConfig);
 
-            logger.info(`Started kube daemon at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${assumeUser}@${assumeCluster}`);
+            logger.info(`Started kube daemon at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
             process.exit(0);
         } else {
             // Start our daemon process, but stream our stdio to the user (pipe)

@@ -1,8 +1,8 @@
 import yargs from 'yargs';
 
-type describeClusterArgs = {clusterName : string};
+type describeClusterPolicyArgs = {clusterName : string};
 
-export function describeClusterCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<describeClusterArgs> {
+export function describeClusterPolicyCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<describeClusterPolicyArgs> {
     return yargs
         .positional('clusterName', {
             type: 'string',
