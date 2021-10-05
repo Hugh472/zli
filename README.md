@@ -9,26 +9,30 @@ The zli is a cli client for interacting with the Bastionzero SaaS
 ## Install
 
 ```
-npm i -g @bastionzero/zli
+brew tap bastionzero/tap
+brew install bastionzero/tap/zli
 ```
 
 ## Developer processes
 
 ### Build and test
+
 ```
 npm run start -- <cmd> [args] --flag flagArg
 ```
 
 ### Run against stage or dev
+
 The following command is hidden from the help menu:
+
 ```
 npm run start -- <cmd> [args] --configName <prod | stage | dev>
 zli --configName <prod | stage | dev>
 ```
 
- ## Release Process
+## Release Process
 
- We use [pkg](https://github.com/vercel/pkg) to package the node.js application into a single executable that can be run even without node or any npm dependencies are installed. The target executables can be configured in the `package.json` file for different OSs as documented [here](https://github.com/vercel/pkg#targets) but the default is to build windows, mac, and linux executable for the current node.js version and arch. Use `npm run release` to package the app and output executables to a `bin` directory.
+We use [pkg](https://github.com/vercel/pkg) to package the node.js application into a single executable that can be run even without node or any npm dependencies are installed. The target executables can be configured in the `package.json` file for different OSs as documented [here](https://github.com/vercel/pkg#targets) but the default is to build windows, mac, and linux executable for the current node.js version and arch. Use `npm run release` to package the app and output executables to a `bin` directory.
 
 ### Release Versioning
 
@@ -43,6 +47,7 @@ Where {version} is the version that is defined in the `package.json` file. This 
 ## Installing a release
 
 The latest releases can be found here:
+
 ```
 Mac:        download-zli.bastionzero.com/release/latest/bin/zli-macos
 Linux:      download-zli.bastionzero.com/release/latest/bin/zli-linux
@@ -50,21 +55,24 @@ Windows:    download-zli.bastionzero.com/release/latest/bin/zli-win.exe
 ```
 
 ### Mac users:
- - download the executable
- - `chmod +x` the executable
- - Run the program once and see a warning from Apple
- - Go to `System Preferences > Security & Privacy > General > Allow zli`
- - Run the executable again and confirm for Apple
+
+- download the executable
+- `chmod +x` the executable
+- Run the program once and see a warning from Apple
+- Go to `System Preferences > Security & Privacy > General > Allow zli`
+- Run the executable again and confirm for Apple
 
 Minor releases generating warnings for users to update their zli. Major releases
 will cause all lower major versions to error.
 
 ### Linux users:
- - download the executable
- - `chmod +x` the executable
+
+- download the executable
+- `chmod +x` the executable
 
 ### Windows users:
- - Run the executable from the command line, even though you can technically click it
+
+- Run the executable from the command line, even though you can technically click it
 
 ## Running zli
 
