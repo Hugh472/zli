@@ -109,6 +109,6 @@ users:
     if (argv.outputFile) {
         await util.promisify(fs.writeFile)(argv.outputFile,clientKubeConfig);
     } else {
-        logger.info(clientKubeConfig);
+        console.log(clientKubeConfig);
     }
 }
