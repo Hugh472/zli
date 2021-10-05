@@ -7,6 +7,7 @@ import { generateKubeArgs } from './generate-kube.command-builder';
 const path = require('path');
 const fs = require('fs');
 const pem = require('pem');
+const findPort = require('find-open-port');
 
 export async function generateKubeconfigHandler(
     argv: yargs.Arguments<generateKubeArgs>,
@@ -53,8 +54,6 @@ export async function generateKubeconfigHandler(
                 const randtoken = require('rand-token');
                 const token = randtoken.generate(128);
 
-                // Find an open port, define it here as if the config has already been created, this codeblock will never be executed
-                const findPort = require('find-open-port');
                 const localPort = await findPort();
 
                 // Now save the path in the configService
