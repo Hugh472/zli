@@ -48,7 +48,7 @@ export class ConfigService implements ConfigInterface {
                 clientSecret: undefined,
                 serviceUrl:  appName ? this.getServiceUrl(appName) : undefined,
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
-                callbackListenerPort: 3000,
+                callbackListenerPort: 0, // if the port is 0, the oauth.service will ask the OS for available port
                 mixpanelToken: undefined,
                 idp: undefined,
                 sessionId: undefined,

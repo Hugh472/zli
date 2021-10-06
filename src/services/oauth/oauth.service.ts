@@ -1,4 +1,4 @@
-import { AuthorizationParameters, Client, custom, errors, generators, Issuer, TokenSet, UserinfoResponse } from 'openid-client';
+import { AuthorizationParameters, Client, ClientMetadata, custom, errors, generators, Issuer, TokenSet } from 'openid-client';
 import open from 'open';
 import { IDisposable } from '../../../webshell-common-ts/utility/disposable';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
@@ -11,6 +11,10 @@ import { logoutHtml } from './templates/logout';
 import { cleanExit } from '../../handlers/clean-exit.handler';
 import { parse as QueryStringParse } from 'query-string';
 import { parseIdpType } from '../../utils';
+
+const findPort = require('find-open-port');
+
+import { check as checkTcpPort } from 'tcp-port-used';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -25,6 +29,7 @@ export class OAuthService implements IDisposable {
     }
 
     private setupCallbackListener(
+        callbackPort: number,
         callback: (tokenSet: TokenSet) => void,
         onListen: () => void,
         resolve: (value?: void | PromiseLike<void>) => void
@@ -58,7 +63,7 @@ export class OAuthService implements IDisposable {
                 await this.configService.loginSetup(provider);
 
                 // Setup the oidc client for a new login
-                await this.setupClient();
+                await this.setupClient(callbackPort);
                 this.codeVerifier = generators.codeVerifier();
                 const code_challenge = generators.codeChallenge(this.codeVerifier);
 
@@ -88,7 +93,7 @@ export class OAuthService implements IDisposable {
                 const params = this.oidcClient.callbackParams(req);
 
                 const tokenSet = await this.oidcClient.callback(
-                    `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
+                    `http://${this.host}:${callbackPort}/login-callback`,
                     params,
                     { code_verifier: this.codeVerifier, nonce: this.nonce });
 
@@ -120,38 +125,38 @@ export class OAuthService implements IDisposable {
             }
         };
 
-        this.logger.debug(`Setting up callback listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
+        this.logger.debug(`Setting up callback listener at http://${this.host}:${callbackPort}/`);
         this.server = http.createServer(requestListener);
         // Port binding failure will produce error event
-        this.server.on('error', async () => {
-            this.logger.error('Log in listener could not bind to port');
-            this.logger.warn(`Please make sure port ${this.configService.callbackListenerPort()} is open/whitelisted`);
-            this.logger.warn('To edit callback port please run: \'zli config\'');
+        this.server.on('error', async (err) => {
+            this.logger.error(`Error occurred in spawning callback server: ${err}`);
             await cleanExit(1, this.logger);
         });
         // open browser after successful port binding
         this.server.on('listening', onListen);
-        this.server.listen(this.configService.callbackListenerPort(), this.host, () => {});
+        this.server.listen(callbackPort, this.host, () => { });
     }
 
-    // The client will make the log-in requests with the following parameters
-    private async setupClient(): Promise<void>
+    private async setupClient(callbackPort? : number): Promise<void>
     {
-        // If the client has already been set
-        if(this.oidcClient !== undefined)
-            return;
         const authority = await Issuer.discover(this.configService.authUrl());
-        this.oidcClient = new authority.Client({
+
+        const clientMetadata : ClientMetadata = {
             client_id: this.configService.clientId(),
-            redirect_uris: [`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`],
             response_types: ['code'],
             token_endpoint_auth_method: 'client_secret_basic',
             client_secret: this.configService.clientSecret()
-        });
+        };
+        if (callbackPort) {
+            clientMetadata.redirect_uris = [`http://${this.host}:${callbackPort}/login-callback`];
+        }
+        const client = new authority.Client(clientMetadata);
 
         // set clock skew
         // ref: https://github.com/panva/node-openid-client/blob/77d7c30495df2df06c407741500b51498ba61a94/docs/README.md#customizing-clock-skew-tolerance
-        this.oidcClient[custom.clock_tolerance] = 5 * 60; // 5 minute clock skew allowed for verification
+        client[custom.clock_tolerance] = 5 * 60; // 5 minute clock skew allowed for verification
+
+        this.oidcClient = client;
     }
 
     private getAuthUrl(code_challenge: string) : string
@@ -189,15 +194,34 @@ export class OAuthService implements IDisposable {
         return !tokenSet.expired();
     }
 
-    public login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void>
-    {
+    public async login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void> {
+        const portToCheck = this.configService.callbackListenerPort();
+        let portToUse : number;
+        if (portToCheck == 0) {
+            // Find open port
+            portToUse = await findPort();
+        } else {
+            // User supplied custom port in configuration
+            // Check to see if the port is in use and fail early if we
+            // cannot bind
+            const isPortInUse = await checkTcpPort(portToCheck, this.host);
+            if (isPortInUse) {
+                this.logger.error(`Log in listener could not bind to port ${portToCheck}`);
+                this.logger.warn(`Please make sure port ${portToCheck} is open/whitelisted`);
+                this.logger.warn('To edit callback port please run: \'zli configure\' and change \'callbackListenerPort\' in your config file');
+                await cleanExit(1, this.logger);
+            } else {
+                portToUse = portToCheck;
+            }
+        }
+
         this.nonce = nonce;
         return new Promise<void>(async (resolve, reject) => {
             setTimeout(() => reject(this.logger.error('Login timeout reached')), 60 * 1000);
 
-            const openBrowser = async () => await open(`${this.configService.serviceUrl()}authentication/login?zliLogin=true`);
+            const openBrowser = async () => await open(`${this.configService.serviceUrl()}authentication/login?zliLogin=true&port=${portToUse}`);
 
-            this.setupCallbackListener(callback, openBrowser, resolve);
+            this.setupCallbackListener(portToUse, callback, openBrowser, resolve);
         });
     }
 
@@ -214,15 +238,6 @@ export class OAuthService implements IDisposable {
             refreshedTokenSet.refresh_token = refreshToken;
 
         return refreshedTokenSet;
-    }
-
-    // If you need the token.sub this is where you can get it
-    public async userInfo(): Promise<UserinfoResponse>
-    {
-        await this.setupClient();
-        const tokenSet = this.configService.tokenSet();
-        const userInfo = await this.oidcClient.userinfo(tokenSet);
-        return userInfo;
     }
 
     // Returns the current OAuth idtoken. Refreshes it before returning if expired
