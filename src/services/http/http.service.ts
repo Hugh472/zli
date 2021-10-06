@@ -10,7 +10,7 @@ export class HttpService {
     private baseUrl: string;
     protected configService: ConfigService;
     private authorized: boolean;
-    private logger: Logger;
+    protected logger: Logger;
 
     constructor(configService: ConfigService, serviceRoute: string, logger: Logger, authorized: boolean = true) {
         this.configService = configService;
@@ -36,8 +36,8 @@ export class HttpService {
         });
     }
 
-    private setHeaders() {
-        const headers: Dictionary<string> = {};
+    private setHeaders(extraHeaders? : Dictionary<string>) {
+        const headers: Dictionary<string> = extraHeaders ?? {};
 
         if (this.authorized) headers['Authorization'] = this.configService.getAuthHeader();
         if (this.authorized && this.configService.sessionId()) headers['X-Session-Id'] = this.configService.sessionId();
@@ -84,8 +84,8 @@ export class HttpService {
         }, new FormData());
     }
 
-    protected async Get<TResp>(route: string, queryParams: Dictionary<string>): Promise<TResp> {
-        this.setHeaders();
+    protected async Get<TResp>(route: string, queryParams: Dictionary<string>, extraHeaders? : Dictionary<string>): Promise<TResp> {
+        this.setHeaders(extraHeaders);
 
         try {
             const resp: TResp = await this.httpClient.get(
@@ -101,8 +101,8 @@ export class HttpService {
         }
     }
 
-    protected async Post<TReq, TResp>(route: string, body: TReq): Promise<TResp> {
-        this.setHeaders();
+    protected async Post<TReq, TResp>(route: string, body: TReq, extraHeaders? : Dictionary<string>): Promise<TResp> {
+        this.setHeaders(extraHeaders);
 
         try {
             const resp: TResp = await this.httpClient.post(
