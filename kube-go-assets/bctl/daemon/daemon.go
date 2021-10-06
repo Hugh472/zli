@@ -23,7 +23,7 @@ var (
 const (
 	hubEndpoint   = "/api/v1/hub/kube"
 	autoReconnect = true
-	version       = "$DAEMON_VERSION"
+	version       = "2.0.0"
 )
 
 func main() {
