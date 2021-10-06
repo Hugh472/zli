@@ -31,7 +31,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     }
 
     // If they have not passed targetGroups attempt to use the default ones stored
-    if (targetGroups.length == 0 && kubeConfig['defaultTargetGroups'] !== null) {
+    if (targetGroups.length == 0 && kubeConfig['defaultTargetGroups'] != null) {
         targetGroups = kubeConfig['defaultTargetGroups'];
     }
 
