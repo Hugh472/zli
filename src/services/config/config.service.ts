@@ -171,7 +171,12 @@ export class ConfigService implements ConfigInterface {
 
     public me(): UserSummary
     {
-        return this.config.get('whoami');
+        const whoami = this.config.get('whoami');
+        if (whoami) {
+            return whoami;
+        } else {
+            throw new Error('User information is missing. You need to log in, please run \'zli login --help\'');
+        }
     }
 
     public setMe(me: UserSummary): void {
