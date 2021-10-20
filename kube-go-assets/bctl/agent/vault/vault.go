@@ -53,7 +53,23 @@ func LoadVault() (*Vault, error) {
 
 		// Get our secrets object
 		if secret, err := secretsClient.Get(context.Background(), secretName, metaV1.GetOptions{}); err != nil {
-			return &Vault{}, fmt.Errorf("error grabbing secrets: %v", err.Error())
+			// If there is no secret there, create it
+			secretData := map[string][]byte{
+				"secret": []byte("coolbeans"),
+			}
+			object := metaV1.ObjectMeta{Name: secretName}
+			secret := &coreV1.Secret{Data: secretData, ObjectMeta: object}
+
+			if _, err := secretsClient.Create(context.TODO(), secret, metaV1.CreateOptions{}); err != nil {
+				return &Vault{}, fmt.Errorf("error creating secret: %v", err.Error())
+			}
+
+			return &Vault{
+				client: secretsClient,
+				secret: secret,
+				Data:   SecretData{},
+			}, nil
+
 		} else {
 			if data, ok := secret.Data[keyConfig]; ok {
 				if secretData, err := DecodeToSecretConfig(data); err != nil {
