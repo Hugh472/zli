@@ -9,7 +9,7 @@ export class PolicyQueryService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/policy-query', logger);
+        super(configService, 'api/v1/policy-query/', logger);
     }
 
     public ListTargetOSUsers(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<GetTargetPolicyResponse>

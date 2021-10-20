@@ -70,18 +70,8 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
 		if p, ok := payload["keysplittingPayload"].(map[string]interface{}); ok {
 			switch p["action"] {
-			case "kube/restapi":
-				return "RequestDaemonToBastion", nil
-			case "kube/exec/start":
-				return "StartExecDaemonToBastion", nil
-			case "kube/exec/input":
-				return "StdinDaemonToBastion", nil
-			case "kube/exec/resize":
-				return "ResizeTerminalDaemonToBastion", nil
-			case "kube/stream/start":
-				return "RequestHttpStreamDaemonToBastion", nil
-			case "kube/stream/stop":
-				return "StopHttpStreamDaemonToBastion", nil
+			case "kube/restapi/request", "kube/exec/start", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop":
+				return "RequestDaemonToBastionV1", nil
 			}
 		} else {
 			return "", fmt.Errorf("fail on expected payload: %v", payload["keysplittingPayload"])

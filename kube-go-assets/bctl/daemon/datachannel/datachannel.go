@@ -158,7 +158,7 @@ func (d *DataChannel) sendSyn() error {
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
-	action := "kube/restapi" // placeholder
+	action := "kube/restapi/request" // placeholder
 	if synMessage, err := d.keysplitting.BuildSyn(action, payloadBytes); err != nil {
 		rerr := fmt.Errorf("error building Syn: %s", err)
 		d.logger.Error(rerr)

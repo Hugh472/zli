@@ -13,10 +13,6 @@ import (
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
-const (
-	action = "kube/restapi"
-)
-
 type RestApiAction struct {
 	requestId             string
 	logId                 string
@@ -72,7 +68,7 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 
 	payloadBytes, _ := json.Marshal(payload)
 	r.RequestChannel <- plgn.ActionWrapper{
-		Action:        action,
+		Action:        kuberest.RestRequest,
 		ActionPayload: payloadBytes,
 	}
 

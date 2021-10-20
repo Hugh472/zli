@@ -10,6 +10,11 @@ import (
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
+const (
+	RestResponse = "kube/restapi/response"
+	RestRequest  = "kube/restapi/request"
+)
+
 type RestApiAction struct {
 	serviceAccountToken string
 	kubeHost            string
@@ -77,7 +82,7 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	}
 	responsePayloadBytes, _ := json.Marshal(responsePayload)
 
-	return action, responsePayloadBytes, nil
+	return RestResponse, responsePayloadBytes, nil
 }
 
 func (r *RestApiAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) *http.Request {

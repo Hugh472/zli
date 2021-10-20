@@ -1,6 +1,6 @@
 package restapi
 
-// For "kube/restapi" actions
+// For "kube/restapi/..." actions
 
 type KubeRestApiActionPayload struct {
 	Endpoint        string              `json:"endpoint"`
