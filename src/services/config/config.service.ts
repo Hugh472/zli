@@ -216,6 +216,10 @@ export class ConfigService implements ConfigInterface {
         return this.config.get('kubeConfig');
     }
 
+    public getBastionUrl() {
+        return this.config.get('serviceUrl');
+    }
+
     public setKubeConfig(kubeConfig: KubeConfig) {
         this.config.set('kubeConfig', kubeConfig);
     }

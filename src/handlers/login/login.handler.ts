@@ -1,7 +1,6 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { OAuthService } from '../../services/oauth/oauth.service';
-import { cleanExit } from '../clean-exit.handler';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import qrcode from 'qrcode';
@@ -10,32 +9,49 @@ import { MfaActionRequired } from '../../services/mfa/mfa.types';
 import { UserService } from '../../services/user/user.service';
 import yargs from 'yargs';
 import { loginArgs } from './login.command-builder';
+import { UserSummary } from '../../services/user/user.types';
+import { UserRegisterResponse } from '../../../src/services/user/user.messages';
+import prompts, { PromptObject } from 'prompts';
 
-function requestMfaCode(): Promise<string> {
-    const readline = require('readline');
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    return new Promise(resolve => rl.question('Enter MFA code from authenticator app and type Enter: ',
-        (answer: string) => {
-            rl.close();
-            resolve(answer);
-        }));
+export interface LoginResult {
+    userSummary: UserSummary;
+    userRegisterResponse: UserRegisterResponse;
 }
 
-export async function loginHandler(configService: ConfigService, logger: Logger, argv: yargs.Arguments<loginArgs>, keySplittingService: KeySplittingService) {
+function interactiveTOTPMFA(): Promise<string | undefined> {
+    return new Promise<string | undefined>(async (resolve, _) => {
+        const onCancel = () => resolve(undefined);
+        const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
+        await prompts({
+            type: 'text',
+            name: 'value',
+            message: 'Enter MFA token:',
+            validate: value => value ? true : 'Value is required. Use CTRL-C to exit'
+        }, { onSubmit: onSubmit, onCancel: onCancel });
+    });
+}
+
+function interactiveResetMfa(): Promise<string> {
+    return new Promise<string | undefined>(async (resolve, _) => {
+        const onCancel = () => resolve(undefined);
+        const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
+        await prompts({
+            type: 'text',
+            name: 'value',
+            message: 'Enter MFA code from authenticator app:',
+            validate: value => value ? true : 'Value is required. Use CTRL-C to exit'
+        }, { onSubmit: onSubmit, onCancel: onCancel });
+    });
+}
+
+export async function login(keySplittingService: KeySplittingService, configService: ConfigService, logger: Logger, mfaToken?: string): Promise<LoginResult | undefined> {
     // Clear previous log in info
     configService.logout();
     await keySplittingService.generateKeysplittingLoginData();
 
     // Can only create oauth service after loginSetup completes
     const oAuthService = new OAuthService(configService, logger);
-    if(! oAuthService.isAuthenticated())
-    {
-        logger.info('Login required, opening browser');
-
+    if (!oAuthService.isAuthenticated()) {
         // Create our Nonce
         const nonce = keySplittingService.createNonce();
 
@@ -53,32 +69,36 @@ export async function loginHandler(configService: ConfigService, logger: Logger,
 
     // Check if we must MFA and act upon it
     const mfaService = new MfaService(configService, logger);
-    switch(registerResponse.mfaActionRequired)
-    {
+    switch (registerResponse.mfaActionRequired) {
     case MfaActionRequired.NONE:
         break;
     case MfaActionRequired.TOTP:
-        if(! argv.mfa)
-        {
-            logger.warn('MFA token required for this account');
-            logger.info('Please try logging in again with \'--mfa <token>\' flag');
-            configService.logout();
-            await cleanExit(1, logger);
+        if (mfaToken) {
+            await mfaService.SendTotp(mfaToken);
+        } else {
+            logger.info('MFA token required for this account');
+            const token = await interactiveTOTPMFA();
+            if (token) {
+                await mfaService.SendTotp(token);
+            } else {
+                return undefined;
+            }
         }
-
-        await mfaService.SendTotp(argv.mfa);
-
         break;
     case MfaActionRequired.RESET:
         logger.info('MFA reset detected, requesting new MFA token');
         logger.info('Please scan the following QR code with your device (Google Authenticator recommended) and enter code below.');
 
         const resp = await mfaService.ResetSecret(true);
-        const data = await qrcode.toString(resp.mfaSecretUrl, {type: 'terminal', scale: 2});
+        const data = await qrcode.toString(resp.mfaSecretUrl, { type: 'terminal', scale: 2 });
         console.log(data);
 
-        const token = await requestMfaCode();
-        await mfaService.SendTotp(token);
+        const code = await interactiveResetMfa();
+        if (code) {
+            await mfaService.SendTotp(code);
+        } else {
+            return undefined;
+        }
 
         break;
     default:
@@ -89,7 +109,13 @@ export async function loginHandler(configService: ConfigService, logger: Logger,
     const me = await userService.Me();
     configService.setMe(me);
 
-    logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`);
+    return {
+        userRegisterResponse: registerResponse,
+        userSummary: me
+    };
+}
 
-    await cleanExit(0, logger);
+export async function loginHandler(configService: ConfigService, logger: Logger, argv: yargs.Arguments<loginArgs>, keySplittingService: KeySplittingService): Promise<LoginResult | undefined> {
+    logger.info('Login required, opening browser');
+    return login(keySplittingService, configService, logger, argv.mfa);
 }

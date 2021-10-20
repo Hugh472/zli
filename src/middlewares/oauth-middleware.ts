@@ -6,5 +6,5 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
 
     const oauth = new OAuthService(configService, logger);
 
-    await oauth.getIdToken();
+    await oauth.getIdTokenAndExitOnError();
 }

@@ -44,4 +44,15 @@ export class MixpanelService
 
         this.mixpanelClient.track(eventName, properties);
     }
+
+    public TrackCliCommand(version: string, command: string, args: string[]) {
+        this.TrackCliCall(
+            'CliCommand',
+            {
+                'cli-version': version,
+                'command': command,
+                args: args
+            }
+        );
+    }
 }

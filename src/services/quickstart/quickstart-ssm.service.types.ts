@@ -55,23 +55,15 @@ export interface RegistrableSSHHost {
  * parameter in the parsed SSH config file
  */
 export type MissingHostNameParseError = {
-    error: 'missing_host_name'
+    error: 'missing_host_name';
 };
-
-/**
- * MissingPortParseError represents a failure to include the Port parameter in
- * the parsed SSH config file
- */
-export type MissingPortParseError = {
-    error: 'missing_port'
-}
 
 /**
  * MissingUserParseError represents a failure to include the User parameter in
  * the parsed SSH config file
  */
 export type MissingUserParseError = {
-    error: 'missing_user'
+    error: 'missing_user';
 }
 
 /**
@@ -79,7 +71,7 @@ export type MissingUserParseError = {
  * IdentityFile (path to SSH key) parameter in the parsed SSH config file
  */
 export type MissingIdentityFileParseError = {
-    error: 'missing_identity_file'
+    error: 'missing_identity_file';
 }
 
 /**
@@ -88,7 +80,6 @@ export type MissingIdentityFileParseError = {
  */
 export type SSHConfigParseError =
     | MissingHostNameParseError
-    | MissingPortParseError
     | MissingUserParseError
     | MissingIdentityFileParseError
 

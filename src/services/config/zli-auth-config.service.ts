@@ -24,6 +24,6 @@ export class ZliAuthConfigService implements AuthConfigService {
     }
 
     async getIdToken() {
-        return await this.oauth.getIdToken();
+        return await this.oauth.getIdTokenAndExitOnError();
     }
 }

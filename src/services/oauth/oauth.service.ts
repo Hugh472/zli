@@ -15,6 +15,7 @@ import { parseIdpType } from '../../utils';
 const findPort = require('find-open-port');
 
 import { check as checkTcpPort } from 'tcp-port-used';
+import { RefreshTokenError, UserNotLoggedInError } from './oauth.service.types';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -217,7 +218,7 @@ export class OAuthService implements IDisposable {
 
         this.nonce = nonce;
         return new Promise<void>(async (resolve, reject) => {
-            setTimeout(() => reject(this.logger.error('Login timeout reached')), 60 * 1000);
+            setTimeout(() => reject('Login timeout reached'), 60 * 1000);
 
             const openBrowser = async () => await open(`${this.configService.serviceUrl()}authentication/login?zliLogin=true&port=${portToUse}`);
 
@@ -240,42 +241,67 @@ export class OAuthService implements IDisposable {
         return refreshedTokenSet;
     }
 
-    // Returns the current OAuth idtoken. Refreshes it before returning if expired
+    /**
+     * Get the current user's id_token. Refresh it if it has expired.
+     * @returns The current user's id_token
+     */
     public async getIdToken(): Promise<string> {
-
         const tokenSet = this.configService.tokenSet();
 
-        // decide if we need to refresh or prompt user for login
-        if(tokenSet)
-        {
-            if(this.configService.tokenSet().expired())
-            {
-                try {
-                    this.logger.debug('Refreshing oauth token');
+        // Refresh if the token exists and has expired
+        if (tokenSet) {
+            if (this.configService.tokenSet().expired()) {
+                this.logger.debug('Refreshing oauth token');
 
-                    const newTokenSet = await this.refresh();
-                    this.configService.setTokenSet(newTokenSet);
-                    this.logger.debug('Oauth token refreshed');
-                } catch(e) {
-                    if(e instanceof errors.RPError || e instanceof errors.OPError) {
-                        this.logger.error('Stale log in detected');
-                        this.logger.info('You need to log in, please run \'zli login --help\'');
-                        this.configService.logout();
-                        await cleanExit(1, this.logger);
+                let newTokenSet: TokenSet;
+                try {
+                    newTokenSet = await this.refresh();
+                } catch (e) {
+                    if (e instanceof errors.RPError || e instanceof errors.OPError) {
+                        throw new RefreshTokenError();
                     } else {
-                        this.logger.error('Unexpected error during oauth refresh');
-                        this.logger.info('Please log in again');
-                        this.configService.logout();
-                        await cleanExit(1, this.logger);
+                        throw e;
                     }
                 }
+
+                this.configService.setTokenSet(newTokenSet);
+                this.logger.debug('Oauth token refreshed');
             }
         } else {
-            this.logger.error('You need to log in, please run \'zli login --help\'');
-            await cleanExit(1, this.logger);
+            throw new UserNotLoggedInError();
         }
 
         return this.configService.getAuth();
+    }
+
+    /**
+     * Get the current user's id_token. Refresh it if it has expired. This
+     * function will exit the running process if any error occurs or if the user
+     * is not logged in (i.e. tokenSet not found in config).
+     * @returns The current OIDC id_token
+     */
+    public async getIdTokenAndExitOnError(): Promise<string> {
+        let idToken: string;
+        try {
+            idToken = await this.getIdToken();
+        } catch (e) {
+            if (e instanceof RefreshTokenError) {
+                this.logger.error('Stale log in detected');
+                this.logger.info('You need to log in, please run \'zli login --help\'');
+                this.configService.logout();
+                await cleanExit(1, this.logger);
+            } else if (e instanceof UserNotLoggedInError) {
+                this.logger.error('You need to log in, please run \'zli login --help\'');
+                await cleanExit(1, this.logger);
+            } else {
+                this.logger.error('Unexpected error during oauth refresh');
+                this.logger.info('Please log in again');
+                this.configService.logout();
+                await cleanExit(1, this.logger);
+            }
+        }
+
+        return idToken;
     }
 
     dispose(): void {

@@ -1,4 +1,3 @@
-import { cleanExit } from '../../handlers/clean-exit.handler';
 import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, QuickstartSSMTarget, RegistrableSSHHost } from './quickstart-ssm.service.types';
 import { getAutodiscoveryScript } from '../auto-discovery-script/auto-discovery-script.service';
 import { ConfigService } from '../config/config.service';
@@ -18,10 +17,15 @@ import { Verb, VerbType } from '../policy-query/policy-query.types';
 import { EnvironmentService } from '../environment/environment.service';
 import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
 import { Retrier } from '@jsier/retrier';
+import chalk from 'chalk';
+import { ConsoleWithTranscriptService } from '../consoleWithTranscript/consoleWithTranscript.service';
+import { TranscriptMessage } from '../consoleWithTranscript/consoleWithTranscript.types';
+import ora from 'ora';
 
 export class QuickstartSsmService {
     constructor(
         private logger: Logger,
+        private consoleAndTranscript: ConsoleWithTranscriptService,
         private configService: ConfigService,
         private policyService: PolicyService,
         private environmentService: EnvironmentService
@@ -33,7 +37,7 @@ export class QuickstartSsmService {
      * @param ssmTargetId The ID of the target to poll
      * @returns Information about the target
      */
-    public async pollSsmTargetOnline(ssmTargetId: string) : Promise<SsmTargetSummary> {
+    private async pollSsmTargetOnline(ssmTargetId: string): Promise<SsmTargetSummary> {
         // Try 30 times with a delay of 10 seconds between each attempt.
         const retrier = new Retrier({
             limit: 30,
@@ -47,7 +51,6 @@ export class QuickstartSsmService {
                 if (target.status === TargetStatus.Online && target.agentVersion !== '') {
                     resolve(target);
                 } else {
-                    this.logger.info(`Waiting for ${target.name} to come online...`);
                     this.logger.debug(`Target ${target.name} has status:${target.status.toString()} and agentVersion:${target.agentVersion}`);
                     reject(`Target ${target.name} is not online`);
                 }
@@ -92,26 +95,31 @@ export class QuickstartSsmService {
      * Note: This function fails if it is found that the passed in SSH host has
      * an agent already installed on it.
      * @param registrableHost The SSH host to register
+     * @param spinner The global progress bar object that is displayed to the
+     * user
      * @returns Target summary of the newly registered host
      */
-    public async addSSHHostToBastionZero(registrableHost: RegistrableSSHHost): Promise<SsmTargetSummary> {
+    public async addSSHHostToBastionZero(registrableHost: RegistrableSSHHost, spinner: ora.Ora): Promise<SsmTargetSummary> {
         return new Promise<SsmTargetSummary>(async (resolve, reject) => {
             try {
-                this.logger.info(`Attempting to add SSH host ${registrableHost.host.sshHost.name} to BastionZero...`);
-
-                this.logger.info(`Running autodiscovery script on SSH host ${registrableHost.host.sshHost.name} (could take several minutes)...`);
                 const ssmTargetId = await this.runAutodiscoveryOnSSHHost(registrableHost);
-
-                this.logger.info(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
+                this.logger.debug(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
 
                 // Poll for "Online" status
-                this.logger.info(`Waiting for target ${registrableHost.host.sshHost.name} to become online (could take several minutes)...`);
                 const ssmTarget = await this.pollSsmTargetOnline(ssmTargetId);
-                this.logger.info(`SSH host ${registrableHost.host.sshHost.name} successfully added to BastionZero!`);
+
+                // Add success message to current prefixText of the spinner and push to transcript
+                const successMsg = chalk.green(`✔ SSH host ${registrableHost.host.sshHost.name} successfully added to BastionZero!`);
+                this.consoleAndTranscript.pushToTranscript(successMsg);
+                spinner.prefixText = spinner.prefixText + successMsg + '\n';
 
                 resolve(ssmTarget);
             } catch (error) {
-                this.logger.error(`Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
+                // Add fail message to current prefixText of the spinner and push to transcript
+                const errMsg = chalk.red(`✖ Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
+                this.consoleAndTranscript.pushToTranscript(errMsg);
+                spinner.prefixText = spinner.prefixText + errMsg + '\n';
+
                 reject(error);
             }
         });
@@ -221,7 +229,8 @@ export class QuickstartSsmService {
             });
 
             // Wait for the script to finish executing
-            return await execAutodiscoveryScript;
+            const ssmTargetId = await execAutodiscoveryScript;
+            return ssmTargetId;
         } finally {
             this.logger.debug(`Closing SSH connection with host: ${hostName}`);
             await conn.close();
@@ -238,7 +247,7 @@ export class QuickstartSsmService {
      * @returns True if the user wishes to skip the host. False if the user
      * wishes to exit.
      */
-    public async promptSkipHostOrExit(hostName: string, onCancel: (prompt: PromptObject, answers: any) => void): Promise<boolean> {
+    public async promptSkipHostOrExit(hostName: string, onCancelPrompt: (prompt: PromptObject, answers: any) => void, onSubmitPrompt: (prompt: PromptObject, answer: any) => void): Promise<boolean> {
         const confirmSkipOrExit = await prompts({
             type: 'toggle',
             name: 'value',
@@ -246,70 +255,100 @@ export class QuickstartSsmService {
             initial: true,
             active: 'skip',
             inactive: 'exit',
-        }, { onCancel: onCancel });
+        }, { onCancel: onCancelPrompt, onSubmit: onSubmitPrompt });
 
         return confirmSkipOrExit.value;
+    }
+
+    private visualSuccess(text: string) {
+        this.consoleAndTranscript.log(chalk.green(`✔ ${text}`));
+    }
+
+    private visualError(text: string) {
+        this.consoleAndTranscript.log(chalk.red(`✖ ${text}`));
+    }
+
+    private visualWarning(text: string) {
+        this.consoleAndTranscript.log(chalk.yellow(`⚠ ${text}`));
     }
 
     /**
      * Converts parsed valid SSH hosts from the SSH config file to SSHConfigs
      * that are usable by the ssh2-promise library. This process is interactive
-     * as it also checks to see if the IdentityFile (SSH key) is both present on
-     * disk and encrypted. If the key is encrypted, we prompt the user to enter
-     * the passphrase so that we can decrypt it and use when building the SSH
-     * connection later.
+     * as it also checks to see if the IdentityFile (SSH key) is encrypted. If
+     * the key is encrypted, we prompt the user to enter the passphrase so that
+     * we can decrypt it and use when building the SSH connection later.
      * @param hosts List of valid SSH hosts
-     * @param onCancel Handler function for interruption of the prompt (e.g.
-     * CTRL-C, ESC, etc.)
+     * @param onExit Action to perform if user chooses the "exit" option in the
+     * skip host or exit prompt
+     * @param onSubmitPrompt Action to perform if user submits an answer in any
+     * presented prompt
+     * @param onCancelPrompt Action to perform if user cancels the skip host or
+     * exit prompt
      * @returns A list of valid SSH hosts with their corresponding SSHConfig
      * configurations for use with the ssh2-promise library
      */
-    public async promptConvertValidSSHHostsToSSHConfigs(hosts: ValidSSHHost[], onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHostAndConfig[]> {
+    public async promptConvertValidSSHHostsToSSHConfigs(
+        hosts: ValidSSHHost[],
+        onExit: (exitCode: number, logger: Logger, transcript: readonly TranscriptMessage[]) => Promise<void>,
+        onSubmitPrompt: (prompt: PromptObject, answer: any) => void,
+        onCancelPrompt: (prompt: PromptObject, answers: any) => void
+    ): Promise<ValidSSHHostAndConfig[]> {
         const sshConfigs: ValidSSHHostAndConfig[] = [];
         for (const host of hosts) {
-            this.logger.info(`Validating SSH key for host ${host.name}`);
             // Try to read the IdentityFile and store its contents in keyFile variable
             let keyFile: string;
             try {
                 keyFile = await readFile(host.identityFile);
             } catch (err) {
-                this.logger.error(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to error when reading IdentityFile: ${err}`);
-                continue;
+                // Note: Even though we have removed SSH hosts with unreadable
+                // SSH keys before calling this function, it is still possible
+                // for the file to be unreadable at this point (e.g. system
+                // changed in between calls)
+                this.logger.debug(`Error when reading ${host.name}'s SSH key: ${err}`);
+
+                // Product requirement: Do not show visual indication that the
+                // key is wrong at this point. We will show the failure later
+                // when we try to SSH in
             }
 
             // Check if IdentityFile is encrypted.
             let passphraseKeyFile: string;
-            try {
-                parsePrivateKey(keyFile, 'auto');
-            } catch (err) {
-                if (err instanceof KeyEncryptedError) {
-                    this.logger.info(`${host.name}'s IdentityFile (${host.identityFile}) is encrypted!`);
+            if (keyFile) {
+                try {
+                    parsePrivateKey(keyFile, 'auto');
+                } catch (err) {
+                    if (err instanceof KeyEncryptedError) {
+                        this.consoleAndTranscript.log(`${host.name}'s SSH key (${host.identityFile}) is encrypted!`);
 
-                    // Ask user for password to decrypt the key file
-                    const passwordResponse = await this.handleEncryptedIdentityFile(host.identityFile, keyFile);
+                        // Ask user for password to decrypt the key file
+                        const passwordResponse = await this.handleEncryptedIdentityFile(host.identityFile, keyFile, onSubmitPrompt);
 
-                    // Check if user wants to skip this host or exit immediately
-                    if (passwordResponse === undefined) {
-                        const shouldSkip = await this.promptSkipHostOrExit(host.name, onCancel);
+                        // Check if user wants to skip this host or exit immediately
+                        if (passwordResponse === undefined) {
+                            const shouldSkip = await this.promptSkipHostOrExit(host.name, onCancelPrompt, onSubmitPrompt);
 
-                        if (shouldSkip) {
-                            this.logger.warn(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to user not providing password to encrypted IdentityFile`);
-                            continue;
+                            if (shouldSkip) {
+                                this.visualWarning(`Skipping ${host.name}`);
+                                continue;
+                            } else {
+                                this.consoleAndTranscript.log('Prompt cancelled. Exiting out of quickstart...');
+
+                                await onExit(1, this.logger, this.consoleAndTranscript.getTranscript());
+                            }
                         } else {
-                            this.logger.info('Prompt cancelled. Exiting out of quickstart...');
-                            await cleanExit(1, this.logger);
+                            passphraseKeyFile = passwordResponse;
                         }
                     } else {
-                        passphraseKeyFile = passwordResponse;
+                        this.logger.debug(`Error when parsing ${host.name}'s SSH key: ${err}`);
+
+                        // Product requirement: Do not show visual indication at
+                        // this point
                     }
-                } else {
-                    this.logger.error(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to error when parsing IdentityFile: ${err}`);
-                    continue;
                 }
             }
 
             // Convert from ValidSSHHost to ValidSSHConfig
-            this.logger.info(`SSH key for host ${host.name} is valid`);
             sshConfigs.push({
                 sshHost: host,
                 config: {
@@ -326,120 +365,6 @@ export class QuickstartSsmService {
     }
 
     /**
-     * Begin an interactive debugging session (user is prompted with questions)
-     * to convert invalid SSH hosts to valid SSH hosts.
-     * @param invalidSSHHosts A list of invalid SSH hosts
-     * @param onCancel Handler function for interruption of the prompt (e.g.
-     * CTRL-C, ESC, etc.)
-     * @returns A list of valid SSH hosts (potentially empty)
-     */
-    public async promptInteractiveDebugSession(invalidSSHHosts: InvalidSSHHost[], onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
-        // Get pretty string of invalid SSH hosts' names
-        const prettyInvalidSSHHosts: string = invalidSSHHosts.map(host => host.incompleteValidSSHHost.name).join(', ');
-        this.logger.warn(`Hosts missing required parameters: ${prettyInvalidSSHHosts}`);
-
-        const fixedSSHHosts: ValidSSHHost[] = [];
-        const confirmDebugSessionResponse = await prompts({
-            type: 'toggle',
-            name: 'value',
-            message: 'Do you want the zli to help you fix the issues?',
-            initial: true,
-            active: 'yes',
-            inactive: 'no',
-        }, { onCancel: onCancel });
-        const shouldStartDebugSession: boolean = confirmDebugSessionResponse.value;
-
-        if (!shouldStartDebugSession)
-            return fixedSSHHosts;
-
-        this.logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart\n');
-
-        for (const invalidSSHHost of invalidSSHHosts) {
-            const fixedHost = await this.promptFixInvalidSSHHost(invalidSSHHost);
-            if (fixedHost === undefined) {
-                const shouldSkip = await this.promptSkipHostOrExit(invalidSSHHost.incompleteValidSSHHost.name, onCancel);
-
-                if (shouldSkip) {
-                    this.logger.info(`Skipping host ${invalidSSHHost.incompleteValidSSHHost.name}...`);
-                    continue;
-                } else {
-                    this.logger.info('Prompt cancelled. Exiting out of quickstart...');
-                    await cleanExit(1, this.logger);
-                }
-            } else {
-                fixedSSHHosts.push(fixedHost);
-            }
-        }
-
-        return fixedSSHHosts;
-    }
-
-    /**
-     * Prompt the user with a series of questions to convert an invalid SSH host
-     * to a valid SSH host
-     * @param invalidSSHHost An invalid SSH host
-     * @returns A valid SSH host if the user answered all prompts and did not
-     * cancel. Undefined if the user cancelled any prompt.
-     */
-    private async promptFixInvalidSSHHost(invalidSSHHost: InvalidSSHHost): Promise<ValidSSHHost | undefined> {
-        const parseErrors = invalidSSHHost.parseErrors;
-        const sshHostName = invalidSSHHost.incompleteValidSSHHost.name;
-
-        this.logger.info(`Please answer the following ${parseErrors.length} question(s) so that ${sshHostName} can be considered as a valid host to connect with BastionZero`);
-
-        // Iterate through all parse errors for the passed in host and prompt
-        // user to fix the problem.
-        //
-        // If the prompt is cancelled, undefined will be returned. We check for
-        // this on each missing parameter, and return undefined as the return
-        // value in order to short-circuit any remaining parse errors.
-        const validSSHHost = invalidSSHHost.incompleteValidSSHHost;
-        for (const parseError of parseErrors) {
-            switch (parseError.error) {
-            case 'missing_host_name':
-                const hostName = await this.handleMissingHostName();
-                if (hostName === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.hostIp = hostName;
-                }
-                break;
-            case 'missing_port':
-                const port = await this.handleMissingPort();
-                if (port === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.port = port;
-                }
-                break;
-            case 'missing_user':
-                const user = await this.handleMissingUser();
-                if (user === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.username = user;
-                }
-                break;
-            case 'missing_identity_file':
-                const identityFilePath = await this.handleMissingIdentityFile();
-                if (identityFilePath === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.identityFile = this.resolveHome(identityFilePath);
-                }
-                break;
-            default:
-                // Note: This error is never thrown at runtime. It is an
-                // exhaustive check at compile-time.
-                const exhaustiveCheck: never = parseError;
-                throw new Error(`Unhandled parse error type: ${exhaustiveCheck}`);
-            }
-        }
-
-        return validSSHHost;
-    }
-
-    /**
      * Prompt the user to provide their passphrase to handle an encrypted
      * identity file (SSH key).
      * @param identityFilePathName File path to key
@@ -447,10 +372,16 @@ export class QuickstartSsmService {
      * @returns A valid passphrase that correctly decrypts the SSH key.
      * Undefined if the user cancels the prompt.
      */
-    private async handleEncryptedIdentityFile(identityFilePathName: string, identityFileContents: string): Promise<string | undefined> {
+    private async handleEncryptedIdentityFile(identityFilePathName: string, identityFileContents: string, onSubmitPrompt: (prompt: PromptObject, answer: any) => void): Promise<string | undefined> {
         return new Promise<string | undefined>(async (resolve, _) => {
-            const onCancel = () => resolve(undefined);
-            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
+            const onCancel = (prompt: PromptObject) => {
+                this.consoleAndTranscript.pushToTranscript(`${prompt.message}`);
+                resolve(undefined);
+            };
+            const onSubmit = (prompt: PromptObject, answer: string) => {
+                onSubmitPrompt(prompt, '<REDACTED>');
+                resolve(answer);
+            };
 
             // Custom validation function. Require value to be passed and check
             // if password is correct
@@ -480,78 +411,6 @@ export class QuickstartSsmService {
     }
 
     /**
-     * Prompt the user to handle a missing HostName parameter for some parsed
-     * SSH host.
-     * @returns User's answer. Undefined if the user cancels the prompt.
-     */
-    private async handleMissingHostName(): Promise<string | undefined> {
-        return new Promise<string | undefined>(async (resolve, _) => {
-            const onCancel = () => resolve(undefined);
-            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
-            await prompts({
-                type: 'text',
-                name: 'value',
-                message: 'Enter HostName (IP address or DNS name):',
-                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
-            }, { onSubmit: onSubmit, onCancel: onCancel });
-        });
-    }
-
-    /**
-     * Prompt the user to handle a missing Port parameter for some parsed SSH
-     * host. Prompt defaults to port 22.
-     * @returns User's answer. Undefined if the user cancels the prompt.
-     */
-    private async handleMissingPort(): Promise<number | undefined> {
-        return new Promise<number | undefined>(async (resolve, _) => {
-            const onCancel = () => resolve(undefined);
-            const onSubmit = (_: PromptObject, answer: number) => resolve(answer);
-            await prompts({
-                type: 'number',
-                name: 'value',
-                message: 'Enter Port number (default 22):',
-                initial: 22,
-            }, { onSubmit: onSubmit, onCancel: onCancel });
-        });
-    }
-
-    /**
-     * Prompt the user to handle a missing User parameter for some parsed SSH
-     * host.
-     * @returns User's answer. Undefined if the user cancels the prompt.
-     */
-    private async handleMissingUser(): Promise<string | undefined> {
-        return new Promise<string | undefined>(async (resolve, _) => {
-            const onCancel = () => resolve(undefined);
-            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
-            await prompts({
-                type: 'text',
-                name: 'value',
-                message: 'Enter User:',
-                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
-            }, { onSubmit: onSubmit, onCancel: onCancel });
-        });
-    }
-
-    /**
-     * Prompt the user to handle a missing IdentityFile (SSH key) parameter for
-     * some parsed SSH host.
-     * @returns User's answer. Undefined if the user cancels the prompt.
-     */
-    private async handleMissingIdentityFile(): Promise<string | undefined> {
-        return new Promise<string | undefined>(async (resolve, _) => {
-            const onCancel = () => resolve(undefined);
-            const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
-            await prompts({
-                type: 'text',
-                name: 'value',
-                message: 'Enter path to IdentityFile:',
-                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
-            }, { onSubmit: onSubmit, onCancel: onCancel });
-        });
-    }
-
-    /**
      * Create an environment following the quickstart format (description +
      * cleanupTimeout)
      * @param sshUsername Username that all hosts in this environment should
@@ -564,8 +423,7 @@ export class QuickstartSsmService {
         const createEnvResp = await this.environmentService.CreateEnvironment({
             name: envName,
             description: `Quickstart autogenerated environment for ${sshUsername} users`,
-            // This is the default timeout used in the webapp
-            offlineCleanupTimeoutHours: 24 * 90
+            offlineCleanupTimeoutHours: 1
         });
         return createEnvResp.id;
     }
@@ -661,7 +519,7 @@ export class QuickstartSsmService {
                 // environment id to use during registration
                 hosts.forEach(host => registrableSSHHosts.push({ host: host, envId: quickstartEnvId }));
             } catch (err) {
-                this.logger.error(`Failed creating env for SSH username ${username}: ${err}`);
+                this.visualError(`Failed creating env for SSH username ${username}: ${err}`);
                 continue;
             }
         }
@@ -735,12 +593,35 @@ export class QuickstartSsmService {
                 // cover this edge case.
                 targets.forEach(target => connectableTargets.push(target));
             } catch (err) {
-                this.logger.error(`Failed creating policy for SSH username ${username}: ${err}`);
+                this.visualError(`Failed creating policy for SSH username ${username}: ${err}`);
                 continue;
             }
         }
 
         return connectableTargets;
+    }
+
+    /**
+     * Reads all SSH keys in the map of hosts checking to see which keys are
+     * readable/found on disk.
+     * @param hosts Map of hosts
+     * @returns A map of hosts whose SSH keys are readable
+     */
+    public async getSSHHostsWithValidSSHKeys(hosts: Map<string, ValidSSHHost>): Promise<Map<string, ValidSSHHost>> {
+        const validHosts: Map<string, ValidSSHHost> = new Map();
+        for (const [hostName, host] of hosts) {
+            try {
+                await readFile(host.identityFile);
+            } catch (err) {
+                this.logger.debug(`Error when reading ${hostName}'s SSH key: ${err}`);
+                continue;
+            }
+
+            // Host has readable SSH key if we've reached this point
+            validHosts.set(hostName, host);
+        }
+
+        return validHosts;
     }
 
     /**
@@ -782,7 +663,7 @@ export class QuickstartSsmService {
             // is on par with how ssh works with duplicate hosts (the first host
             // is used and the second is skipped).
             if (seen.has(name)) {
-                this.logger.warn(`Notice: Already seen SSH host with Host == ${name}. Keeping the first one seen.`);
+                this.visualWarning(`Already seen SSH host with Host == ${name}. Keeping the first one seen.`);
                 continue;
             }
             seen.set(name, true);
@@ -804,7 +685,9 @@ export class QuickstartSsmService {
             }
             const port = this.getSSHHostConfigValue('Port', config);
             if (port === undefined) {
-                parseErrors.push({ error: 'missing_port' });
+                // Default to port 22 if the Port parameter is missing (this
+                // follows how the standard SSH command works)
+                validSSHHost.port = 22;
             } else {
                 validSSHHost.port = parseInt(port);
             }

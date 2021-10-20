@@ -95,14 +95,7 @@ export function mixpanelTrackingMiddleware(configService: ConfigService, argv: a
     // Only captures args, not options at the moment. Capturing configName flag
     // does not matter as that is handled by which mixpanel token is used
     // TODO: capture options and flags
-    mixpanelService.TrackCliCall(
-        'CliCommand',
-        {
-            'cli-version': version,
-            'command': argv._[0],
-            args: argv._.slice(1)
-        }
-    );
+    mixpanelService.TrackCliCommand(version, argv._[0], argv._.slice(1));
 
     return mixpanelService;
 }

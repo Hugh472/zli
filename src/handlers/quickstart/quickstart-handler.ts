@@ -2,19 +2,79 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { ValidSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { ParsedTargetString, TargetType } from '../../services/common.types';
 import { EnvironmentService } from '../../services/environment/environment.service';
 import { PolicyService } from '../../services/policy/policy.service';
-import { connectHandler } from '../connect/connect.handler';
 import { readFile } from '../../utils';
 import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
+import { OAuthService } from '../../services/oauth/oauth.service';
+import { UserSummary } from '../../services/user/user.types';
+import { version } from '../../../package.json';
 
-import prompts from 'prompts';
+import prompts, { PromptObject } from 'prompts';
 import yargs from 'yargs';
 import fs from 'fs';
+import { ConsoleWithTranscriptService } from '../../services/consoleWithTranscript/consoleWithTranscript.service';
+import chalk from 'chalk';
+import { TranscriptMessage } from '../../services/consoleWithTranscript/consoleWithTranscript.types';
+import ora from 'ora';
+import { login } from '../login/login.handler';
+import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
+
+const welcomeMessage = `Welcome to BastionZero and the journey to zero trust access via our multi root zero trust access protocol (MrZAP). We're excited to have you!\n
+Our quickstart installer is a fast and easy method for you to try BastionZero using your existing SSH configuration.
+We will use the following information supplied by your SSH configuration file to onboard the targets:\n
+Host ${chalk.bold.yellowBright('your_host_name')}
+    HostName ${chalk.bold.yellowBright('your.ip.address')}
+    User ${chalk.bold.yellowBright('your_username')}
+    IdentityFile ${chalk.bold.yellowBright('path/to/your/.ssh/.pem/file')}
+    Port ${chalk.bold.yellowBright('specify_port_number_if_desired')}
+`;
+
+const loginMessage = `Below, when you press the key to continue a browser window will appear.\nLogin with your SSO provider. Doing so will automatically create your BastionZero account.\nPress any key to continue...`;
+
+const tipsMessage = `While your target(s) are coming online, here are a few tips to best utilize the zli:
+  (1) To list all of your targets, use \`zli list-targets\` or \`zli lt\`
+  (2) To connect to a target, use \`zli connect user@targetName\`
+  (3) To see your policies, use \`zli policy\`
+\nView the zli manual at: https://bastionzero.freshdesk.com/support/solutions/articles/67000629821-zero-trust-command-line-interface-zli-manual`;
+
+function printFooterMessage(): void {
+    console.log('To see the full suite of capabilities that BastionZero offers, take a look at our documentation at: https://bastionzero.freshdesk.com/support/home');
+}
+
+function getFirstName(userSummary: UserSummary): string | undefined {
+    if (userSummary && userSummary.fullName) {
+        return userSummary.fullName.substr(0, userSummary.fullName.indexOf(' '));
+    } else {
+        return undefined;
+    }
+}
+
+function isAdmin(userSummary: UserSummary): boolean {
+    return userSummary && userSummary.isAdmin;
+}
+
+async function postSuccessLogin(userSummary: UserSummary, getWelcomeMsg: (firstName: string) => string | undefined, logger: Logger, consoleWithTranscript: ConsoleWithTranscriptService): Promise<void> {
+    if (!isAdmin(userSummary)) {
+        consoleWithTranscript.log(chalk.red('This is an admin restricted command. Please login as an admin to perform it.'));
+        await cleanExit(1, logger);
+    }
+
+    const firstName = getFirstName(userSummary);
+    const welcomeMsg = getWelcomeMsg(firstName);
+    if (welcomeMsg) {
+        consoleWithTranscript.log(chalk.green(welcomeMsg));
+    }
+}
+
+function clearScreen() {
+    // Source: https://stackoverflow.com/a/14976765
+
+    // Clears the screen while preserving scrollback. Resets cursor to (0,0)
+    process.stdout.write('\u001b[2J\u001b[0;0H');
+}
 
 async function validateQuickstartArgs(argv: yargs.Arguments<quickstartArgs>) {
     // OS check
@@ -37,94 +97,152 @@ async function validateQuickstartArgs(argv: yargs.Arguments<quickstartArgs>) {
     }
 }
 
+async function exitAndSaveTranscript(exitCode: number, logger: Logger, transcript: readonly TranscriptMessage[]): Promise<void> {
+    const transcriptSaveResponse = await prompts({
+        type: 'toggle',
+        name: 'value',
+        message: 'Would you like a copy of your logs from running the QuickStart installer? (file will be saved in current working directory)',
+        initial: true,
+        active: 'yes',
+        inactive: 'no',
+    }, { onCancel: async () => { printFooterMessage(); await cleanExit(1, logger); }, });
+    const wantsTranscript: boolean = transcriptSaveResponse.value;
+
+    if (wantsTranscript) {
+        const formattedTranscript = transcript.reduce((acc, msg) => acc + msg.text + '\n', '');
+
+        // Get time as pretty string
+        const currentTime = new Date();
+        const year = currentTime.getFullYear();
+        const month = currentTime.getMonth() + 1; // getMonth() is zero-based
+        const day = currentTime.getDate();
+        const hours = currentTime.getHours();
+        const minutes = currentTime.getMinutes();
+        const seconds = currentTime.getSeconds();
+        const prettyTime = `${year}-${month}-${day}-${hours}_${minutes}_${seconds}`;
+
+        // Write to file in current directory
+        fs.writeFileSync(`quickstart-logs-${prettyTime}.txt`, formattedTranscript);
+    }
+
+    printFooterMessage();
+    await cleanExit(exitCode, logger);
+}
+
 export async function quickstartHandler(
     argv: yargs.Arguments<quickstartArgs>,
     logger: Logger,
-    configService: ConfigService,
-    mixpanelService: MixpanelService,
+    keysplittingService: KeySplittingService,
+    configService: ConfigService
 ) {
     await validateQuickstartArgs(argv);
 
     const policyService = new PolicyService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
-    const quickstartService = new QuickstartSsmService(logger, configService, policyService, envService);
-
-    // Parse SSH config file
-    logger.info(`\nParsing SSH config file: ${argv.sshConfigFile}`);
-    const sshConfigFileAsStr = await readFile(argv.sshConfigFile);
-    const [validSSHHosts, invalidSSHHosts] = quickstartService.parseSSHHosts(sshConfigFileAsStr);
+    const consoleWithTranscript = new ConsoleWithTranscriptService(chalk.magenta);
 
     // Callback on cancel prompt
-    const onCancelPrompt = async () => {
-        logger.info('Prompt cancelled. Exiting out of quickstart...');
-        await cleanExit(1, logger);
+    const onCancelPrompt = async (prompt: PromptObject) => {
+        consoleWithTranscript.pushToTranscript(`${prompt.message}`);
+        consoleWithTranscript.log('Prompt cancelled. Exiting out of quickstart...');
+
+        await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
+    };
+    // Callback on submit prompt
+    const onSubmitPrompt = (prompt: PromptObject, answer: any) => {
+        consoleWithTranscript.pushToTranscript(`${prompt.message} ${answer}`);
     };
 
-    logger.info(`\nFound ${validSSHHosts.size} valid SSH hosts!`);
+    const quickstartService = new QuickstartSsmService(logger, consoleWithTranscript, configService, policyService, envService);
 
-    // Handle parse errors
-    if (invalidSSHHosts.length > 0) {
-        logger.warn(`${invalidSSHHosts.length} host(s) in the SSH config file are missing required parameters used to connect them with BastionZero.`);
-        const fixedSSHHosts = await quickstartService.promptInteractiveDebugSession(invalidSSHHosts, onCancelPrompt);
-        // Add them to the valid mapping
-        fixedSSHHosts.forEach(validHost => validSSHHosts.set(validHost.name, validHost));
-        if (fixedSSHHosts.length > 0) {
-            logger.info(`Added ${fixedSSHHosts.length} more valid host(s) for a total of ${validSSHHosts.size} valid SSH hosts!`);
+    // Clear console before we begin
+    clearScreen();
+
+    // Present welcome message / value proposition
+    consoleWithTranscript.log(chalk.blue(welcomeMessage));
+
+    // Local function to handle "press any key" functionality in login step
+    // Source: https://stackoverflow.com/a/49959557
+    const waitForKeypress = async () => {
+        process.stdin.setRawMode(true);
+        return new Promise<void>(resolve => process.stdin.once('data', () => {
+            process.stdin.setRawMode(false);
+            resolve();
+        }));
+    };
+
+    consoleWithTranscript.log(chalk.bold.white('(Step 1/4) Login'));
+    const oauthService = new OAuthService(configService, logger);
+    try {
+        // Run standard oauth middleware logic that checks if user is logged in
+        // and refreshes token if its expired.
+        await oauthService.getIdToken();
+
+        await postSuccessLogin(configService.me(), (firstName) => {
+            if (firstName) {
+                return `\nWelcome back ${firstName}!`;
+            }
+        }, logger, consoleWithTranscript);
+
+        consoleWithTranscript.log(`Check out ${configService.getBastionUrl()} to see your environments, policies, and detailed logs.`);
+        consoleWithTranscript.log('Press any key to continue...');
+        await waitForKeypress();
+    } catch (err) {
+        // Present login message
+        consoleWithTranscript.log(loginMessage);
+        await waitForKeypress();
+
+        const loginResult = await login(keysplittingService, configService, logger);
+        if (loginResult) {
+            await postSuccessLogin(loginResult.userSummary, (firstName) => {
+                if (firstName) {
+                    return `\nWelcome ${firstName}!`;
+                }
+            }, logger, consoleWithTranscript);
+        } else {
+            // User cancelled MFA prompt
+            await cleanExit(1, logger);
         }
     }
 
+    // New step so clear screen
+    clearScreen();
+
+    // We cannot create the MixpanelService until the user has logged in
+    const mixpanelService = new MixpanelService(configService);
+    mixpanelService.TrackCliCommand(version, 'quickstart', []);
+
+    // Parse SSH config file
+    consoleWithTranscript.log(`Parsing SSH config file: ${argv.sshConfigFile}`);
+    const sshConfigFileAsStr = await readFile(argv.sshConfigFile);
+    const [parsedSSHHosts] = quickstartService.parseSSHHosts(sshConfigFileAsStr);
+    const validSSHHosts = await quickstartService.getSSHHostsWithValidSSHKeys(parsedSSHHosts);
+
+    consoleWithTranscript.log(`\nFound ${validSSHHosts.size} valid SSH hosts!\nUsing your ssh keys, we’ll install the BastionZero agent for whichever hosts you choose.`);
+
     // Fail early if there are no valid hosts to choose from
     if (validSSHHosts.size == 0) {
-        logger.error('Exiting because there are no valid hosts to connect to');
-        await cleanExit(1, logger);
+        consoleWithTranscript.log('No valid hosts found. Exiting out of quickstart...');
+
+        await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
     }
 
-    logger.info('\nPress CTRL-C to exit at any time.');
+    consoleWithTranscript.log('Press CTRL-C to exit at any time.\n');
 
     // Prompt user with selection of hosts
     const hostsResponse = await prompts({
         type: 'multiselect',
         name: 'value',
-        message: 'Which SSH hosts do you want to connect with BastionZero?',
+        message: '(Step 2/4) Which SSH hosts do you want to connect with BastionZero?',
         choices: Array.from(validSSHHosts.keys()).map(hostName => ({ title: hostName, value: hostName } as prompts.Choice)),
-        instructions: 'Use space to select and up/down to navigate. Return to submit.'
-    }, { onCancel: onCancelPrompt });
+        instructions: 'Use space to select your hosts and up/down arrows to navigate between hosts. Press return to submit.'
+    }, { onCancel: onCancelPrompt, onSubmit: onSubmitPrompt });
     const selectedHostsNames: string[] = hostsResponse.value;
 
     if (selectedHostsNames.length == 0) {
-        logger.info('No hosts selected. Exiting out of quickstart...');
-        await cleanExit(1, logger);
-    }
+        consoleWithTranscript.log('No hosts selected. Exiting out of quickstart...');
 
-    // Ask user if they want to connect to one of their target(s) after it is
-    // registered
-    const connectAfterResponse = await prompts({
-        type: 'toggle',
-        name: 'value',
-        message: 'Do you want to immediately connect to your target once it is registered with BastionZero?',
-        initial: true,
-        active: 'yes',
-        inactive: 'no',
-    }, { onCancel: onCancelPrompt });
-    const shouldConnectAfter: boolean = connectAfterResponse.value;
-    let targetToConnectToAtEnd: ValidSSHHost = undefined;
-    if (shouldConnectAfter && selectedHostsNames.length > 1) {
-        // If the user selected more than one host, then ask which host they
-        // want to connect to
-        const choices = selectedHostsNames.map(hostName => ({ title: hostName, value: hostName } as prompts.Choice));
-        const targetToConnectAfterResponse = await prompts({
-            type: 'select',
-            name: 'value',
-            message: 'Which target?',
-            choices: choices,
-            initial: 1,
-            instructions: 'Use up/down to navigate. Use tab to cycle the list. Return to submit.'
-        }, { onCancel: onCancelPrompt });
-        targetToConnectToAtEnd = validSSHHosts.get(targetToConnectAfterResponse.value);
-    }
-    else if (shouldConnectAfter && selectedHostsNames.length == 1) {
-        // Otherwise, we know which host it is
-        targetToConnectToAtEnd = validSSHHosts.get(selectedHostsNames[0]);
+        await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
     }
 
     // Convert list of selected ValidSSHHosts to SSHConfigs to use with the
@@ -133,82 +251,102 @@ export async function quickstartHandler(
     // are encrypted.
     const validSSHConfigs = await quickstartService.promptConvertValidSSHHostsToSSHConfigs(
         selectedHostsNames.map(hostName => validSSHHosts.get(hostName)),
+        exitAndSaveTranscript,
+        onSubmitPrompt,
         onCancelPrompt);
 
     // Fail early if the validation check above removed all valid hosts
     if (validSSHConfigs.length == 0) {
-        logger.info('All selected hosts were removed from list of SSH hosts to add to BastionZero. Exiting out of quickstart...');
-        await cleanExit(1, logger);
+        consoleWithTranscript.log('All selected hosts were removed from list of SSH hosts to add to BastionZero. Exiting out of quickstart...');
+        await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
     }
+
+    // New step. Clear screen
+    clearScreen();
 
     // Ask the user if they're ready to begin
     const prettyHostsToAttemptAutodisocvery: string = validSSHConfigs.map(config => `\t- ${config.sshHost.name}`).join('\n');
     const readyResponse = await prompts({
         type: 'toggle',
         name: 'value',
-        message: `Please confirm that you want to add:\n\n${prettyHostsToAttemptAutodisocvery}\n\nto BastionZero:`,
+        message: `(Step 3/4) Please confirm that you want to add:\n\n${prettyHostsToAttemptAutodisocvery}\n\nto BastionZero:`,
         initial: true,
         active: 'yes',
         inactive: 'no',
-    }, { onCancel: onCancelPrompt });
+    }, { onCancel: onCancelPrompt, onSubmit: onSubmitPrompt });
     const isReady: boolean = readyResponse.value;
 
     if (!isReady) {
-        logger.info('Exiting out of quickstart...');
-        await cleanExit(1, logger);
+        consoleWithTranscript.log('Exiting out of quickstart...');
+        await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
     }
+
+    // New step so clear again
+    clearScreen();
 
     // Create environment for each unique username parsed from the SSH config
     const registrableHosts = await quickstartService.createEnvForUniqueUsernames(validSSHConfigs);
+    if (registrableHosts.length == 0) {
+        consoleWithTranscript.log('None of the selected hosts are registrable. Exiting out of quickstart...');
+        await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
+    }
+
+    const registrableHostsPrettyString = registrableHosts.map(regHost => regHost.host.sshHost.name).join(', ');
+    const postSpinnerSymbolMsg = `(Step 4/4) Securing host(s) ${registrableHostsPrettyString} with BastionZero\n\n${tipsMessage}\n`;
+    consoleWithTranscript.pushToTranscript(postSpinnerSymbolMsg);
+    const spinner = ora({ text: postSpinnerSymbolMsg, prefixText: '' });
+
+    // Register SIGINT handler to catch CTRL-C only when spinner is running
+    process.on('SIGINT', async function () {
+        if (spinner.isSpinning) {
+            // Stop the spinner and persist the mutated prefixText
+            spinner.text = '';
+            spinner.stopAndPersist();
+
+            consoleWithTranscript.log('User cancelled execution. Exiting out of quickstart...');
+            await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
+        }
+    });
+
+    // Start spinner after registering SIGINT
+    spinner.start();
 
     // Run autodiscovery script on all hosts concurrently
-    const autodiscoveryResultsPromise = Promise.allSettled(registrableHosts.map(host => quickstartService.addSSHHostToBastionZero(host)));
+    const autodiscoveryResultsPromise = Promise.allSettled(registrableHosts.map(host => quickstartService.addSSHHostToBastionZero(host, spinner)));
 
     // Await for **all** hosts to either come "Online" or error
     const autodiscoveryResults = await autodiscoveryResultsPromise;
+
+    // Stop the spinner and persist the mutated prefixText
+    spinner.text = '';
+    spinner.stopAndPersist();
+
     const ssmTargetsSuccessfullyAdded = autodiscoveryResults.reduce<SsmTargetSummary[]>((acc, result) => result.status === 'fulfilled' ? [...acc, result.value] : acc, []);
 
     // Exit early if all hosts failed
     if (ssmTargetsSuccessfullyAdded.length == 0) {
-        await cleanExit(1, logger);
+        consoleWithTranscript.log('Failed to add all selected hosts. Exiting out of quickstart...');
+        await exitAndSaveTranscript(1, logger, consoleWithTranscript.getTranscript());
     }
 
     // Create policy for each unique username parsed from the SSH config
-    const connectableTargets = await quickstartService.createPolicyForUniqueUsernames(
+    await quickstartService.createPolicyForUniqueUsernames(
         ssmTargetsSuccessfullyAdded.map(target => ({ ssmTarget: target, sshHost: validSSHHosts.get(target.name) }))
     );
-    const isAtLeastOneConnectableTarget = connectableTargets.length > 0;
 
-    // Gather extra information if user said to connect to specific
-    // target after registration completes.
-    let targetToConnectToAtEndAsParsedTargetString: ParsedTargetString = undefined;
-    if (shouldConnectAfter) {
-        // targetToConnectToAtEnd is guaranteed to be defined if shouldConnectAfter == true
-        const ssmTargetToConnectToAtEnd = connectableTargets.find(target => target.ssmTarget.name === targetToConnectToAtEnd.name);
-        if (ssmTargetToConnectToAtEnd) {
-            const envs = await envService.ListEnvironments();
-            const environment = envs.find(envDetails => envDetails.id == ssmTargetToConnectToAtEnd.ssmTarget.environmentId);
-            targetToConnectToAtEndAsParsedTargetString = {
-                id: ssmTargetToConnectToAtEnd.ssmTarget.id,
-                user: ssmTargetToConnectToAtEnd.sshHost.username,
-                type: TargetType.SSM,
-                envName: environment.name
-            } as ParsedTargetString;
-        }
+    // New step so clear again
+    clearScreen();
+
+    const ssmTargetsSuccessfullyAddedPretty = ssmTargetsSuccessfullyAdded.map(target => target.name).join(', ');
+    const successMessage = `Congratulations! You've secured access to your target(s): ${ssmTargetsSuccessfullyAddedPretty} with MrZAP using BastionZero.\n
+Log into ${configService.getBastionUrl()} to see your environments, policies, and detailed logs.`;
+    consoleWithTranscript.log(successMessage);
+
+    consoleWithTranscript.log('Use `zli connect` to connect to your newly registered targets.');
+    for (const target of ssmTargetsSuccessfullyAdded) {
+        const sshHost = validSSHHosts.get(target.name);
+        consoleWithTranscript.log(`\tzli connect ${sshHost.username}@${target.name}`);
     }
 
-    let exitCode = isAtLeastOneConnectableTarget ? 0 : 1;
-    if (targetToConnectToAtEndAsParsedTargetString) {
-        logger.info(`Connecting to ${targetToConnectToAtEnd.name} by using \`zli connect ${targetToConnectToAtEndAsParsedTargetString.user}@${targetToConnectToAtEnd.name}\``);
-        exitCode = await connectHandler(configService, logger, mixpanelService, targetToConnectToAtEndAsParsedTargetString);
-    }
-
-    if (isAtLeastOneConnectableTarget) {
-        logger.info('Use `zli connect` to connect to your newly registered targets.');
-        for (const target of connectableTargets) {
-            logger.info(`\tzli connect ${target.sshHost.username}@${target.ssmTarget.name}`);
-        }
-    }
-
-    await cleanExit(exitCode, logger);
+    await exitAndSaveTranscript(0, logger, consoleWithTranscript.getTranscript());
 }
