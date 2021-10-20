@@ -12,10 +12,11 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func newChallenge(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
+func newChallenge(orgId string, clusterId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
 	// Get challenge
 	challengeRequest := wsmsg.GetChallengeMessage{
 		OrgId:       orgId,
+		ClusterId:   clusterId,
 		ClusterName: clusterName,
 	}
 

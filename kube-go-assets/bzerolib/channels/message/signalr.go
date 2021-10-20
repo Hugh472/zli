@@ -28,6 +28,7 @@ type CloseMessage struct {
 // Message definitions for challenge request/response
 type GetChallengeMessage struct {
 	OrgId       string `json:"orgId"`
+	ClusterId   string `json:"clusterId"`
 	ClusterName string `json:"clusterName"`
 }
 

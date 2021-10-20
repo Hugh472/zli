@@ -22,7 +22,7 @@ export interface KubeProxyResponse {
 }
 
 export interface KubeProxyRequest {
-    clusterName: string;
+    clusterId: string;
     clusterUser: string;
     clusterGroups: string[];
     environmentId: string;

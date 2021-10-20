@@ -39,6 +39,7 @@ func NewControlChannel(logger *lggr.Logger,
 	activationToken string,
 	orgId string,
 	clusterName string,
+	clusterId string,
 	environmentId string,
 	agentVersion string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*ControlChannel, error) {
@@ -47,6 +48,11 @@ func NewControlChannel(logger *lggr.Logger,
 
 	// Load in our saved config
 	config, _ := vault.LoadVault()
+
+	clusterNameParam := clusterName
+	if !config.IsEmpty() {
+		clusterNameParam = config.Data.ClusterName
+	}
 
 	// Create our headers and params, headers are empty
 	headers := make(map[string]string)
@@ -58,7 +64,8 @@ func NewControlChannel(logger *lggr.Logger,
 
 		// Why do we need these?  Can we remove them?
 		"org_id":         orgId,
-		"cluster_name":   clusterName,
+		"cluster_name":   clusterNameParam,
+		"cluster_id":     clusterId,
 		"environment_id": environmentId,
 	}
 
@@ -106,7 +113,7 @@ func (c *ControlChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 			c.NewDatachannelChan <- dataMessage
 		}
 	case wsmsg.HealthCheck:
-		if msg, err := healthCheck(); err != nil {
+		if msg, err := healthCheck(agentMessage); err != nil {
 			return err
 		} else {
 			c.websocket.OutputChan <- wsmsg.AgentMessage{
@@ -121,7 +128,23 @@ func (c *ControlChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 	return nil
 }
 
-func healthCheck() ([]byte, error) {
+func healthCheck(agentMessage wsmsg.AgentMessage) ([]byte, error) {
+	// Decrypt the message
+	var healthCheckMessage HealthCheckMessage
+	if err := json.Unmarshal(agentMessage.MessagePayload, &healthCheckMessage); err != nil {
+		return []byte{}, err
+	}
+
+	// Load in our saved config
+	secretData, err := vault.LoadVault()
+	if err != nil {
+		return []byte{}, err
+	}
+
+	// Update the vault value
+	secretData.Data.ClusterName = healthCheckMessage.ClusterName
+	secretData.Save()
+
 	// Also let bastion know a list of valid cluster roles
 	// TODO: break out extracting the list of valid cluster roles
 	// Create our api object

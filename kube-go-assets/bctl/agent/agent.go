@@ -23,6 +23,7 @@ var (
 	serviceUrl, orgId, clusterName   string
 	environmentId, activationToken   string
 	idpProvider, namespace, idpOrgId string
+	clusterId                        string
 )
 
 const (
@@ -53,14 +54,14 @@ func main() {
 	}
 
 	// Populate keys if they haven't been generated already
-	err = newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName, idpProvider, idpOrgId, namespace)
+	err = newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName, clusterId, idpProvider, idpOrgId, namespace)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
 	// Connect to the control channel
-	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, agentVersion, controlchannelTargetSelectHandler)
+	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, clusterId, environmentId, agentVersion, controlchannelTargetSelectHandler)
 	if err != nil {
 		select {} // TODO: Should we be trying again here?
 	}
@@ -138,6 +139,7 @@ func parseFlags() error {
 	flag.StringVar(&serviceUrl, "serviceUrl", "", "Service URL to use")
 	flag.StringVar(&orgId, "orgId", "", "OrgId to use")
 	flag.StringVar(&clusterName, "clusterName", "", "Cluster name to use")
+	flag.StringVar(&clusterId, "clusterId", "", "Cluster Id to use")
 	flag.StringVar(&environmentId, "environmentId", "", "Optional environmentId to specify")
 	flag.StringVar(&activationToken, "activationToken", "", "Activation Token to use to register the cluster")
 
@@ -149,6 +151,7 @@ func parseFlags() error {
 	activationToken = os.Getenv("ACTIVATION_TOKEN")
 	orgId = os.Getenv("ORG_ID")
 	clusterName = os.Getenv("CLUSTER_NAME")
+	clusterId = os.Getenv("CLUSTER_ID")
 	environmentId = os.Getenv("ENVIRONMENT")
 	idpProvider = os.Getenv("IDP_PROVIDER")
 	idpOrgId = os.Getenv("IDP_ORG_ID")
@@ -184,7 +187,7 @@ func getAgentVersion() string {
 	}
 }
 
-func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string, idpProvider string, idpOrgId string, namespace string) error {
+func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string, clusterId string, idpProvider string, idpOrgId string, namespace string) error {
 	config, _ := vault.LoadVault()
 
 	// Check if vault is empty, if so generate a private, public key pair
@@ -217,6 +220,7 @@ func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, ag
 				OrgId:          orgId,
 				EnvironmentId:  environmentId,
 				ClusterName:    clusterName,
+				ClusterId:      clusterId,
 			}
 
 			registerJson, err := json.Marshal(register)
