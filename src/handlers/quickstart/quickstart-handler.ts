@@ -38,7 +38,8 @@ const tipsMessage = `While your target(s) are coming online, here are a few tips
   (1) To list all of your targets, use \`zli list-targets\` or \`zli lt\`
   (2) To connect to a target, use \`zli connect user@targetName\`
   (3) To see your policies, use \`zli policy\`
-\nView the zli manual at: https://bastionzero.freshdesk.com/support/solutions/articles/67000629821-zero-trust-command-line-interface-zli-manual`;
+\nView the zli manual at: https://bastionzero.freshdesk.com/support/solutions/articles/67000629821-zero-trust-command-line-interface-zli-manual
+\nIf you’re wondering what’s happening in the background -- We are using your SSH key to install the BastionZero agent onto your machine(s). These agents protect your hosts from unprivileged access, even from BastionZero, thanks to our Multi Root Zero Trust Access protocol. To learn more about the protocol, please take a look at: https://github.com/bastionzero/whitepapers/blob/main/mrzap/README.md`;
 
 function printFooterMessage(): void {
     console.log('To see the full suite of capabilities that BastionZero offers, take a look at our documentation at: https://bastionzero.freshdesk.com/support/home');
