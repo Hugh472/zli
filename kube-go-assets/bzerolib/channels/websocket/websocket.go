@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
-	"time"
 
 	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
@@ -231,25 +230,16 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 
 func (w *Websocket) Connect() {
 	for !w.IsReady {
-		time.Sleep(time.Second * sleepIntervalInSeconds)
 		if w.getChallenge {
 			// First get the config from the vault
 			config, _ := vault.LoadVault()
 
 			// If we have a private key, we must solve the challenge
-			solvedChallenge, err := newChallenge(w.params["org_id"], w.params["cluster_id"], config.Data.ClusterName, w.serviceUrl, config.Data.PrivateKey)
+			solvedChallenge, err := newChallenge(w.logger, w.params["org_id"], w.params["cluster_id"], config.Data.ClusterName, w.serviceUrl, config.Data.PrivateKey)
 			if err != nil {
 				w.logger.Error(fmt.Errorf("error in getting challenge: %s", err))
 
-				// If its a 500 error, this means Bastion has rejected this request
-				if err.Error() == "500" {
-					w.logger.Error(fmt.Errorf("received 500 response on getting challenge. Sleeping forever"))
-					select {}
-				}
-
-				// Sleep in between
-				w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
-				continue
+				select {}
 			}
 
 			// Add the solved challenge to the params

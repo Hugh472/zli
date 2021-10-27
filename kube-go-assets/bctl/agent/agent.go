@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -14,6 +13,7 @@ import (
 	cc "bastionzero.com/bctl/v1/bctl/agent/controlchannel"
 	dc "bastionzero.com/bctl/v1/bctl/agent/datachannel"
 	"bastionzero.com/bctl/v1/bctl/agent/vault"
+	"bastionzero.com/bctl/v1/bzerolib/bzhttp"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -230,8 +230,7 @@ func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, ag
 			}
 
 			// Make our POST request
-			response, err := http.Post("https://"+serviceUrl+registerEndpoint, "application/json",
-				bytes.NewBuffer(registerJson))
+			response, err := bzhttp.PostRegister("https://"+serviceUrl+registerEndpoint, "application/json", registerJson, logger)
 			if err != nil || response.StatusCode != http.StatusOK {
 				rerr := fmt.Errorf("error making post request to register agent. Error: %s. Response: %v", err, response)
 				return rerr

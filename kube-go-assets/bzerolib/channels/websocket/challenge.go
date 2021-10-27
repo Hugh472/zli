@@ -1,18 +1,19 @@
 package websocket
 
 import (
-	"bytes"
 	ed "crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
-	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	"golang.org/x/crypto/sha3"
+
+	"bastionzero.com/bctl/v1/bzerolib/bzhttp"
+	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
-func newChallenge(orgId string, clusterId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
+func newChallenge(logger *lggr.Logger, orgId string, clusterId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
 	// Get challenge
 	challengeRequest := wsmsg.GetChallengeMessage{
 		OrgId:       orgId,
@@ -26,14 +27,9 @@ func newChallenge(orgId string, clusterId string, clusterName string, serviceUrl
 	}
 
 	// Make our POST request
-	response, err := http.Post("https://"+serviceUrl+challengeEndpoint, "application/json",
-		bytes.NewBuffer(challengeJson))
-	if err != nil || response.StatusCode != http.StatusOK {
-		// If the status code is unauthorized, retrun an unauth error, error just a generic one
-		if response.StatusCode == http.StatusInternalServerError {
-			return "", fmt.Errorf("500")
-		}
-		return "", fmt.Errorf("Error making post request to challenge agent. Error: %s. Response: %d", err, response.StatusCode)
+	response, err := bzhttp.Post("https://"+serviceUrl+challengeEndpoint, "application/json", challengeJson, logger)
+	if err != nil {
+		return "", fmt.Errorf("Error making post request to challenge agent. Error: %s. Response: %+v", err, response)
 	}
 	defer response.Body.Close()
 
