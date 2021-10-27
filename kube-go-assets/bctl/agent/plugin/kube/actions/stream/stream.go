@@ -102,7 +102,10 @@ func (s *StreamAction) validateRequestId(requestId string) error {
 func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, action string) (string, []byte, error) {
 	// Build our request
 	s.logger.Info(fmt.Sprintf("Making request for %s", streamActionRequest.Endpoint))
-	req := s.buildHttpRequest(streamActionRequest.Endpoint, streamActionRequest.Body, streamActionRequest.Method, streamActionRequest.Headers)
+	req, err := s.buildHttpRequest(streamActionRequest.Endpoint, streamActionRequest.Body, streamActionRequest.Method, streamActionRequest.Headers)
+	if err != nil {
+		return action, []byte{}, err
+	}
 
 	// Make the request and wait for the body to close
 	httpClient := &http.Client{}
@@ -192,6 +195,11 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 	return action, []byte{}, nil
 }
 
-func (s *StreamAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) *http.Request {
-	return kubeutils.BuildHttpRequest(s.kubeHost, endpoint, body, method, headers, s.serviceAccountToken, s.targetUser, s.targetGroups)
+func (s *StreamAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) (*http.Request, error) {
+	if toReturn, err := kubeutils.BuildHttpRequest(s.kubeHost, endpoint, body, method, headers, s.serviceAccountToken, s.targetUser, s.targetGroups); err != nil {
+		s.logger.Error(err)
+		return nil, err
+	} else {
+		return toReturn, nil
+	}
 }

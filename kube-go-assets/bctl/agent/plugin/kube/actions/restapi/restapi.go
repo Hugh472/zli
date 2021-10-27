@@ -53,7 +53,10 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 
 	// Build the request
 	r.logger.Info(fmt.Sprintf("Making request for %s", apiRequest.Endpoint))
-	req := r.buildHttpRequest(apiRequest.Endpoint, apiRequest.Body, apiRequest.Method, apiRequest.Headers)
+	req, err := r.buildHttpRequest(apiRequest.Endpoint, apiRequest.Body, apiRequest.Method, apiRequest.Headers)
+	if err != nil {
+		return action, []byte{}, err
+	}
 
 	httpClient := &http.Client{}
 	res, err := httpClient.Do(req)
@@ -85,6 +88,11 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	return RestResponse, responsePayloadBytes, nil
 }
 
-func (r *RestApiAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) *http.Request {
-	return kubeutils.BuildHttpRequest(r.kubeHost, endpoint, body, method, headers, r.serviceAccountToken, r.targetUser, r.targetGroups)
+func (r *RestApiAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) (*http.Request, error) {
+	if toReturn, err := kubeutils.BuildHttpRequest(r.kubeHost, endpoint, body, method, headers, r.serviceAccountToken, r.targetUser, r.targetGroups); err != nil {
+		r.logger.Error(err)
+		return nil, err
+	} else {
+		return toReturn, nil
+	}
 }

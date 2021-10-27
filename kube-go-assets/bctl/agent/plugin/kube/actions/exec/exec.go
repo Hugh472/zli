@@ -146,6 +146,13 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 		return "", []byte{}, rerr
 	}
 
+	// Always ensure that our targetUser is set
+	if e.targetUser == "" {
+		rerr := fmt.Errorf("target user field is not set")
+		e.logger.Error(rerr)
+		return "", []byte{}, rerr
+	}
+
 	// Add our impersonation information
 	config.Impersonate = rest.ImpersonationConfig{
 		UserName: e.targetUser,
