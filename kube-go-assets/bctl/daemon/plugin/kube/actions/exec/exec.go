@@ -60,10 +60,23 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
 	r.RequestChannel <- wrapStartPayload(isTty, r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
 
+	// Define our function to process each message
+	seqNumber := 0
+	processMessage := func(content []byte) bool {
+		// Check for agent-initiated end e.g. user typing 'exit'
+		if string(content) == kubeexec.EscChar {
+			r.logger.Info("stream ended")
+			spdy.conn.Close()
+			return true
+		}
+		spdy.stdoutStream.Write(content)
+		seqNumber++
+		return false
+	}
+
 	// Set up a go function for stdout
 	go func() {
 		streamQueue := make(map[int]smsg.StreamMessage)
-		seqNumber := 0
 		for {
 			select {
 			case <-r.ctx.Done():
@@ -71,25 +84,23 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			case streamMessage := <-r.streamChannel:
 				contentBytes, _ := base64.StdEncoding.DecodeString(streamMessage.Content)
 
-				// Check for agent-initiated end e.g. user typing 'exit'
-				if string(contentBytes) == kubeexec.EscChar {
-					r.logger.Info("stream ended")
-					spdy.conn.Close()
-					return
-				}
-
 				// Check sequence number is correct, if not store it for later
 				if streamMessage.SequenceNumber == seqNumber {
-					spdy.stdoutStream.Write(contentBytes)
-					seqNumber++
+
+					if processMessage(contentBytes) {
+						return
+					}
 
 					// Process any existing messages that were recieved out of order
 					msg, ok := streamQueue[seqNumber]
 					for ok {
 						moreBytes, _ := base64.StdEncoding.DecodeString(msg.Content)
-						spdy.stdoutStream.Write(moreBytes)
+
+						if processMessage(moreBytes) {
+							return
+						}
+
 						delete(streamQueue, seqNumber)
-						seqNumber++
 						msg, ok = streamQueue[seqNumber]
 					}
 				} else {
@@ -147,6 +158,28 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		}()
 	}
 
+	closeChan := spdy.conn.CloseChan()
+
+	go func() {
+		for {
+			select {
+			case <-closeChan:
+				// Send message to agent to close the stream
+				payload := kubeexec.KubeExecStopActionPayload{
+					RequestId: r.requestId,
+					LogId:     r.logId,
+				}
+
+				payloadBytes, _ := json.Marshal(payload)
+				r.RequestChannel <- plgn.ActionWrapper{
+					Action:        string(kubeexec.ExecStop),
+					ActionPayload: payloadBytes,
+				}
+				return
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -169,7 +202,7 @@ func wrapStartPayload(isTty bool, requestId string, logId string, command []stri
 
 	payloadBytes, _ := json.Marshal(payload)
 	return plgn.ActionWrapper{
-		Action:        string(kubeexec.StartExec),
+		Action:        string(kubeexec.ExecStart),
 		ActionPayload: payloadBytes,
 	}
 }

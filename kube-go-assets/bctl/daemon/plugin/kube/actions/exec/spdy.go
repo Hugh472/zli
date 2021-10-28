@@ -53,7 +53,7 @@ const (
 )
 
 type SPDYService struct {
-	conn         io.Closer
+	conn         httpstream.Connection
 	stdinStream  io.ReadCloser
 	stdoutStream io.WriteCloser
 	stderrStream io.WriteCloser
@@ -111,8 +111,9 @@ func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *ht
 		return &SPDYService{}, fmt.Errorf("unable to upgrade request")
 	}
 
-	// Set our idle timeout
-	conn.SetIdleTimeout(time.Minute)
+	// Set our idle timeout, set to 4 hours as that is what the kubelet uses by default
+	// Ref: https://github.com/kubernetes/kubernetes/issues/66661#issuecomment-411324031
+	conn.SetIdleTimeout(time.Hour * 4)
 
 	service := &SPDYService{
 		conn:   conn,

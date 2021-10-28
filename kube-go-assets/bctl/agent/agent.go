@@ -114,7 +114,7 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 		if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
 			if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
 				switch keysplittingPayloadVal["action"] {
-				case "kube/restapi/response", "kube/restapi/request", "kube/exec/start", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop":
+				case "kube/restapi/response", "kube/restapi/request", "kube/exec/start", "kube/exec/stop", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop":
 					return "ResponseClusterToBastionV1", nil
 				}
 			}

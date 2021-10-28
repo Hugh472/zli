@@ -19,10 +19,10 @@ import (
 type ExecSubAction string
 
 const (
-	StartExec  ExecSubAction = "kube/exec/start"
+	ExecStart  ExecSubAction = "kube/exec/start"
 	ExecInput  ExecSubAction = "kube/exec/input"
 	ExecResize ExecSubAction = "kube/exec/resize"
-	StopExec   ExecSubAction = "kube/exec/stop"
+	ExecStop   ExecSubAction = "kube/exec/stop"
 )
 
 const (
@@ -39,6 +39,7 @@ type ExecAction struct {
 	closed              bool
 	logger              *lggr.Logger
 	ctx                 context.Context
+	doneChannel         chan bool
 
 	// output channel to send all of our stream messages directly to datachannel
 	streamOutputChannel chan smsg.StreamMessage
@@ -67,6 +68,7 @@ func NewExecAction(ctx context.Context,
 		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
 		logger:              logger,
 		ctx:                 ctx,
+		doneChannel:         make(chan bool),
 	}, nil
 }
 
@@ -79,7 +81,7 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 	switch ExecSubAction(action) {
 
 	// Start exec message required before anything else
-	case StartExec:
+	case ExecStart:
 		var startExecRequest KubeExecStartActionPayload
 		if err := json.Unmarshal(actionPayload, &startExecRequest); err != nil {
 			rerr := fmt.Errorf("unable to unmarshal start exec message: %s", err)
@@ -120,7 +122,20 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 
 		e.execResizeChannel <- execResizeAction
 		return string(ExecResize), []byte{}, nil
+	case ExecStop:
+		var execStopAction KubeExecStopActionPayload
+		if err := json.Unmarshal(actionPayload, &execStopAction); err != nil {
+			rerr := fmt.Errorf("error unmarshaling stop message: %s", err)
+			e.logger.Error(rerr)
+			return "", []byte{}, rerr
+		}
 
+		if err := e.validateRequestId(execStopAction.RequestId); err != nil {
+			return "", []byte{}, err
+		}
+
+		e.doneChannel <- true
+		return string(ExecStop), []byte{}, nil
 	default:
 		rerr := fmt.Errorf("unhandled exec action: %v", action)
 		e.logger.Error(rerr)
@@ -171,7 +186,7 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", kubeExecApiUrlParsed)
 	if err != nil {
-		return string(StartExec), []byte{}, fmt.Errorf("error creating Spdy executor: %s", err)
+		return string(ExecStart), []byte{}, fmt.Errorf("error creating Spdy executor: %s", err)
 	}
 
 	stderrWriter := stdout.NewStdWriter(smsg.StdErr, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
@@ -185,8 +200,13 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 		// no way to interrupt it or pass in ctx. Therefore, we need to close the stream in order to pass an io.EOF message
 		// to exec which will close the exec.Stream and that will close the go routine.
 		// https://github.com/kubernetes/client-go/issues/554
-		<-e.ctx.Done()
-		stdinReader.Close()
+		select {
+		case <-e.ctx.Done():
+		case <-e.doneChannel:
+			e.logger.Info("Closing exec stdinReader")
+			stdinReader.Close()
+		}
+
 	}()
 
 	go func() {
@@ -222,5 +242,5 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 		e.closed = true
 	}()
 
-	return string(StartExec), []byte{}, nil
+	return string(ExecStart), []byte{}, nil
 }

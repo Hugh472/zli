@@ -10,6 +10,12 @@ type KubeExecStartActionPayload struct {
 	CommandBeingRun string   `json:"commandBeingRun"`
 }
 
+// Exec payload for the "kube/exec/stop" action
+type KubeExecStopActionPayload struct {
+	RequestId string `json:"requestId"`
+	LogId     string `json:"logId"`
+}
+
 // Exec payload for the "kube/exec/input" action
 type KubeStdinActionPayload struct {
 	RequestId string `json:"requestId"`

@@ -16,6 +16,7 @@ type StdReader struct {
 	StreamType   smsg.StreamType
 	RequestId    string
 	stdinChannel chan []byte
+	doneChannel  chan bool
 }
 
 func NewStdReader(streamType smsg.StreamType, requestId string, stdinChannel chan []byte) *StdReader {
@@ -23,13 +24,14 @@ func NewStdReader(streamType smsg.StreamType, requestId string, stdinChannel cha
 		StreamType:   streamType,
 		RequestId:    requestId,
 		stdinChannel: stdinChannel,
+		doneChannel:  make(chan bool),
 	}
 
 	return stdin
 }
 
 func (r *StdReader) Close() {
-	r.Read(EndStreamBytes)
+	r.doneChannel <- true
 }
 
 func (r *StdReader) Read(p []byte) (int, error) {
@@ -37,7 +39,11 @@ func (r *StdReader) Read(p []byte) (int, error) {
 	if bytes.Equal(p, EndStreamBytes) {
 		return 1, io.EOF
 	}
-	stdin := <-r.stdinChannel
-	n := copy(p, stdin)
-	return n, nil
+	select {
+	case stdin := <-r.stdinChannel:
+		n := copy(p, stdin)
+		return n, nil
+	case <-r.doneChannel:
+		return 1, io.EOF
+	}
 }
