@@ -4,7 +4,6 @@ import { Logger } from '../logger/logger.service';
 import { KeySplittingConfigSchema, ConfigInterface, getDefaultKeysplittingConfig } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
 import { Observable, Subject } from 'rxjs';
-import { ClientSecretResponse } from '../token/token.messages';
 import { TokenService } from '../token/token.service';
 import { UserSummary } from '../user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../kube/kube.service';
@@ -36,7 +35,7 @@ export class ConfigService implements ConfigInterface {
 
     public logoutDetected : Observable<boolean> = this.logoutDetectedSubject.asObservable();
 
-    constructor(configName: string, logger: Logger) {
+    constructor(configName: string, private logger: Logger) {
         const appName = this.getAppName(configName);
         this.configName = configName;
         this.config = new Conf<BastionZeroConfigSchema>({
@@ -193,21 +192,39 @@ export class ConfigService implements ConfigInterface {
         this.config.delete('keySplitting');
     }
 
-    public async loginSetup(idp: IdentityProvider): Promise<void>
-    {
-        this.config.set('idp', idp);
-        this.config.set('authUrl', this.getAuthUrl(idp));
-        this.config.set('authScopes', this.getAuthScopes(idp));
-
-        // fetch oauth details and mixpanel token from backend on login
-        const clientSecret = await this.getOAuthClient(idp);
-        this.config.set('clientId', clientSecret.clientId);
-        this.config.set('clientSecret', clientSecret.clientSecret);
-
+    public async fetchMixpanelToken() {
+        // fetch mixpanel token from backend
         const mixpanelToken = await this.getMixpanelToken();
         this.config.set('mixpanelToken', mixpanelToken);
+    }
 
-        // Clear previous sessionId
+    public async loginSetup(idp: IdentityProvider, email?: string): Promise<void> {
+        // Common login setup
+        this.config.set('idp', idp);
+        this.config.set('authScopes', this.getAuthScopes(idp));
+
+        // IdP specific login setup
+        if (idp == IdentityProvider.Google || idp == IdentityProvider.Microsoft) {
+            const clientSecret = await this.tokenService.getClientIdAndSecretForProvider(idp);
+            this.config.set('clientId', clientSecret.clientId);
+            this.config.set('clientSecret', clientSecret.clientSecret);
+            this.config.set('authUrl', this.getCommonAuthUrl(idp));
+        } else if(idp == IdentityProvider.Okta) {
+            if(! email)
+                throw new Error('User email is required for logging in with okta');
+
+            const oktaClientResponse = await this.tokenService.getOktaClient(email);
+            if(! oktaClientResponse)
+                throw new Error(`Unknown organization for email ${email}`);
+
+            this.config.set('clientId', oktaClientResponse.clientId);
+            this.config.delete('clientSecret');
+            this.config.set('authUrl', `${oktaClientResponse.domain}`);
+        } else {
+            throw new Error(`Unhandled idp ${idp} in loginSetup`);
+        }
+
+        // Clear previous login information
         this.config.delete('sessionId');
         this.config.delete('whoami');
     }
@@ -241,7 +258,7 @@ export class ConfigService implements ConfigInterface {
         return `https://${appName}.bastionzero.com/`;
     }
 
-    private getAuthUrl(idp: IdentityProvider) {
+    private getCommonAuthUrl(idp: IdentityProvider) {
         switch(idp)
         {
         case IdentityProvider.Google:
@@ -249,7 +266,7 @@ export class ConfigService implements ConfigInterface {
         case IdentityProvider.Microsoft:
             return 'https://login.microsoftonline.com/common/v2.0';
         default:
-            throw new Error(`Unknown idp ${idp}`);
+            throw new Error(`Unhandled idp ${idp} in getCommonAuthUrl`);
         }
     }
 
@@ -261,16 +278,14 @@ export class ConfigService implements ConfigInterface {
         case IdentityProvider.Microsoft:
             // both openid and offline_access must be set for refresh token
             return 'offline_access openid email profile';
+        case IdentityProvider.Okta:
+            return 'offline_access openid email profile';
         default:
             throw new Error(`Unknown idp ${idp}`);
         }
     }
 
-    private getOAuthClient(idp: IdentityProvider): Promise<ClientSecretResponse> {
-        return this.tokenService.GetClientSecret(idp);
-    }
-
     private async getMixpanelToken(): Promise<string> {
-        return (await this.tokenService.GetMixpanelToken()).token;
+        return (await this.tokenService.getMixpanelToken()).token;
     }
 }

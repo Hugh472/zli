@@ -61,6 +61,8 @@ export function parseIdpType(idp: IdentityProvider) : IdentityProvider
         return IdentityProvider.Google;
     case IdentityProvider.Microsoft:
         return IdentityProvider.Microsoft;
+    case IdentityProvider.Okta:
+        return IdentityProvider.Okta;
     default:
         return undefined;
     }
@@ -513,4 +515,14 @@ export async function getEnvironmentFromName(enviromentName: string, envs: Envir
         await cleanExit(1, logger);
     }
     return environment;
+}
+
+export function randomAlphaNumericString(length: number) : string {
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
 }

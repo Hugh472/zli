@@ -231,6 +231,9 @@ export class CliDriver
             .middleware(async (argv) => {
                 if(!includes(this.mixpanelCommands, argv._[0]))
                     return;
+                if(! this.configService.mixpanelToken()) {
+                    await this.configService.fetchMixpanelToken();
+                }
                 this.mixpanelService = mixpanelTrackingMiddleware(this.configService, argv);
             })
             .middleware((argv) => {

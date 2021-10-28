@@ -10,7 +10,7 @@ import { loginHtml } from './templates/login';
 import { logoutHtml } from './templates/logout';
 import { cleanExit } from '../../handlers/clean-exit.handler';
 import { parse as QueryStringParse } from 'query-string';
-import { parseIdpType } from '../../utils';
+import { parseIdpType, randomAlphaNumericString } from '../../utils';
 
 const findPort = require('find-open-port');
 
@@ -24,6 +24,7 @@ export class OAuthService implements IDisposable {
     private oidcClient: Client;
     private codeVerifier: string;
     private nonce: string;
+    private state: string;
 
     constructor(private configService: ConfigService, logger: Logger) {
         this.logger = logger;
@@ -53,28 +54,43 @@ export class OAuthService implements IDisposable {
 
             switch (urlParts[0]) {
             case '/webapp-callback':
-
                 // Prepare config for a new login
                 const provider = parseIdpType(queryParams.idp as IdentityProvider);
+                const email = queryParams.email as string;
 
                 if(provider === undefined) {
                     this.logger.error('The selected identity provider is not currently supported.');
                     await cleanExit(1, this.logger);
                 }
-                await this.configService.loginSetup(provider);
 
-                // Setup the oidc client for a new login
-                await this.setupClient(callbackPort);
-                this.codeVerifier = generators.codeVerifier();
-                const code_challenge = generators.codeChallenge(this.codeVerifier);
+                try {
+                    await this.configService.loginSetup(provider, email);
 
-                // Redirect to the idp
-                res.writeHead(302, {
-                    'Access-Control-Allow-Origin': '*',
-                    'content-type': 'text/html',
-                    'Location': this.getAuthUrl(code_challenge)
-                });
-                res.end();
+                    // Setup the oidc client for a new login
+                    await this.setupClient(callbackPort);
+                    this.codeVerifier = generators.codeVerifier();
+
+                    // While state is not strictly required to be set per the
+                    // oidc spec when using PKCE flow, it is specifically
+                    // required by okta and will fail if left empty. So we
+                    // implement sending a random value in the state for all
+                    // providers
+                    // https://github.com/panva/node-openid-client/issues/377
+                    // https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/#flow-specifics
+                    this.state = randomAlphaNumericString(45);
+                    const code_challenge = generators.codeChallenge(this.codeVerifier);
+
+                    // Redirect to the idp
+                    res.writeHead(302, {
+                        'Access-Control-Allow-Origin': '*',
+                        'content-type': 'text/html',
+                        'Location': this.getAuthUrl(code_challenge, this.state)
+                    });
+                    res.end();
+                } catch(err) {
+                    this.logger.error(`Error occurred when trying to login with ${provider}. ${err.message}.`);
+                    await cleanExit(1, this.logger);
+                }
 
                 break;
 
@@ -96,7 +112,7 @@ export class OAuthService implements IDisposable {
                 const tokenSet = await this.oidcClient.callback(
                     `http://${this.host}:${callbackPort}/login-callback`,
                     params,
-                    { code_verifier: this.codeVerifier, nonce: this.nonce });
+                    { code_verifier: this.codeVerifier, nonce: this.nonce, state: this.state });
 
                 this.logger.info('Login successful');
                 this.logger.debug('callback listener closed');
@@ -145,9 +161,18 @@ export class OAuthService implements IDisposable {
         const clientMetadata : ClientMetadata = {
             client_id: this.configService.clientId(),
             response_types: ['code'],
-            token_endpoint_auth_method: 'client_secret_basic',
-            client_secret: this.configService.clientSecret()
         };
+
+        // Client secret is not used for okta but it is required for google/microsoft
+        // https://github.com/panva/node-openid-client/blob/main/docs/README.md#client-authentication-methods
+        const clientSecret = this.configService.clientSecret();
+        if(clientSecret) {
+            clientMetadata.client_secret = clientSecret;
+            clientMetadata.token_endpoint_auth_method =  'client_secret_basic';
+        } else {
+            clientMetadata.token_endpoint_auth_method = 'none';
+        }
+
         if (callbackPort) {
             clientMetadata.redirect_uris = [`http://${this.host}:${callbackPort}/login-callback`];
         }
@@ -160,7 +185,7 @@ export class OAuthService implements IDisposable {
         this.oidcClient = client;
     }
 
-    private getAuthUrl(code_challenge: string) : string
+    private getAuthUrl(code_challenge: string, state: string) : string
     {
         if(this.oidcClient === undefined){
             throw new Error('Unable to get authUrl from undefined OIDC client');
@@ -179,7 +204,8 @@ export class OAuthService implements IDisposable {
             // required for google refresh token
             prompt: 'consent',
             access_type: 'offline',
-            nonce: this.nonce
+            nonce: this.nonce,
+            state: state
         };
 
         return this.oidcClient.authorizationUrl(authParams);

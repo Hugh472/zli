@@ -48,6 +48,13 @@ export class HttpService {
 
     private getHttpErrorMessage(route: string, error: HTTPError): string {
         this.logger.debug(`Error in ${this.baseUrl}${route}`);
+        if(error.response && error.response.body ) {
+            // Log the error response body if it exists. This might contain
+            // server validation errors in the case of 400 errors as well as
+            // custom error messages for 500 errors
+            this.logger.debug(JSON.stringify(error.response.body));
+        }
+
         let errorMessage = error.message;
 
         if (!error.response) {

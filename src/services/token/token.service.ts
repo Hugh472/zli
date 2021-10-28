@@ -2,7 +2,7 @@ import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
-import { MixpanelTokenResponse, ClientSecretResponse } from './token.messages';
+import { MixpanelTokenResponse, ClientSecretResponse, OktaClientResponse } from './token.messages';
 
 export class TokenService extends HttpService
 {
@@ -11,13 +11,19 @@ export class TokenService extends HttpService
         super(configService, 'api/v1/token/', logger, false);
     }
 
-    public GetMixpanelToken(): Promise<MixpanelTokenResponse>
+    public getMixpanelToken(): Promise<MixpanelTokenResponse>
     {
         return this.Get('mixpanel-token', {});
     }
 
-    public GetClientSecret(idp: IdentityProvider) : Promise<ClientSecretResponse>
+    public getClientIdAndSecretForProvider(idp: IdentityProvider) : Promise<ClientSecretResponse>
     {
         return this.Get(`${idp.toLowerCase()}-client`, {});
+    }
+
+    public getOktaClient(userEmail: string) : Promise<OktaClientResponse> {
+        return this.Get('okta-client', {
+            email: userEmail
+        });
     }
 }
