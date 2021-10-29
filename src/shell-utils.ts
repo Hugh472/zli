@@ -7,6 +7,9 @@ import { ShellTerminal } from './terminal/terminal';
 import { ConnectionSummary } from './services/connection/connection.types';
 import { SessionService } from './services/session/session.service';
 import { SessionDetails, SessionState } from './services/session/session.types';
+import { TerminalSessionInfo } from './terminal/terminal.types';
+import { MetricsCollectionService } from './services/metrics/metrics-collection.service';
+import { MetricsHttpService } from './services/metrics/metrics-http.service';
 
 export async function createAndRunShell(
     configService: ConfigService,
@@ -16,13 +19,17 @@ export async function createAndRunShell(
     return new Promise<number>(async (resolve, _) => {
         // connect to target and run terminal
         const terminal = new ShellTerminal(logger, configService, connectionSummary);
+        let terminalSessionInfo : TerminalSessionInfo;
         try {
-            await terminal.start(termsize());
+            terminalSessionInfo = await terminal.start(termsize());
         } catch (err) {
             logger.error(`Error connecting to terminal: ${err.stack}`);
             resolve(1);
             return;
         }
+
+        // Create MetricsService for this shell session
+        const metricsService = new MetricsCollectionService(logger, connectionSummary.id, new MetricsHttpService(terminalSessionInfo.connectionNodeId, configService, logger));
 
         // Terminal resize event logic
         // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
@@ -69,11 +76,22 @@ export async function createAndRunShell(
                 process.stdin.resume();
             }
 
-            process.stdin.on('keypress', (_, key) => { observer.next(key.sequence); });
+            process.stdin.on('keypress', async (_, key) => {
+                // TODO-metrics: Add config flag for metrics
+                await metricsService.newInputReceived();
+                observer.next(key.sequence);
+            });
         });
         source.pipe(bufferTime(50), filter(buffer => buffer.length > 0)).subscribe(keypresses => {
             // This pipe is in order to allow copy-pasted input to be treated like a single string
             terminal.writeString(keypresses.join(''));
+        });
+
+        // Write received output to stdout
+        terminal.outputObservable.subscribe(async data => {
+            // TODO-metrics: Add config flag for metrics
+            await metricsService.newOutputReceived();
+            process.stdout.write(data);
         });
     });
 }

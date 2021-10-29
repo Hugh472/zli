@@ -12,11 +12,16 @@ export class HttpService {
     private authorized: boolean;
     protected logger: Logger;
 
-    constructor(configService: ConfigService, serviceRoute: string, logger: Logger, authorized: boolean = true) {
+    constructor(configService: ConfigService, serviceRoute: string, logger: Logger, baseUrl: string = "", authorized: boolean = true) {
         this.configService = configService;
         this.authorized = authorized;
         this.logger = logger;
-        this.baseUrl = `${this.configService.serviceUrl()}${serviceRoute}`;
+
+        if (baseUrl === "") {
+            this.baseUrl = `${this.configService.serviceUrl()}${serviceRoute}`;
+        } else {
+            this.baseUrl = baseUrl;
+        }
 
         this.httpClient = got.extend({
             prefixUrl: this.baseUrl,

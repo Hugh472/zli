@@ -12,6 +12,7 @@ import { ConnectionService } from '../services/connection/connection.service';
 import { ConnectionSummary } from '../services/connection/connection.types';
 import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
 import { SsmTargetSummary } from '../services/ssm-target/ssm-target.types';
+import { TerminalSessionInfo } from './terminal.types';
 
 export class ShellTerminal implements IDisposable
 {
@@ -27,6 +28,10 @@ export class ShellTerminal implements IDisposable
     private blockInput: boolean = true;
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
+
+    // stdout
+    private outputSubject: Subject<Uint8Array> = new Subject<Uint8Array>();
+    public outputObservable: Observable<Uint8Array> = this.outputSubject.asObservable();
 
     constructor(private logger: Logger, private configService: ConfigService, private connectionSummary: ConnectionSummary)
     {
@@ -75,20 +80,20 @@ export class ShellTerminal implements IDisposable
         }
     }
 
-    public async start(termSize: TerminalSize): Promise<void>
+    public async start(termSize: TerminalSize): Promise<TerminalSessionInfo>
     {
         this.currentTerminalSize = termSize;
         this.shellWebsocketService = await this.createShellWebsocketService();
 
-        // Handle writing to stdout
-        // TODO: bring this up a level
         this.shellWebsocketService.outputData.subscribe(data => {
-            process.stdout.write(Buffer.from(data, 'base64'));
+            // Push to outputSubject which pushes to stdout at a higher level
+            this.outputSubject.next(Buffer.from(data, 'base64'));
         });
 
         // Replay the existing output if any and only then continue with the shell start flow
         this.shellWebsocketService.replayData.subscribe(data => {// Maybe a "wait for only one input" should be used here instead of subscribe?
-            process.stdout.write(Buffer.from(data, 'base64'));
+            // Push to outputSubject which pushes to stdout at a higher level
+            this.outputSubject.next(Buffer.from(data, 'base64'));
             this.shellWebsocketService.sendReplayDone(termSize.rows, termSize.columns);
         });
 
@@ -147,6 +152,10 @@ export class ShellTerminal implements IDisposable
                 this.terminalRunningStream.error('ShellEventData subscription completed prematurely');
             }
         );
+
+        return {
+            connectionNodeId: this.shellWebsocketService.getConnectionNodeId()
+        }
     }
 
     public resize(terminalSize: TerminalSize): void
@@ -187,5 +196,6 @@ export class ShellTerminal implements IDisposable
             this.shellWebsocketService.dispose();
 
         this.terminalRunningStream.complete();
+        this.outputSubject.complete();
     }
 }
