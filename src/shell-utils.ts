@@ -78,7 +78,11 @@ export async function createAndRunShell(
 
             process.stdin.on('keypress', async (_, key) => {
                 // TODO-metrics: Add config flag for metrics
-                await metricsService.newInputReceived();
+                try {
+                    await metricsService.newInputReceived();
+                } catch (e) {
+                    logger.error(`Error on newInputReceived: ${e}`);
+                }
                 observer.next(key.sequence);
             });
         });
@@ -90,7 +94,11 @@ export async function createAndRunShell(
         // Write received output to stdout
         terminal.outputObservable.subscribe(async data => {
             // TODO-metrics: Add config flag for metrics
-            await metricsService.newOutputReceived();
+            try {
+                await metricsService.newOutputReceived();
+            } catch (e) {
+                logger.error(`Error on newOutputReceived: ${e}`);
+            }
             process.stdout.write(data);
         });
     });

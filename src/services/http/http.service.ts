@@ -20,7 +20,7 @@ export class HttpService {
         if (baseUrl === "") {
             this.baseUrl = `${this.configService.serviceUrl()}${serviceRoute}`;
         } else {
-            this.baseUrl = baseUrl;
+            this.baseUrl = `${baseUrl}${serviceRoute}`;
         }
 
         this.httpClient = got.extend({
