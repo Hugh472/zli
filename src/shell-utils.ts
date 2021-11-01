@@ -82,6 +82,7 @@ export async function createAndRunShell(
                     await metricsService.newInputReceived();
                 } catch (e) {
                     logger.error(`Error on newInputReceived: ${e}`);
+                    return;
                 }
                 observer.next(key.sequence);
             });
@@ -98,6 +99,7 @@ export async function createAndRunShell(
                 await metricsService.newOutputReceived();
             } catch (e) {
                 logger.error(`Error on newOutputReceived: ${e}`);
+                return;
             }
             process.stdout.write(data);
         });
