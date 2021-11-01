@@ -14,12 +14,13 @@ import { MetricsHttpService } from './services/metrics/metrics-http.service';
 export async function createAndRunShell(
     configService: ConfigService,
     logger: Logger,
-    connectionSummary: ConnectionSummary
+    connectionSummary: ConnectionSummary,
+    metricsEnabled: boolean = false
 ) {
     return new Promise<number>(async (resolve, _) => {
         // connect to target and run terminal
         const terminal = new ShellTerminal(logger, configService, connectionSummary);
-        let terminalSessionInfo : TerminalSessionInfo;
+        let terminalSessionInfo: TerminalSessionInfo;
         try {
             terminalSessionInfo = await terminal.start(termsize());
         } catch (err) {
@@ -29,7 +30,10 @@ export async function createAndRunShell(
         }
 
         // Create MetricsService for this shell session
-        const metricsService = new MetricsCollectionService(logger, connectionSummary.id, new MetricsHttpService(terminalSessionInfo.connectionNodeId, configService, logger));
+        let metricsService: MetricsCollectionService;
+        if (metricsEnabled) {
+            metricsService = new MetricsCollectionService(logger, connectionSummary.id, new MetricsHttpService(terminalSessionInfo.connectionNodeId, configService, logger));
+        }
 
         // Terminal resize event logic
         // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
@@ -77,12 +81,13 @@ export async function createAndRunShell(
             }
 
             process.stdin.on('keypress', async (_, key) => {
-                // TODO-metrics: Add config flag for metrics
-                try {
-                    await metricsService.newInputReceived();
-                } catch (e) {
-                    logger.error(`Error on newInputReceived: ${e}`);
-                    return;
+                if (metricsEnabled) {
+                    try {
+                        await metricsService.newInputReceived();
+                    } catch (e) {
+                        logger.error(`Error on newInputReceived: ${e}`);
+                        return;
+                    }
                 }
                 observer.next(key.sequence);
             });
@@ -94,12 +99,13 @@ export async function createAndRunShell(
 
         // Write received output to stdout
         terminal.outputObservable.subscribe(async data => {
-            // TODO-metrics: Add config flag for metrics
-            try {
-                await metricsService.newOutputReceived();
-            } catch (e) {
-                logger.error(`Error on newOutputReceived: ${e}`);
-                return;
+            if (metricsEnabled) {
+                try {
+                    await metricsService.newOutputReceived();
+                } catch (e) {
+                    logger.error(`Error on newOutputReceived: ${e}`);
+                    return;
+                }
             }
             process.stdout.write(data);
         });

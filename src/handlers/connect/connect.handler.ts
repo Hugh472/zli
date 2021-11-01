@@ -17,7 +17,8 @@ export async function connectHandler(
     configService: ConfigService,
     logger: Logger,
     mixpanelService: MixpanelService,
-    parsedTarget: ParsedTargetString
+    parsedTarget: ParsedTargetString,
+    metricsEnabled: boolean
 ) {
 
     if(! parsedTarget) {
@@ -80,7 +81,7 @@ export async function connectHandler(
 
     const connectionSummary = await connectionService.GetConnection(connectionId);
 
-    const runShellPromise = createAndRunShell(configService, logger, connectionSummary);
+    const runShellPromise = createAndRunShell(configService, logger, connectionSummary, metricsEnabled);
     mixpanelService.TrackNewConnection(parsedTarget.type);
 
     return await runShellPromise;

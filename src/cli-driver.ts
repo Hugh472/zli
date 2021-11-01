@@ -274,7 +274,7 @@ export class CliDriver
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
-                    const exitCode = await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                    const exitCode = await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget, argv.metrics);
                     await cleanExit(exitCode, this.logger);
                 }
             )
