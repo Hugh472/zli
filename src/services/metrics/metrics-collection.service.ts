@@ -1,7 +1,7 @@
-import { Logger } from "../logger/logger.service";
-import { KeyPressMetricEvent, KeyPressMetricState } from "./metrics-collection.service.types";
-import { LatencyV1MetricsRequest } from "./metrics-http.messages";
-import { MetricsHttpService } from "./metrics-http.service";
+import { Logger } from '../logger/logger.service';
+import { KeyPressMetricEvent, KeyPressMetricState } from './metrics-collection.service.types';
+import { LatencyV1MetricsRequest } from './metrics-http.messages';
+import { MetricsHttpService } from './metrics-http.service';
 
 /**
  * Create a new MetricsCollectionService per connection
@@ -27,7 +27,7 @@ export class MetricsCollectionService {
 
     public async newInputReceived(): Promise<void> {
         if (!this.metricState.waitingForInput) {
-            throw new Error("Keypress metrics was not expecting an input!");
+            throw new Error('Keypress metrics was not expecting an input!');
         }
 
         // Saves current time in nanoseconds (used for higher precision)
@@ -56,9 +56,9 @@ export class MetricsCollectionService {
             deltaMs: keyPressMetricEvent.deltaMS,
             connectionId: this.connectionId,
             sequenceNumber: keyPressMetricEvent.sequenceNumber,
-            service: "zli",
-            description: "metrics gathered at the zli"
-        })
+            service: 'zli',
+            description: 'metrics gathered at the zli'
+        });
     }
 
     private async postLatencyV1ToMetricsServer(payload: LatencyV1MetricsRequest) {
@@ -69,7 +69,7 @@ export class MetricsCollectionService {
 
     private endKeyPressMetricEvent(): KeyPressMetricEvent {
         if (this.metricState.waitingForInput) {
-            throw new Error("Keypress metrics was not expecting an output!");
+            throw new Error('Keypress metrics was not expecting an output!');
         }
         const outputTimeNS = process.hrtime.bigint();
         const outputTimeUnixMS = Date.now();
@@ -85,7 +85,7 @@ export class MetricsCollectionService {
             endTimeUnixMs: outputTimeUnixMS,
             deltaMS: deltaMs,
             deltaNS: deltaNs
-        }
+        };
 
         // Allows NewInputReceived() to be called without exception
         this.metricState.waitingForInput = true;

@@ -155,7 +155,7 @@ export class ShellTerminal implements IDisposable
 
         return {
             connectionNodeId: this.shellWebsocketService.getConnectionNodeId()
-        }
+        };
     }
 
     public resize(terminalSize: TerminalSize): void

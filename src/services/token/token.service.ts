@@ -8,7 +8,7 @@ export class TokenService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/token/', logger, "", false);
+        super(configService, 'api/v1/token/', logger, '', false);
     }
 
     public getMixpanelToken(): Promise<MixpanelTokenResponse>

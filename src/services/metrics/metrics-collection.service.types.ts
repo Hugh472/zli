@@ -8,7 +8,7 @@ export type KeyPressMetricState = {
 
 export type KeyPressMetricEvent = {
     sequenceNumber: number;
-    startTimeUnixMs: number; 
+    startTimeUnixMs: number;
     endTimeUnixMs: number;
     deltaMS: number;
     deltaNS: bigint;
