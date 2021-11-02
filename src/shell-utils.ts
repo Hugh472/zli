@@ -1,6 +1,5 @@
-import { Observable } from 'rxjs';
-import { bufferTime, filter } from 'rxjs/operators';
 import termsize from 'term-size';
+import readline from 'readline';
 import { ConfigService } from './services/config/config.service';
 import { Logger } from './services/logger/logger.service';
 import { ShellTerminal } from './terminal/terminal';
@@ -53,27 +52,72 @@ export async function createAndRunShell(
             }
         );
 
-        const source = new Observable<string>(function (observer) {
-            // To get 'keypress' events you need the following lines
-            // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
-            const readline = require('readline');
-            readline.emitKeypressEvents(process.stdin);
-            if (process.stdin.isTTY) {
-                process.stdin.setRawMode(true);
+        // To get 'keypress' events you need the following lines
+        // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
+        readline.emitKeypressEvents(process.stdin);
+        if (process.stdin.isTTY) {
+            process.stdin.setRawMode(true);
+        }
+
+        // Force stdin to be in flowing mode in case the stream was paused.
+        // The stream is paused when connect() is called from quickstart due
+        // to the way the prompt library works.
+        if (process.stdin.readableFlowing === false) {
+            process.stdin.resume();
+        }
+
+        // Max input delay to wait, in ms
+        let maxInputDelay = 1;
+        let previousInput = Date.now();
+        const maxInputDelayLimit = 101;
+        const inputDelayIncrease = 5;
+
+        // To keep track of this is a large stdin buffer (i.e. copy paste)
+        let inputBuffer: string[] = [];
+        let bufferFunction: NodeJS.Timeout = null;
+
+        process.stdin.on('keypress', async (_, key) => {
+            // Implement some custom logic for batching input
+            // Ref: https://stackoverflow.com/questions/66755705/detect-pasted-input-with-readline-nodejs
+
+            // Add our input to our array of input
+            inputBuffer.push(key.sequence);
+
+            // Keep increasing maxInputDelay if the last input was less than 5ms ago
+            // We cap this wait at maxInputDelayLimit-ms
+            if ((Date.now() - previousInput) < inputDelayIncrease) {
+                // Only increase if our maxInputDelay < maxInputDelayLimit
+                if (maxInputDelay < maxInputDelayLimit) {
+                    maxInputDelay += inputDelayIncrease;
+                }
+            } else {
+                // Else reset our delay
+                maxInputDelay = 1;
             }
 
-            // Force stdin to be in flowing mode in case the stream was paused.
-            // The stream is paused when connect() is called from quickstart due
-            // to the way the prompt library works.
-            if (process.stdin.readableFlowing === false) {
-                process.stdin.resume();
-            }
+            // Update when we got our last input
+            previousInput = Date.now();
 
-            process.stdin.on('keypress', (_, key) => { observer.next(key.sequence); });
-        });
-        source.pipe(bufferTime(50), filter(buffer => buffer.length > 0)).subscribe(keypresses => {
-            // This pipe is in order to allow copy-pasted input to be treated like a single string
-            terminal.writeString(keypresses.join(''));
+            // If we get a new input, clear the timeout function
+            if (bufferFunction === null) {
+                // send the input to a function after a certain amount of time has passed
+                bufferFunction = setTimeout(() => {
+                    // Loop over the array, and send it as chunks of 10000
+                    // Otherwise we get keysplitting/general errors if we try to send too much data
+                    const chunk = 10000;
+                    for (let i = 0; i < inputBuffer.length; i += chunk) {
+                        // Write the chunk
+                        // If i+chunk is > inputBuffer.length, it uses the length of the array
+                        // Ref: https://stackoverflow.com/questions/36595891/array-prototype-slice-what-if-the-end-param-is-greater-than-the-array-length
+                        const bufferChunk = inputBuffer.slice(i, i + chunk);
+                        terminal.writeString(bufferChunk.join(''));
+                    }
+
+                    // Reset out input buffer
+                    inputBuffer = [];
+                    bufferFunction = null;
+                }, maxInputDelay);
+            }
         });
     });
 }
