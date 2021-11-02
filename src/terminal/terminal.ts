@@ -13,6 +13,7 @@ import { ConnectionSummary } from '../services/connection/connection.types';
 import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
 import { SsmTargetSummary } from '../services/ssm-target/ssm-target.types';
 import { TerminalSessionInfo } from './terminal.types';
+import { MetricsCollectionService } from '../../webshell-common-ts/metrics/metrics-collection.service';
 
 export class ShellTerminal implements IDisposable
 {
@@ -33,7 +34,7 @@ export class ShellTerminal implements IDisposable
     private outputSubject: Subject<Uint8Array> = new Subject<Uint8Array>();
     public outputObservable: Observable<Uint8Array> = this.outputSubject.asObservable();
 
-    constructor(private logger: Logger, private configService: ConfigService, private connectionSummary: ConnectionSummary)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionSummary: ConnectionSummary, private metricService: MetricsCollectionService)
     {
     }
 
@@ -52,7 +53,8 @@ export class ShellTerminal implements IDisposable
             const shellConnectionAuthDetails = await connectionService.GetShellConnectionAuthDetails(this.connectionSummary.id);
 
             return new ShellWebsocketService(
-                new KeySplittingService(this.configService, this.logger),
+                new KeySplittingService(this.configService, this.logger, this.metricService),
+                this.metricService,
                 ssmTargetInfo,
                 this.logger,
                 new ZliAuthConfigService(this.configService, this.logger),

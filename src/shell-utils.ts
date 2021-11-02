@@ -8,8 +8,7 @@ import { ConnectionSummary } from './services/connection/connection.types';
 import { SessionService } from './services/session/session.service';
 import { SessionDetails, SessionState } from './services/session/session.types';
 import { TerminalSessionInfo } from './terminal/terminal.types';
-import { MetricsCollectionService } from './services/metrics/metrics-collection.service';
-import { MetricsHttpService } from './services/metrics/metrics-http.service';
+import { MetricsCollectionService } from '../webshell-common-ts/metrics/metrics-collection.service';
 
 export async function createAndRunShell(
     configService: ConfigService,
@@ -18,8 +17,14 @@ export async function createAndRunShell(
     metricsEnabled: boolean = false
 ) {
     return new Promise<number>(async (resolve, _) => {
+        // Create MetricsService for this shell session
+        let metricsService: MetricsCollectionService;
+        if (metricsEnabled) {
+            metricsService = new MetricsCollectionService(logger, configService, connectionSummary.id);
+        }
+
         // connect to target and run terminal
-        const terminal = new ShellTerminal(logger, configService, connectionSummary);
+        const terminal = new ShellTerminal(logger, configService, connectionSummary, metricsService);
         let terminalSessionInfo: TerminalSessionInfo;
         try {
             terminalSessionInfo = await terminal.start(termsize());
@@ -28,12 +33,8 @@ export async function createAndRunShell(
             resolve(1);
             return;
         }
-
-        // Create MetricsService for this shell session
-        let metricsService: MetricsCollectionService;
-        if (metricsEnabled) {
-            metricsService = new MetricsCollectionService(logger, connectionSummary.id, new MetricsHttpService(terminalSessionInfo.connectionNodeId, configService, logger));
-        }
+        
+        metricsService.setConnectionNodeId(terminalSessionInfo.connectionNodeId);
 
         // Terminal resize event logic
         // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
@@ -84,6 +85,7 @@ export async function createAndRunShell(
                 if (metricsEnabled) {
                     try {
                         await metricsService.newInputReceived();
+                        metricsService.startTimerForFunction('total-input-processing');
                     } catch (e) {
                         logger.error(`Error on newInputReceived: ${e}`);
                         return;
@@ -101,6 +103,7 @@ export async function createAndRunShell(
         terminal.outputObservable.subscribe(async data => {
             if (metricsEnabled) {
                 try {
+                    metricsService.stopTimerForFunction('total-output-processing');
                     await metricsService.newOutputReceived();
                 } catch (e) {
                     logger.error(`Error on newOutputReceived: ${e}`);
