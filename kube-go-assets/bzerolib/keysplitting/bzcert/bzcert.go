@@ -26,7 +26,10 @@ type BZCert struct {
 // organization/company/group that hosts their SSO as part of a larger SSO.
 // The function returns the hash the bzcert, the expiration time of the bzcert, and an error if there is one
 func (b *BZCert) Verify(idpProvider string, idpOrgId string) (string, time.Time, error) {
-	verifier := NewBZCertVerifier(b, idpProvider, idpOrgId)
+	verifier, err := NewBZCertVerifier(b, idpProvider, idpOrgId)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("error initializing bzcert verifier: %s", err)
+	}
 
 	if _, err := verifier.VerifyIdToken(b.InitialIdToken, true, true); err != nil {
 		return "", time.Time{}, err
