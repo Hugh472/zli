@@ -86,25 +86,25 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 				// Check sequence number is correct, if not store it for later
 				if streamMessage.SequenceNumber == seqNumber {
-
 					if processMessage(contentBytes) {
 						return
 					}
 
-					// Process any existing messages that were recieved out of order
-					msg, ok := streamQueue[seqNumber]
-					for ok {
-						moreBytes, _ := base64.StdEncoding.DecodeString(msg.Content)
-
-						if processMessage(moreBytes) {
-							return
-						}
-
-						delete(streamQueue, seqNumber)
-						msg, ok = streamQueue[seqNumber]
-					}
 				} else {
 					streamQueue[streamMessage.SequenceNumber] = streamMessage
+				}
+
+				// Always process any existing messages that were recieved out of order
+				msg, ok := streamQueue[seqNumber]
+				for ok {
+					moreBytes, _ := base64.StdEncoding.DecodeString(msg.Content)
+
+					if processMessage(moreBytes) {
+						return
+					}
+
+					delete(streamQueue, seqNumber-1) // seqNumber -1 since we incremented seq number in processMessage
+					msg, ok = streamQueue[seqNumber]
 				}
 			}
 		}
