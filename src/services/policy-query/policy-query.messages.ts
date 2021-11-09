@@ -23,9 +23,8 @@ export interface KubeProxyResponse {
 
 export interface KubeProxyRequest {
     clusterId: string;
-    clusterUser: string;
-    clusterGroups: string[];
-    environmentId: string;
+    targetUser: string;
+    targetGroups: string[];
 }
 
 export interface GetAllPoliciesForClusterIdResponse {

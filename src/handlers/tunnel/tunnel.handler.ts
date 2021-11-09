@@ -39,7 +39,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     const policyService = new PolicyQueryService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.CheckKubeProxy(targetUser, clusterTarget.id, targetGroups, clusterTarget.environmentId);
+    const response = await policyService.CheckKubeProxy(targetUser, clusterTarget.id, targetGroups);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${targetCluster} as ${targetUser} in the group(s): ${targetGroups}`);
         await cleanExit(1, logger);

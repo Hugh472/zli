@@ -114,7 +114,7 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 		if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
 			if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
 				switch keysplittingPayloadVal["action"] {
-				case "kube/restapi/response", "kube/restapi/request", "kube/exec/start", "kube/exec/stop", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop":
+				case "kube/restapi/response", "kube/restapi/request", "kube/exec/start", "kube/exec/stop", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop", "kube/portforward/start", "kube/portforward/stop", "kube/portforward/request/stop", "kube/portforward/datain", "kube/portforward/errorin":
 					return "ResponseClusterToBastionV1", nil
 				}
 			}
@@ -123,7 +123,7 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 		var messagePayload smsg.StreamMessage
 		if err := json.Unmarshal(agentMessage.MessagePayload, &messagePayload); err == nil {
 			switch messagePayload.Type {
-			case "kube/stream/stdout", "kube/exec/stdout", "kube/exec/stderr":
+			case "kube/stream/stdout", "kube/exec/stdout", "kube/exec/stderr", "kube/portforward/data", "kube/portforward/error", "kube/portforward/ready":
 				return "ResponseClusterToBastionV1", nil
 			}
 		}
@@ -131,7 +131,7 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 		return "ResponseClusterToBastionV1", nil
 	}
 
-	return "", fmt.Errorf("unable to determine SignalR endpoint")
+	return "", fmt.Errorf("unable to determine SignalR endpoint for message type: %s", agentMessage.MessageType)
 }
 
 func parseFlags() error {

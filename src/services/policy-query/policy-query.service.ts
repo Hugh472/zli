@@ -25,17 +25,15 @@ export class PolicyQueryService extends HttpService
     }
 
     public CheckKubeProxy(
-        clusterUser: string,
+        targetUser: string,
         clusterId: string,
-        clusterGroups: string[],
-        environmentId: string,
+        targetGroups: string[],
     ): Promise<KubeProxyResponse>
     {
         const request: KubeProxyRequest = {
             clusterId: clusterId,
-            clusterUser: clusterUser,
-            environmentId: environmentId,
-            clusterGroups: clusterGroups,
+            targetUser: targetUser,
+            targetGroups: targetGroups,
         };
 
         return this.Post('kube-tunnel', request);

@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
+	portforward "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/portforward"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
 	stream "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/stream"
 	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
@@ -35,9 +36,10 @@ type JustRequestId struct {
 type KubeDaemonAction string
 
 const (
-	Exec    KubeDaemonAction = "exec"
-	Stream  KubeDaemonAction = "stream"
-	RestApi KubeDaemonAction = "restapi"
+	Exec        KubeDaemonAction = "exec"
+	Stream      KubeDaemonAction = "stream"
+	RestApi     KubeDaemonAction = "restapi"
+	PortForward KubeDaemonAction = "portforward"
 )
 
 // Perhaps unnecessary but it is nice to make sure that each action is implementing a common function set
@@ -231,7 +233,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	// Always generate requestId
 	requestId := generateRequestId()
 
-	if strings.HasSuffix(r.URL.Path, "/exec") || strings.HasSuffix(r.URL.Path, "/attach") {
+	if isExecRequest(r) {
 		subLogger := k.logger.GetActionLogger(string(Exec))
 		subLogger.AddRequestId(requestId)
 
@@ -242,6 +244,18 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		k.logger.Info(fmt.Sprintf("Created Exec action with requestId %v", requestId))
 		if err := execAction.InputMessageHandler(w, r); err != nil {
 			k.logger.Error(fmt.Errorf("error handling Exec call: %s", err))
+		}
+	} else if isPortForwardRequest(r) {
+		subLogger := k.logger.GetActionLogger(string(PortForward))
+		subLogger.AddRequestId(requestId)
+
+		portforwardAction, _ := portforward.NewPortForwardAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, k.streamResponseChannel, commandBeingRun)
+
+		k.updateActionsMap(portforwardAction, requestId)
+
+		k.logger.Info(fmt.Sprintf("Created Portforward action with requestId %v", requestId))
+		if err := portforwardAction.InputMessageHandler(w, r); err != nil {
+			k.logger.Error(fmt.Errorf("error handling Portforward call: %s", err))
 		}
 	} else if isStreamRequest(r) {
 		subLogger := k.logger.GetActionLogger(string(Stream))
@@ -268,6 +282,14 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 			k.logger.Error(fmt.Errorf("error handling REST API call: %s", err))
 		}
 	}
+}
+
+func isPortForwardRequest(request *http.Request) bool {
+	return strings.HasSuffix(request.URL.Path, "/portforward")
+}
+
+func isExecRequest(request *http.Request) bool {
+	return strings.HasSuffix(request.URL.Path, "/exec") || strings.HasSuffix(request.URL.Path, "/attach")
 }
 
 func isStreamRequest(request *http.Request) bool {

@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	portforward "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/portforward"
 	rest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
 	stream "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/stream"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
@@ -32,9 +33,10 @@ type JustRequestId struct {
 type KubeAction string
 
 const (
-	Exec    KubeAction = "exec"
-	RestApi KubeAction = "restapi"
-	Stream  KubeAction = "stream"
+	Exec        KubeAction = "exec"
+	RestApi     KubeAction = "restapi"
+	Stream      KubeAction = "stream"
+	PortForward KubeAction = "portforward"
 )
 
 type KubePlugin struct {
@@ -120,6 +122,7 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		if act.Closed() {
 			k.deleteActionsMap(rid)
 		}
+
 		return action, payload, err
 	} else {
 		subLogger := k.logger.GetActionLogger(action)
@@ -136,6 +139,9 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 			k.updateActionsMap(a, rid) // save action for later input
 		case Stream:
 			a, err = stream.NewStreamAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChannel)
+			k.updateActionsMap(a, rid) // save action for later input
+		case PortForward:
+			a, err = portforward.NewPortForwardAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
 		default:
 			msg := fmt.Sprintf("unhandled kubeAction: %s", kubeAction)

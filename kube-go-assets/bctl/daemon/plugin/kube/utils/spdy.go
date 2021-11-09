@@ -1,4 +1,4 @@
-package exec
+package utils
 
 import (
 	"context"
@@ -9,31 +9,28 @@ import (
 	"net/http"
 	"time"
 
-	kubeutilsdaemon "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 )
 
-type SPDYService struct {
-	conn         httpstream.Connection
-	stdinStream  io.ReadCloser
-	stdoutStream io.WriteCloser
-	stderrStream io.WriteCloser
-	writeStatus  func(status *StatusError) error
-	resizeStream io.ReadCloser
-	// tty          bool
-	logger *lggr.Logger
+// Some of the code here is taken from teleports open source repo (Apache 2.0)
+// which can be found here:
+// * https://github.com/gravitational/teleport/blob/9b8b9d6d0c115d43d31d53c47db3050e27edbc4a/lib/kube/proxy/remotecommand.go
+
+type ExecSPDYService struct {
+	StdinStream  io.ReadCloser
+	StdoutStream io.WriteCloser
+	StderrStream io.WriteCloser
+	WriteStatus  func(status *StatusError) error
+	ResizeStream io.ReadCloser
+	Service      SPDYService
 }
 
-type Options struct {
-	Stdin           bool
-	Stdout          bool
-	Stderr          bool
-	TTY             bool
-	ExpectedStreams int
-	Command         []string
+type SPDYService struct {
+	Conn   io.Closer
+	logger *lggr.Logger
 }
 
 type streamAndReply struct {
@@ -45,17 +42,36 @@ type StatusError struct {
 	ErrStatus metav1.Status
 }
 
-func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *http.Request) (*SPDYService, error) {
-	// Extract the options of the exec
-	options := extractExecOptions(request)
+func NewExecSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *http.Request, expectedStreams int) (*ExecSPDYService, error) {
+	// Build a generic spdy serice
+	service, streamCh, err := NewSPDYService(logger, writer, request, expectedStreams)
+	if err != nil {
+		return &ExecSPDYService{}, fmt.Errorf("could nor create service: %v", err.Error())
+	}
 
-	logger.Info(fmt.Sprintf("Starting Exec for command: %s\n", options.Command))
+	// Build our object
+	spdyService := &ExecSPDYService{
+		Service: *service,
+	}
 
+	// Wait for our streams to come in
+	expired := time.NewTimer(DefaultStreamCreationTimeout)
+	defer expired.Stop()
+
+	// Wait for streams to come in and return SPDY service
+	if err := spdyService.waitForStreamsExec(request.Context(), streamCh, expectedStreams, expired.C); err != nil {
+		return &ExecSPDYService{}, fmt.Errorf("error waiting for streams to come in: %v", err.Error())
+	} else {
+		return spdyService, nil
+	}
+}
+
+func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *http.Request, expectedStreams int) (*SPDYService, chan streamAndReply, error) {
 	// Initiate a handshake and upgrade the request
 	supportedProtocols := []string{"v4.channel.k8s.io", "v3.channel.k8s.io", "v2.channel.k8s.io", "channel.k8s.io"}
 	protocol, err := httpstream.Handshake(request, writer, supportedProtocols)
 	if err != nil {
-		return &SPDYService{}, fmt.Errorf("could not complete http stream handshake: %v", err.Error())
+		return &SPDYService{}, nil, fmt.Errorf("could not complete http stream handshake: %v", err.Error())
 	}
 	logger.Info(fmt.Sprintf("Using protocol: %s\n", protocol))
 
@@ -72,31 +88,22 @@ func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *ht
 		// if we weren't successful in upgrading.
 		// TODO: Return a better error
 		logger.Error(fmt.Errorf("unable to upgrade request"))
-		return &SPDYService{}, fmt.Errorf("unable to upgrade request")
+		return &SPDYService{}, nil, fmt.Errorf("unable to upgrade request")
 	}
 
 	// Set our idle timeout, set to 4 hours as that is what the kubelet uses by default
 	// Ref: https://github.com/kubernetes/kubernetes/issues/66661#issuecomment-411324031
-	conn.SetIdleTimeout(kubeutilsdaemon.DefaultIdleTimeout)
+	conn.SetIdleTimeout(DefaultIdleTimeout)
 
 	service := &SPDYService{
-		conn:   conn,
+		Conn:   conn,
 		logger: logger,
 	}
 
-	// Wait for our streams to come in
-	expired := time.NewTimer(kubeutilsdaemon.DefaultStreamCreationTimeout)
-	defer expired.Stop()
-
-	// Wait for streams to come in and return SPDY service
-	if err := service.waitForStreams(request.Context(), streamCh, options.ExpectedStreams, expired.C); err != nil {
-		return &SPDYService{}, fmt.Errorf("error waiting for streams to come in: %v", err.Error())
-	} else {
-		return service, nil
-	}
+	return service, streamCh, nil
 }
 
-func (s *SPDYService) waitForStreams(connContext context.Context,
+func (s *ExecSPDYService) waitForStreamsExec(connContext context.Context,
 	streams <-chan streamAndReply,
 	expectedStreams int,
 	expired <-chan time.Time) error {
@@ -114,26 +121,26 @@ WaitForStreams:
 		// Loop over all incoming strems until we see all expected steams
 		case stream := <-streams:
 			// Extract the stream type from the header
-			streamType := stream.Headers().Get(kubeutilsdaemon.StreamType)
-			s.logger.Info(fmt.Sprintf("Saw stream type: " + streamType))
+			streamType := stream.Headers().Get(StreamType)
+			s.Service.logger.Info(fmt.Sprintf("Saw stream type: " + streamType))
 
 			// Save the stream
 			switch streamType {
-			case kubeutilsdaemon.StreamTypeError:
-				s.writeStatus = v4WriteStatusFunc(stream)
+			case StreamTypeError:
+				s.WriteStatus = v4WriteStatusFunc(stream)
 				// Send to a buffer to wait, we will wait on replyChan until we see the expected number of streams
 				go waitStreamReply(stopCtx, stream.replySent, replyChan)
-			case kubeutilsdaemon.StreamTypeStdin:
-				s.stdinStream = stream
+			case StreamTypeStdin:
+				s.StdinStream = stream
 				go waitStreamReply(stopCtx, stream.replySent, replyChan)
-			case kubeutilsdaemon.StreamTypeStdout:
-				s.stdoutStream = stream
+			case StreamTypeStdout:
+				s.StdoutStream = stream
 				go waitStreamReply(stopCtx, stream.replySent, replyChan)
-			case kubeutilsdaemon.StreamTypeStderr:
-				s.stderrStream = stream
+			case StreamTypeStderr:
+				s.StderrStream = stream
 				go waitStreamReply(stopCtx, stream.replySent, replyChan)
-			case kubeutilsdaemon.StreamTypeResize:
-				s.resizeStream = stream
+			case StreamTypeResize:
+				s.ResizeStream = stream
 				go waitStreamReply(stopCtx, stream.replySent, replyChan)
 			default:
 				fmt.Printf("Ignoring unexpected stream type: %q", streamType)
@@ -146,7 +153,7 @@ WaitForStreams:
 		case <-expired:
 			return errors.New("timed out waiting for client to create streams")
 		case <-connContext.Done():
-			return errors.New("onnectoin has dropped, exiting")
+			return errors.New("connection has dropped, exiting")
 		}
 	}
 	return nil
@@ -172,36 +179,5 @@ func waitStreamReply(ctx context.Context, replySent <-chan struct{}, notify chan
 	case <-replySent:
 		notify <- struct{}{}
 	case <-ctx.Done():
-	}
-}
-
-func extractExecOptions(r *http.Request) Options {
-	tty := r.FormValue(kubeutilsdaemon.ExecTTYParam) == "true"
-	stdin := r.FormValue(kubeutilsdaemon.ExecStdinParam) == "true"
-	stdout := r.FormValue(kubeutilsdaemon.ExecStdoutParam) == "true"
-	stderr := r.FormValue(kubeutilsdaemon.ExecStderrParam) == "true"
-
-	// count the streams client asked for, starting with 1
-	expectedStreams := 1
-	if stdin {
-		expectedStreams++
-	}
-	if stdout {
-		expectedStreams++
-	}
-	if stderr {
-		expectedStreams++
-	}
-	if tty { // TODO: && handler.supportsTerminalResizing()
-		expectedStreams++
-	}
-
-	return Options{
-		Stdin:           stdin,
-		Stdout:          stdout,
-		Stderr:          stderr,
-		TTY:             tty,
-		ExpectedStreams: expectedStreams,
-		Command:         r.URL.Query()["command"],
 	}
 }

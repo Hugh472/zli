@@ -77,7 +77,6 @@ func (e *ExecAction) Closed() bool {
 }
 
 func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
-	// TODO: Check request ID matches from startexec
 	switch ExecSubAction(action) {
 
 	// Start exec message required before anything else

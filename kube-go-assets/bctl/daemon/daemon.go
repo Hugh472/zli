@@ -70,7 +70,7 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
 		if p, ok := payload["keysplittingPayload"].(map[string]interface{}); ok {
 			switch p["action"] {
-			case "kube/restapi/request", "kube/exec/start", "kube/exec/stop", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop":
+			case "kube/restapi/request", "kube/exec/start", "kube/exec/stop", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop", "kube/portforward/start", "kube/portforward/stop", "kube/portforward/request/stop", "kube/portforward/datain", "kube/portforward/errorin":
 				return "RequestDaemonToBastionV1", nil
 			}
 		} else {

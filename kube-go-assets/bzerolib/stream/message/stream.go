@@ -21,4 +21,7 @@ const (
 	StdIn  StreamType = "kube/exec/stdin"
 
 	LogOut StreamType = "kube/log/stdout"
+
+	PortForwardData  StreamType = "kube/portforward/data"
+	PortForwardError StreamType = "kube/portforward/error"
 )
