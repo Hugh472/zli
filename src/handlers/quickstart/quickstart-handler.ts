@@ -210,6 +210,10 @@ export async function quickstartHandler(
     clearScreen();
 
     // We cannot create the MixpanelService until the user has logged in
+    if (!configService.mixpanelToken()) {
+        // Fetch the mixpanel token in case it is not set (first time user)
+        await configService.fetchMixpanelToken();
+    }
     const mixpanelService = new MixpanelService(configService);
     mixpanelService.TrackCliCommand(version, 'quickstart', []);
 
