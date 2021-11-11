@@ -6,7 +6,8 @@ export type generateKubeArgs = {typeOfConfig: string} &
 {labels: string[]} &
 {customPort: number} &
 {outputFile: string} &
-{environmentName: string}
+{environmentName: string } &
+{update: boolean}
 
 export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
     return yargs
@@ -39,7 +40,12 @@ export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<gener
             type: 'string',
             default: null
         })
+        .option('update', {
+            type: 'boolean',
+            default: false
+        })
         .example('$0 generate kubeYaml testcluster', '')
+        .example('$0 generate kubeYaml --labels testkey:testvalue', '')
         .example('$0 generate kubeConfig', '')
-        .example('$0 generate kubeYaml --labels testkey:testvalue', '');
+        .example('$0 generate kubeConfig --update', 'Update existing kube config (defaults KUBECONFIG to $HOME/.kube/config)');
 }
