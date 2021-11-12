@@ -113,20 +113,39 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 	// Set up a go function for stdin
 	go func() {
-		// Keep the buffer big incase we are passing data to the pod
-		buf := make([]byte, 1024*1024)
+
 		for {
+			// Reset buffer every loop
+			buffer := make([]byte, 0)
+
+			// Define our chunkBuffer
+			chunkSizeBuffer := make([]byte, kubeutils.ExecChunkSize)
+
 			select {
 			case <-r.ctx.Done():
 				return
 			default:
-				n, err := spdy.stdinStream.Read(buf)
-				if err == io.EOF {
-					return
+				// Keep reading from our stdin stream if we see multiple chunks coming in
+				for {
+					n, err := spdy.stdinStream.Read(chunkSizeBuffer)
+
+					// Always return if we see a EOF
+					if err == io.EOF {
+						return
+					}
+
+					// Append the new chunk to our buffer
+					buffer = append(buffer, chunkSizeBuffer[:n]...)
+
+					// If we stop seeing chunks (i.e. n != 8192) or we have reached our max buffer size, break
+					if n != kubeutils.ExecChunkSize || len(buffer) > kubeutils.ExecDefaultMaxBufferSize {
+						break
+					}
+
 				}
 
-				// Send message to agent
-				r.RequestChannel <- wrapStdinPayload(r.requestId, r.logId, buf[:n])
+				// Send message to agent in the background
+				r.RequestChannel <- wrapStdinPayload(r.requestId, r.logId, buffer)
 			}
 		}
 
@@ -175,6 +194,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					Action:        string(kubeexec.ExecStop),
 					ActionPayload: payloadBytes,
 				}
+
 				return
 			}
 		}

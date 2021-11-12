@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 
 	kubeutils "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/utils"
+	kubedaemonutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 	stdin "bastionzero.com/bctl/v1/bzerolib/stream/stdreader"
@@ -104,7 +105,14 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 			return "", []byte{}, err
 		}
 
-		e.execStdinChannel <- execInputAction.Stdin
+		// Always feed in the exec stdin a chunk at a time (i.e. break up the byte array into chunks)
+		for i := 0; i < len(execInputAction.Stdin); i += kubedaemonutils.ExecChunkSize {
+			end := i + kubedaemonutils.ExecChunkSize
+			if end > len(execInputAction.Stdin) {
+				end = len(execInputAction.Stdin)
+			}
+			e.execStdinChannel <- execInputAction.Stdin[i:end]
+		}
 		return string(ExecInput), []byte{}, nil
 
 	case ExecResize:

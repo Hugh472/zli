@@ -18,13 +18,12 @@ import (
 
 type SPDYService struct {
 	conn         httpstream.Connection
-	stdinStream  io.ReadCloser
-	stdoutStream io.WriteCloser
-	stderrStream io.WriteCloser
+	stdinStream  httpstream.Stream
+	stdoutStream httpstream.Stream
+	stderrStream httpstream.Stream
 	writeStatus  func(status *StatusError) error
-	resizeStream io.ReadCloser
-	// tty          bool
-	logger *lggr.Logger
+	resizeStream httpstream.Stream
+	logger       *lggr.Logger
 }
 
 type Options struct {

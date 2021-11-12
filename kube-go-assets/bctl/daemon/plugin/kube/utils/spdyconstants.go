@@ -49,4 +49,10 @@ const (
 
 	// HighResPollingPeriod is a default high resolution polling period
 	HighResPollingPeriod = 10 * time.Second
+
+	// Chunk size that exec is expecting
+	ExecChunkSize = 8192
+
+	// Default max buffer size for exec to send over the wire
+	ExecDefaultMaxBufferSize = 1024 * 1024 * 64
 )
