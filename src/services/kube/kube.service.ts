@@ -1,3 +1,4 @@
+import os from 'os';
 import { spawn } from 'child_process';
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
@@ -68,7 +69,19 @@ export async function killDaemon(configService: ConfigService) {
         } else if (process.platform === 'linux') {
             spawn('pkill', ['-s', kubeConfig['localPid'].toString()]);
         } else {
-            spawn('kill', ['-9', kubeConfig['localPid'].toString()]);
+            // Determine if we are on a m1 mac
+            // Ref: https://stackoverflow.com/questions/65146751/detecting-apple-silicon-mac-in-javascript
+            const osCpus = os.cpus();
+            if (osCpus.length < 1) {
+                throw new Error(`Unable to determine OS CPU type. Please manually kill the daemon PID: ${kubeConfig['localPid'].toString()}`);
+            }
+
+            const isM1 = osCpus[0].model.includes('Apple M1');
+            if (isM1) {
+                spawn('pkill', ['-TERM', '-P', kubeConfig['localPid'].toString()]);
+            } else {
+                spawn('kill', ['-9', kubeConfig['localPid'].toString()]);
+            }
         }
 
         // Update the config
