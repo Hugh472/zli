@@ -12,9 +12,19 @@ export type LoggerConfigSchema = {
 export class LoggerConfigService {
     private config: Conf<LoggerConfigSchema>;
 
-    constructor(configName: string) {
+    constructor(configName: string, configDir?: string) {
+        const projectName = 'bastionzero-logger';
+
+        // If a custom configDir append the projectName to the path to keep
+        // consistent behavior with conf so that different projectName's wont
+        // overlap and use the same configuration file.
+        if(configDir) {
+            configDir = path.join(configDir, projectName);
+        }
+
         this.config = new Conf<LoggerConfigSchema>({
-            projectName: 'bastionzero-logger',
+            projectName: projectName,
+            cwd: configDir,
             configName: configName,
             defaults: {
                 logPath: undefined,

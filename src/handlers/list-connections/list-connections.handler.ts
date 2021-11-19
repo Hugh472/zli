@@ -1,8 +1,8 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { getTableOfConnections } from '../../utils';
+import { getTableOfConnections } from '../../utils/utils';
 import { cleanExit } from '../clean-exit.handler';
-import { getCliSpace } from '../../shell-utils';
+import { getCliSpace } from '../../utils/shell-utils';
 import { TargetSummary } from '../../services/common.types';
 import { ConnectionState, ConnectionDetails } from '../../services/connection/connection.types';
 import { SessionService } from '../../services/session/session.service';

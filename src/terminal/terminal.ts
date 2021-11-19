@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 import { isAgentKeysplittingReady, ShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
@@ -24,9 +24,19 @@ export class ShellTerminal implements IDisposable
     // stdin
     private inputSubject: Subject<string> = new Subject<string>();
     private resizeSubject: Subject<TerminalSize> = new Subject<TerminalSize>();
+
+    // terminal ready
+    private terminalRunningStream: Subject<boolean> = new Subject<boolean>();
+    private _terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
+    get terminalRunning(): Observable<boolean> {
+        return this._terminalRunning;
+    }
     private blockInput: boolean = true;
-    private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
-    public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
+
+    // stdout
+    private outputSubject: Subject<Uint8Array> = new Subject<Uint8Array>();
+    public outputObservable: Observable<Uint8Array> = this.outputSubject.asObservable();
+
 
     constructor(private logger: Logger, private configService: ConfigService, private connectionSummary: ConnectionSummary)
     {
@@ -83,12 +93,14 @@ export class ShellTerminal implements IDisposable
         // Handle writing to stdout
         // TODO: bring this up a level
         this.shellWebsocketService.outputData.subscribe(data => {
-            process.stdout.write(Buffer.from(data, 'base64'));
+            // Push to outputSubject which pushes to stdout at a higher level
+            this.outputSubject.next(Buffer.from(data, 'base64'));
         });
 
         // Replay the existing output if any and only then continue with the shell start flow
         this.shellWebsocketService.replayData.subscribe(data => {// Maybe a "wait for only one input" should be used here instead of subscribe?
-            process.stdout.write(Buffer.from(data, 'base64'));
+            // Push to outputSubject which pushes to stdout at a higher level
+            this.outputSubject.next(Buffer.from(data, 'base64'));
             this.shellWebsocketService.sendReplayDone(termSize.rows, termSize.columns);
         });
 

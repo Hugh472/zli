@@ -1,0 +1,54 @@
+# spec:
+# https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
+version: 0.2
+env:
+  variables:
+    TZ: "America/New_York date"
+    ReleaseDir: "release"
+    AWS_ENV: "dev"
+  parameter-store:
+    # The SSH RSA Key used by our machine user
+    build_ssh_key: "/cwc/ssh/rolandfrank"
+  secrets-manager:
+    DO_API_KEY: development/infra/system-test-secret:DO_API_KEY
+  git-credential-helper: yes
+phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+    # due to a limitation of AWS CodePipeline not including the submodules when
+    # cloning the source repo, we'll use the workaround from here: https://stackoverflow.com/a/54318204
+    commands:
+      - echo Install started on `date`
+      # Add the "machine user's" ssh key and activate it - this allows us to get private (sub) repositories
+      - mkdir -p ~/.ssh                         # Ensure the .ssh directory exists
+      - echo "$build_ssh_key" > ~/.ssh/ssh_key  # Save the machine user's private key
+      - chmod 600 ~/.ssh/ssh_key                # Adjust the private key permissions (avoids a critical error)
+      - eval "$(ssh-agent -s)"                  # Initialize the ssh agent
+      - ssh-add ~/.ssh/ssh_key                  # Add the machine user's key to the ssh "keychain"
+      # SSH Credentials have been set up. Check for a .git directory to determine if we need to set up our git package
+      - |
+        if [ ! -d ".git" ]; then
+          git init                                              # Initialize Git
+          git remote add origin "$remote_origin"                # Add the remote origin so we can fetch
+          git fetch --quiet                                     # Get all the things
+          git config --global advice.detachedHead false         # turn the detached message off
+          git checkout -f "$CODEBUILD_RESOLVED_SOURCE_VERSION"  # Checkout the specific commit we are building
+        fi
+      # Now that setup is complete, get submodules
+      - git submodule init
+      - git submodule update --recursive
+      # Install Bzero-QA
+      - git clone git@github.com:bastionzero/cwc-infra.git /cwc-infra/
+      - pip3 install -e /cwc-infra/Bzero-Common/. && pip3 install -e /cwc-infra/Bzero-QA/.
+      # Install npm dependencies
+      - apt-get update -y && apt-get install build-essential cmake -y
+      - npm ci
+  build:
+    commands:
+      - echo Build started `date`
+      - echo Running system tests
+      - src/system-tests/run-system-tests.sh
+  post_build:
+    commands:
+      - echo Post build started `date`

@@ -6,7 +6,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { KubeService } from '../../services/kube/kube.service';
 import yargs from 'yargs';
 import { generateKubeArgs } from './generate-kube.command-builder';
-import { getEnvironmentFromName } from '../../../src/utils';
+import { getEnvironmentFromName } from '../../../src/utils/utils';
 
 const fs = require('fs');
 

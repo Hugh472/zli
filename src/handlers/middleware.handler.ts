@@ -110,7 +110,7 @@ export async function oAuthMiddleware(configService: ConfigService, logger: Logg
 
 export function initLoggerMiddleware(argv: any) {
     // Configure our logger
-    const loggerConfigService = new LoggerConfigService(<string> argv.configName);
+    const loggerConfigService = new LoggerConfigService(<string> argv.configName, argv.configDir);
 
     const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent, !!process.stdout.isTTY);
 
@@ -126,7 +126,7 @@ export function initLoggerMiddleware(argv: any) {
 
 export async function initMiddleware(argv: any, logger : Logger) {
     // Config init
-    const configService = new ConfigService(<string>argv.configName, logger);
+    const configService = new ConfigService(<string>argv.configName, logger, argv.configDir);
 
     // KeySplittingService init
     const keySplittingService = new KeySplittingService(configService, logger);

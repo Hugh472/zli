@@ -16,7 +16,8 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
                 type: 'string',
                 choices: targetTypeChoices,
                 demandOption: false,
-                alias: 't'
+                alias: 't',
+                requiresArg: true
             }
         )
         .option(
@@ -24,7 +25,8 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
             {
                 type: 'string',
                 demandOption: false,
-                alias: 'e'
+                alias: 'e',
+                requiresArg: true
             }
         )
         .option(
@@ -32,7 +34,8 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
             {
                 type: 'string',
                 demandOption: false,
-                alias: 'n'
+                alias: 'n',
+                requiresArg: true
             }
         )
         .option(
@@ -41,7 +44,8 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
                 type: 'string',
                 array: true,
                 choices: targetStatusChoices,
-                alias: 'u'
+                alias: 'u',
+                requiresArg: true
             }
         )
         .option(

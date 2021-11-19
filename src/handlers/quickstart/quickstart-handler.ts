@@ -5,7 +5,7 @@ import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.s
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { EnvironmentService } from '../../services/environment/environment.service';
 import { PolicyService } from '../../services/policy/policy.service';
-import { readFile } from '../../utils';
+import { readFile } from '../../utils/utils';
 import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';

@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { getTableOfGroups } from '../../utils';
+import { getTableOfGroups } from '../../utils/utils';
 import { GroupsService } from '../../services/groups/groups.service';
 import yargs from 'yargs';
 import { groupArgs } from './group.command-builder';

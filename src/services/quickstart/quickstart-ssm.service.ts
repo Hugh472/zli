@@ -4,7 +4,7 @@ import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 import { SsmTargetService } from '../ssm-target/ssm-target.service';
 import { TargetStatus } from '../common.types';
-import { readFile } from '../../utils';
+import { readFile } from '../../utils/utils';
 
 import SSHConnection from 'ssh2-promise/lib/sshConnection';
 import path from 'path';

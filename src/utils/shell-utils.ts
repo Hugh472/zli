@@ -1,16 +1,17 @@
 import termsize from 'term-size';
 import readline from 'readline';
-import { ConfigService } from './services/config/config.service';
-import { Logger } from './services/logger/logger.service';
-import { ShellTerminal } from './terminal/terminal';
-import { ConnectionSummary } from './services/connection/connection.types';
-import { SessionService } from './services/session/session.service';
-import { SessionDetails, SessionState } from './services/session/session.types';
+import { ConfigService } from '../services/config/config.service';
+import { Logger } from '../services/logger/logger.service';
+import { ShellTerminal } from '../terminal/terminal';
+import { ConnectionSummary } from '../services/connection/connection.types';
+import { SessionService } from '../services/session/session.service';
+import { SessionDetails, SessionState } from '../services/session/session.types';
 
 export async function createAndRunShell(
     configService: ConfigService,
     logger: Logger,
-    connectionSummary: ConnectionSummary
+    connectionSummary: ConnectionSummary,
+    onOutput: (output: Uint8Array) => any
 ) {
     return new Promise<number>(async (resolve, _) => {
         // connect to target and run terminal
@@ -76,6 +77,7 @@ export async function createAndRunShell(
         let inputBuffer: string[] = [];
         let bufferFunction: NodeJS.Timeout = null;
 
+        // Capture stdin
         process.stdin.on('keypress', async (_, key) => {
             // Implement some custom logic for batching input
             // Ref: https://stackoverflow.com/questions/66755705/detect-pasted-input-with-readline-nodejs
@@ -119,7 +121,16 @@ export async function createAndRunShell(
                 }, maxInputDelay);
             }
         });
+
+        // Write received output to output func
+        terminal.outputObservable.subscribe(async data => {
+            onOutput(data);
+        });
     });
+}
+
+export function pushToStdOut(output: Uint8Array) {
+    process.stdout.write(output);
 }
 
 export async function getCliSpace(

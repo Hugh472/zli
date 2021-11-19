@@ -13,6 +13,10 @@ export class SsmTargetService extends HttpService {
         return this.Get('', { id: targetId });
     }
 
+    public DeleteSsmTarget(targetId: string): Promise<void> {
+        return this.Post('delete', { id: targetId });
+    }
+
     public ListSsmTargets(showDynamic: boolean): Promise<SsmTargetSummary[]> {
         const req: ListSsmTargetsRequest = {
             showDynamicAccessTargets: showDynamic

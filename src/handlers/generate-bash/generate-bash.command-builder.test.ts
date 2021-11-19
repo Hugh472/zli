@@ -8,11 +8,11 @@ test.each([
     [['--targetName', 'foo', '       --targetNameScheme', 'time']],
     [['--targetName', 'foo', '--targetNameScheme=time']],
     [['--targetName', 'foo', '       --targetNameScheme=time']],
-])('check mutually exclusive error is thrown with processArgs: %s', (processArgs) => {
+])('check mutually exclusive error is thrown with processArgs: %s', async (processArgs) => {
     // Simulate passing in arguments for yargs and store validation error
     let validationErr: Error;
-    yargs.command('generate-bash', '', (yargs) => generateBashCmdBuilder(processArgs, yargs), () => { })
-        .parse(['generate-bash', ...processArgs], {}, (err) => {
+    await yargs.command('generate-bash', '', (yargs) => generateBashCmdBuilder(processArgs, yargs), () => { })
+        .parseAsync(['generate-bash', ...processArgs], {}, (err) => {
             validationErr = err;
         });
 
@@ -27,11 +27,11 @@ test.each([
 test.each([
     [['--targetName', 'foo']],
     [['-n', 'foo']],
-])('check no validation error is thrown with processArgs: %s', (processArgs) => {
+])('check no validation error is thrown with processArgs: %s', async (processArgs) => {
     // Simulate passing in arguments for yargs and store validation error
     let validationErr: Error;
-    yargs.command('generate-bash', '', (yargs) => generateBashCmdBuilder(processArgs, yargs), () => { })
-        .parse(['generate-bash', ...processArgs], {}, (err) => {
+    await yargs.command('generate-bash', '', (yargs) => generateBashCmdBuilder(processArgs, yargs), () => { })
+        .parseAsync(['generate-bash', ...processArgs], {}, (err) => {
             validationErr = err;
         });
 

@@ -10,7 +10,7 @@ import { loginHtml } from './templates/login';
 import { logoutHtml } from './templates/logout';
 import { cleanExit } from '../../handlers/clean-exit.handler';
 import { parse as QueryStringParse } from 'query-string';
-import { parseIdpType, randomAlphaNumericString } from '../../utils';
+import { parseIdpType, randomAlphaNumericString } from '../../utils/utils';
 
 const findPort = require('find-open-port');
 
@@ -283,6 +283,7 @@ export class OAuthService implements IDisposable {
                 try {
                     newTokenSet = await this.refresh();
                 } catch (e) {
+                    this.logger.debug(`Refresh Token Error: ${e.message}`);
                     if (e instanceof errors.RPError || e instanceof errors.OPError) {
                         throw new RefreshTokenError();
                     } else {
@@ -311,6 +312,7 @@ export class OAuthService implements IDisposable {
         try {
             idToken = await this.getIdToken();
         } catch (e) {
+            this.logger.debug(`Get id token error: ${e.message}`);
             if (e instanceof RefreshTokenError) {
                 this.logger.error('Stale log in detected');
                 this.logger.info('You need to log in, please run \'zli login --help\'');

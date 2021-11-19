@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { createAndRunShell, getCliSpace } from '../../shell-utils';
+import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { ConnectionService } from '../../services/connection/connection.service';
 import { ConnectionState } from '../../services/connection/connection.types';
 import { SessionService } from '../../services/session/session.service';
@@ -29,5 +29,5 @@ export async function attachHandler(
         logger.error(`Connection ${connectionId} is not open`);
         await cleanExit(1, logger);
     }
-    return await createAndRunShell(configService, logger, connectionSummary);
+    return await createAndRunShell(configService, logger, connectionSummary, pushToStdOut);
 }

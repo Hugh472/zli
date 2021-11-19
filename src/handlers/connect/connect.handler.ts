@@ -2,8 +2,8 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
-import { targetStringExample } from '../../utils';
-import { createAndRunShell, getCliSpace } from '../../shell-utils';
+import { targetStringExample } from '../../utils/utils';
+import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
 import { ConnectionService } from '../../services/connection/connection.service';
@@ -19,7 +19,6 @@ export async function connectHandler(
     mixpanelService: MixpanelService,
     parsedTarget: ParsedTargetString
 ) {
-
     if(! parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
         logger.error(targetStringExample);
@@ -80,8 +79,9 @@ export async function connectHandler(
 
     const connectionSummary = await connectionService.GetConnection(connectionId);
 
-    const runShellPromise = createAndRunShell(configService, logger, connectionSummary);
+    const runShellPromise = createAndRunShell(configService, logger, connectionSummary, pushToStdOut);
     mixpanelService.TrackNewConnection(parsedTarget.type);
 
     return await runShellPromise;
 }
+

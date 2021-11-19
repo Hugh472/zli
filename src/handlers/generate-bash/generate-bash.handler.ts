@@ -7,7 +7,7 @@ import { getAutodiscoveryScript } from '../../services/auto-discovery-script/aut
 import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
 import { TargetName } from '../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
-import { getEnvironmentFromName } from '../../../src/utils';
+import { getEnvironmentFromName } from '../../../src/utils/utils';
 
 export async function generateBashHandler(
     argv: yargs.Arguments<generateBashArgs>,

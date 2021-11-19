@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { getTableOfPolicies, parsePolicyType } from '../../utils';
+import { getTableOfPolicies, parsePolicyType } from '../../utils/utils';
 import _ from 'lodash';
 import { ApiKeyService } from '../../services/api-key/api-key.service';
 import { ApiKeyDetails } from '../../services/api-key/api-key.types';

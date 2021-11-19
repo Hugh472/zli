@@ -3,50 +3,27 @@ import {
     parseTargetType,
     getTableOfTargets,
     parseTargetStatus
-} from '../../utils';
+} from '../../utils/utils';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { includes, map, uniq } from 'lodash';
 import { ConfigService } from '../../services/config/config.service';
-import { TargetSummary, TargetType, TargetUser, TargetStatus } from '../../services/common.types';
-import { EnvironmentDetails } from '../../services/environment/environment.types';
-import { ClusterDetails } from '../../services/kube/kube.types';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
-import { VerbType } from '../../services/policy-query/policy-query.types';
+import { TargetType, TargetStatus } from '../../services/common.types';
 import yargs from 'yargs';
 import { listTargetsArgs } from './list-targets.command-builder';
 
+import { listTargets } from '../../services/list-targets/list-targets.service';
+import { EnvironmentService } from '../../services/environment/environment.service';
 
 export async function listTargetsHandler(
     configService: ConfigService,
     logger: Logger,
-    argv: yargs.Arguments<listTargetsArgs>,
-    dynamicConfigs: Promise<TargetSummary[]>,
-    ssmTargets: Promise<TargetSummary[]>,
-    clusters: Promise<ClusterDetails[]>,
-    envsPassed: Promise<EnvironmentDetails[]>) {
+    argv: yargs.Arguments<listTargetsArgs>
+) {
+    let allTargets = await listTargets(configService, logger);
 
-    const clusterTargets = (await clusters).map<TargetSummary>((cluster) => {
-        return {
-            type: TargetType.CLUSTER,
-            id: cluster.id,
-            name: cluster.name,
-            status: parseTargetStatus(cluster.status.toString()),
-            environmentId: cluster.environmentId,
-            targetUsers: cluster.targetUsers,
-            agentVersion: cluster.agentVersion
-        };
-    });
-    // await, add target users info and concatenate
-    let allTargets = [...await ssmTargets, ...await dynamicConfigs];
-    const policyQueryService = new PolicyQueryService(configService, logger);
-    // TODO : This should be checked with DAT
-    for (const t of allTargets) {
-        const users = (await policyQueryService.ListTargetOSUsers(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
-        t.targetUsers = map(users, (u : TargetUser) => u.userName);
-    }
-    allTargets = allTargets.concat(clusterTargets);
-    const envs = await envsPassed;
+    const envService = new EnvironmentService(configService, logger);
+    const envs = await envService.ListEnvironments();
 
     // find all envIds with substring search
     // filter targets down by endIds
@@ -70,18 +47,8 @@ export async function listTargetsHandler(
     if(!! argv.status) {
         const statusArray: string[] = argv.status;
 
-        if(statusArray.length < 1) {
-            logger.warn('Status filter flag passed with no arguments, please indicate at least one status');
-            await cleanExit(1, logger);
-        }
-
         let targetStatusFilter: TargetStatus[] = map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
         targetStatusFilter = uniq(targetStatusFilter);
-
-        if(targetStatusFilter.length < 1) {
-            logger.warn('Status filter flag passed with no valid arguments, please indicate at least one valid status');
-            await cleanExit(1, logger);
-        }
 
         allTargets = allTargets.filter(t => (t.type != TargetType.SSM && t.type != TargetType.CLUSTER) || includes(targetStatusFilter, t.status));
     }

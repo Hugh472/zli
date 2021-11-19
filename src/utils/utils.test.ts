@@ -1,4 +1,4 @@
-import { parseTargetString, parseTargetType } from '../utils';
+import { parseTargetString, parseTargetType } from './utils';
 
 test('valid targetType strings', () => {
     const validSSMTargetTypeStrings = [

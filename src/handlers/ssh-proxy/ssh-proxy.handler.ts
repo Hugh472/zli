@@ -3,14 +3,15 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { SsmTunnelService } from '../../services/ssm-tunnel/ssm-tunnel.service';
 import { cleanExit } from '../clean-exit.handler';
-import { Dictionary, includes } from 'lodash';
-import { targetStringExample } from '../../utils';
+import { includes } from 'lodash';
+import { targetStringExample } from '../../utils/utils';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { ParsedTargetString } from '../../services/common.types';
 import { VerbType } from '../../services/policy-query/policy-query.types';
+import { EnvMap } from '../../cli-driver';
 
 
-export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: Dictionary<string>) {
+export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: EnvMap) {
 
     if(! sshTunnelParameters.parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
@@ -32,7 +33,7 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
         await cleanExit(1, logger);
     }
 
-    const ssmTunnelService = new SsmTunnelService(logger, configService, keySplittingService, envMap['enableKeysplitting'] == 'true');
+    const ssmTunnelService = new SsmTunnelService(logger, configService, keySplittingService, envMap.enableKeysplitting == 'true');
     ssmTunnelService.errors.subscribe(async errorMessage => {
         logger.error(errorMessage);
         await cleanExit(1, logger);

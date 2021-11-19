@@ -1,7 +1,7 @@
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
-import { getTableOfKubeStatus } from '../../../src/utils';
+import { getTableOfKubeStatus } from '../../../src/utils/utils';
 
 export async function kubeStatusHandler(
     configService: ConfigService,

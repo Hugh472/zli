@@ -35,12 +35,25 @@ export class ConfigService implements ConfigInterface {
 
     public logoutDetected : Observable<boolean> = this.logoutDetectedSubject.asObservable();
 
-    constructor(configName: string, private logger: Logger) {
+    constructor(configName: string, private logger: Logger, configDir?: string) {
+        const projectName = 'bastionzero-zli';
+
+        // If a custom configDir append the projectName to the path to keep
+        // consistent behavior with conf so that different projectName's wont
+        // overlap and use the same configuration file.
+        if(configDir) {
+            configDir = path.join(configDir, projectName);
+        }
+
         const appName = this.getAppName(configName);
         this.configName = configName;
         this.config = new Conf<BastionZeroConfigSchema>({
-            projectName: 'bastionzero-zli',
-            configName: configName, // prod, stage, dev
+            projectName: projectName,
+            configName: configName, // prod, stage, dev,
+            // if unset will use system default config directory
+            // a custom value is only passed for system tests
+            // https://github.com/sindresorhus/conf#cwd
+            cwd: configDir,
             defaults: {
                 authUrl: undefined,
                 clientId: undefined,
@@ -72,9 +85,6 @@ export class ConfigService implements ConfigInterface {
             logger.error(`Config not initialized (or is invalid) for dev environment: Must set serviceUrl in: ${this.config.path}`);
             process.exit(1);
         }
-
-        if(! this.config.get('sshKeyPath'))
-            this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'bzero-temp-key'));
 
         this.tokenService = new TokenService(this, logger);
 
@@ -183,6 +193,9 @@ export class ConfigService implements ConfigInterface {
     }
 
     public sshKeyPath() {
+        if(! this.config.get('sshKeyPath'))
+            this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'bzero-temp-key'));
+
         return this.config.get('sshKeyPath');
     }
 
@@ -248,6 +261,8 @@ export class ConfigService implements ConfigInterface {
             return 'cloud';
         case 'stage':
             return 'cloud-staging';
+        case 'dev':
+            return 'cloud-dev';
         default:
             return undefined;
         }

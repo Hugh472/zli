@@ -1,19 +1,21 @@
-import { max, filter, concat, map } from 'lodash';
 import Table from 'cli-table3';
-import { Logger } from './services/logger/logger.service';
-import { cleanExit } from './handlers/clean-exit.handler';
-import { ApiKeyDetails } from './services/api-key/api-key.types';
-import { TargetType, TargetStatus, ParsedTargetString, TargetSummary } from './services/common.types';
-import { ConnectionDetails } from './services/connection/connection.types';
-import { EnvironmentDetails } from './services/environment/environment.types';
-import { GroupSummary } from './services/groups/groups.types';
-import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext, KubePolicySummary } from './services/policy/policy.types';
-import { UserSummary } from './services/user/user.types';
-import { IdentityProvider } from '../webshell-common-ts/auth-service/auth.types';
-
-import util from 'util';
 import fs from 'fs';
-import { KubeConfig } from './services/kube/kube.service';
+import { concat, filter, map, max } from 'lodash';
+import util from 'util';
+import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.types';
+import { cleanExit } from '../handlers/clean-exit.handler';
+import { ApiKeyDetails } from '../services/api-key/api-key.types';
+import { ParsedTargetString, TargetStatus, TargetSummary, TargetType } from '../services/common.types';
+import { ConnectionDetails } from '../services/connection/connection.types';
+import { DynamicAccessConfigSummary } from '../services/dynamic-access-config/dynamic-access-config.types';
+import { EnvironmentDetails } from '../services/environment/environment.types';
+import { GroupSummary } from '../services/groups/groups.types';
+import { KubeConfig } from '../services/kube/kube.service';
+import { Logger } from '../services/logger/logger.service';
+import { KubePolicySummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext } from '../services/policy/policy.types';
+import { SsmTargetSummary } from '../services/ssm-target/ssm-target.types';
+import { UserSummary } from '../services/user/user.types';
+
 
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
@@ -525,4 +527,13 @@ export function randomAlphaNumericString(length: number) : string {
         result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
     return result;
+}
+
+
+export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
+    return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
+}
+
+export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
+    return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
 }

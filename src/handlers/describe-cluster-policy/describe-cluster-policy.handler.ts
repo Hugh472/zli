@@ -3,7 +3,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { ClusterDetails } from '../../services/kube/kube.types';
-import { getTableOfDescribeCluster } from '../../utils';
+import { getTableOfDescribeCluster } from '../../utils/utils';
 import { KubePolicySummary, KubernetesPolicyContext } from '../../services/policy/policy.types';
 
 
