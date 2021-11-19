@@ -47,7 +47,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
 
     // Check if we've already started a process
     if (kubeConfig['localPid'] != null) {
-        killDaemon(configService);
+        killDaemon(configService, logger);
     }
 
     // See if the user passed in a custom port

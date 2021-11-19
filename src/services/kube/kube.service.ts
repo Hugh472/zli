@@ -59,30 +59,35 @@ export class KubeService extends HttpService
     }
 }
 
-export async function killDaemon(configService: ConfigService) {
+export async function killDaemon(configService: ConfigService, logger: Logger) {
     const kubeConfig = configService.getKubeConfig();
 
     // then kill the daemon
     if ( kubeConfig['localPid'] != null) {
         // First try to kill the process
-        if (process.platform === 'win32') {
-            exec(`taskkill /F /T /PID ${kubeConfig['localPid'].toString()}`);
-        } else if (process.platform === 'linux') {
-            exec(`pkill -s ${kubeConfig['localPid'].toString()}`);
-        } else {
-            // Determine if we are on a m1 mac
-            // Ref: https://stackoverflow.com/questions/65146751/detecting-apple-silicon-mac-in-javascript
-            const osCpus = os.cpus();
-            if (osCpus.length < 1) {
-                throw new Error(`Unable to determine OS CPU type. Please manually kill the daemon PID: ${kubeConfig['localPid'].toString()}`);
-            }
-
-            const isM1 = osCpus[0].model.includes('Apple M1');
-            if (isM1) {
-                exec(`pkill -TERM -P ${kubeConfig['localPid'].toString()}`);
+        try {
+            if (process.platform === 'win32') {
+                exec(`taskkill /F /T /PID ${kubeConfig['localPid'].toString()}`);
+            } else if (process.platform === 'linux') {
+                exec(`pkill -s ${kubeConfig['localPid'].toString()}`);
             } else {
-                exec(`kill -9 ${kubeConfig['localPid'].toString()}`);
+                // Determine if we are on a m1 mac
+                // Ref: https://stackoverflow.com/questions/65146751/detecting-apple-silicon-mac-in-javascript
+                const osCpus = os.cpus();
+                if (osCpus.length < 1) {
+                    throw new Error(`Unable to determine OS CPU type. Please manually kill the daemon PID: ${kubeConfig['localPid'].toString()}`);
+                }
+
+                const isM1 = osCpus[0].model.includes('Apple M1');
+                if (isM1) {
+                    exec(`pkill -TERM -P ${kubeConfig['localPid'].toString()}`);
+                } else {
+                    exec(`kill -9 ${kubeConfig['localPid'].toString()}`);
+                }
             }
+        } catch (err: any) {
+            // If the daemon pid was killed, or doesn't exist, just continue
+            logger.warn(`Attempt to kill existing daemon failed. This is expected if the daemon has been killed already. Make sure no program is using port: ${kubeConfig['localPort']}.\nError: ${err}`);
         }
 
         // Update the config

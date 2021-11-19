@@ -13,7 +13,7 @@ export async function logoutHandler(configService: ConfigService, logger: Logger
     logger.info('Closing any existing Kube Proxy Connections');
     const kubeConfig = configService.getKubeConfig();
     if (kubeConfig['localPid'] != null) {
-        killDaemon(configService);
+        killDaemon(configService, logger);
     }
 
     logger.info('Logout successful');

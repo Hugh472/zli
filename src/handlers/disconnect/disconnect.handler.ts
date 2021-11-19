@@ -7,7 +7,7 @@ export async function disconnectHandler(
     configService: ConfigService,
     logger: Logger
 ) {
-    if (await killDaemon(configService)) {
+    if (await killDaemon(configService, logger)) {
         logger.info('Killed local Kube daemon');
     } else {
         logger.warn('No Kube daemon running');
