@@ -1,10 +1,11 @@
 import os from 'os';
-import { spawn } from 'child_process';
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
 import { GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, GetUserInfoResponse, GetUserInfoRequest } from './kube.mesagges';
 import { ClusterSummary } from './kube.types';
+
+const exec = require('child_process').execSync;
 
 export interface KubeConfig {
     keyPath: string,
@@ -65,9 +66,9 @@ export async function killDaemon(configService: ConfigService) {
     if ( kubeConfig['localPid'] != null) {
         // First try to kill the process
         if (process.platform === 'win32') {
-            spawn('taskkill', ['/F', '/T', '/PID', kubeConfig['localPid'].toString()]);
+            exec(`taskkill /F /T /PID ${kubeConfig['localPid'].toString()}`);
         } else if (process.platform === 'linux') {
-            spawn('pkill', ['-s', kubeConfig['localPid'].toString()]);
+            exec(`pkill -s ${kubeConfig['localPid'].toString()}`);
         } else {
             // Determine if we are on a m1 mac
             // Ref: https://stackoverflow.com/questions/65146751/detecting-apple-silicon-mac-in-javascript
@@ -78,9 +79,9 @@ export async function killDaemon(configService: ConfigService) {
 
             const isM1 = osCpus[0].model.includes('Apple M1');
             if (isM1) {
-                spawn('pkill', ['-TERM', '-P', kubeConfig['localPid'].toString()]);
+                exec(`pkill -TERM -P ${kubeConfig['localPid'].toString()}`);
             } else {
-                spawn('kill', ['-9', kubeConfig['localPid'].toString()]);
+                exec(`kill -9 ${kubeConfig['localPid'].toString()}`);
             }
         }
 
