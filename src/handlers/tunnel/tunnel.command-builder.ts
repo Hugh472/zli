@@ -18,5 +18,5 @@ export function tunnelCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<tunnelArg
             demandOption: false
         })
         .example('$0 tunnel admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC user')
-        .example('$0 tunnel admin@neat-cluster --targetGroup system:master', 'Connect to neat-cluster as the admin Kube RBAC user in the system:master group');
+        .example('$0 tunnel admin@neat-cluster --targetGroup system:masters', 'Connect to neat-cluster as the admin Kube RBAC user in the system:masters group');
 }
