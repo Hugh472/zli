@@ -205,7 +205,8 @@ export class CliDriver
     }
 
     public getCliDriver(isSystemTest: boolean = false) {
-        return yargs(process.argv.slice(2))
+        const argvPassed = process.argv.slice(2);
+        return yargs(argvPassed)
             .scriptName('zli')
             .usage('$0 <cmd> [args]')
             .wrap(null)
@@ -600,7 +601,8 @@ export class CliDriver
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
             .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all zli messages, only returns command output'})
             .strictCommands() // if unknown command, show help
-            .demandCommand() // if no command, show help
+            .demandCommand(1, '') // if no command, raise failure
+            .strict() // any command-line argument given that is not demanded, or does not have a corresponding description, will be reported as an error.
             .help() // auto gen help message
             .showHelpOnFail(false)
             .epilog(`Note:
@@ -639,6 +641,12 @@ Need help? https://cloud.bastionzero.com/support`)
                         }
                     }
                 }
+
+                // If there are no args passed, show help screen
+                if (argvPassed.length == 0){
+                    yargs.showHelp();
+                }
+
                 process.exit(1);
             });
     }
