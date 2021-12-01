@@ -16,8 +16,8 @@ export function sshProxyConfigHandler(configService: ConfigService, logger: Logg
 Add the following lines to your ssh config (~/.ssh/config) file:
 
 host ${prefix}*
-IdentityFile ${keyPath}
-ProxyCommand ${processName} ssh-proxy ${configNameArg} -s %h %r %p ${keyPath}
+  IdentityFile ${keyPath}
+  ProxyCommand ${processName} ssh-proxy ${configNameArg} -s %h %r %p ${keyPath}
 
 
 Then you can use native ssh to connect to any of your ssm targets using the following syntax:
