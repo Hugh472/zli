@@ -10,6 +10,7 @@ const exec = require('child_process').execSync;
 export interface KubeConfig {
     keyPath: string,
     certPath: string,
+    csrPath: string,
     token: string,
     localHost: string,
     localPort: number,
@@ -104,6 +105,7 @@ export function getDefaultKubeConfig(): KubeConfig {
     return {
         keyPath: null,
         certPath: null,
+        csrPath: null,
         token: null,
         localHost: null,
         localPort: null,

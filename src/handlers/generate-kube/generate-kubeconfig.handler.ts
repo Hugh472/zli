@@ -8,9 +8,9 @@ import { cleanExit } from '../clean-exit.handler';
 
 const path = require('path');
 const fs = require('fs');
-const pem = require('pem');
 const findPort = require('find-open-port');
 const tmp = require('tmp');
+const randtoken = require('rand-token');
 const execPromise = util.promisify(exec);
 
 export async function generateKubeconfigHandler(
@@ -26,56 +26,57 @@ export async function generateKubeconfigHandler(
 
         // Create and save key/cert
         const createCertPromise = new Promise<void>(async (resolve, reject) => {
-            pem.createCertificate({ days: 999, selfSigned: true }, async function (err: any, keys: any) {
-                if (err) {
-                    throw err;
-                }
+            // Get the path of where we want to save
+            const pathToConfig = path.dirname(configService.configPath());
+            const configName = configService.getConfigName();
+            const pathToKey = path.join(pathToConfig, `kubeKey-${configName}.pem`);
+            const pathToCsr = path.join(pathToConfig, `kubeCsr-${configName}.pem`);
+            const pathToCert = path.join(pathToConfig, `kubeCert-${configName}.pem`);
 
-                // Get the path of where we want to save
-                const pathToConfig = path.dirname(configService.configPath());
-                const pathToKey = `${pathToConfig}/kubeKey.pem`;
-                const pathToCert = `${pathToConfig}/kubeCert.pem`;
+            // Generate a new key
+            try {
+                await execPromise(`openssl genrsa -out ${pathToKey}`);
+            } catch (e: any) {
+                reject(e);
+            }
 
-                // Now save the key and cert
-                await fs.writeFile(pathToKey, keys.serviceKey, function (err: any) {
-                    if (err) {
-                        logger.error('Error writing key to file!');
-                        reject();
-                        return;
-                    }
-                    logger.debug('Generated and saved key file');
-                });
-                await fs.writeFile(pathToCert, keys.certificate, function (err: any) {
-                    if (err) {
-                        logger.error('Error writing cert to file!');
-                        reject();
-                        return;
-                    }
-                    logger.debug('Generated and saved cert file');
-                });
+            // Generate a new csr
+            try {
+                const pass = randtoken.generate(128);
+                await execPromise(`openssl req -sha256 -passin pass:${pass} -new -key ${pathToKey} -subj "/C=US/ST=Bastionzero/L=Boston/O=Dis/CN=bastionzero.com" -out ${pathToCsr}`);
+            } catch (e: any) {
+                reject(e);
+            }
 
-                // Generate a token that can be used for auth
-                const randtoken = require('rand-token');
-                const token = randtoken.generate(128);
+            // Now generate the certificate
+            try {
+                await execPromise(`openssl x509 -req -days 999 -in ${pathToCsr} -signkey ${pathToKey} -out ${pathToCert}`);
+            } catch (e: any) {
+                reject(e);
+            }
 
-                const localPort = await findPort();
+            // Generate a token that can be used for auth
+            const token = randtoken.generate(128);
 
-                // Now save the path in the configService
-                kubeConfig = {
-                    keyPath: pathToKey,
-                    certPath: pathToCert,
-                    token: token,
-                    localHost: 'localhost',
-                    localPort: await localPort,
-                    localPid: null,
-                    targetUser: null,
-                    targetGroups: null,
-                    targetCluster: null,
-                    defaultTargetGroups: null
-                };
-                configService.setKubeConfig(kubeConfig);
-                resolve();
-            });
+            // Find a local port to use for our daemon
+            const localPort = await findPort();
+
+            // Now save the path in the configService
+            kubeConfig = {
+                keyPath: pathToKey,
+                certPath: pathToCert,
+                csrPath: pathToCsr,
+                token: token,
+                localHost: 'localhost',
+                localPort: localPort,
+                localPid: null,
+                targetUser: null,
+                targetGroups: null,
+                targetCluster: null,
+                defaultTargetGroups: null
+            };
+            configService.setKubeConfig(kubeConfig);
+            resolve();
         });
 
         try {
