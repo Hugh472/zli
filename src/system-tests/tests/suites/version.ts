@@ -1,5 +1,5 @@
-import { callZli } from '../system-test';
 import { version } from '../../../../package.json';
+import { callZli } from '../utils/zli-utils';
 
 export const versionSuite = () => {
     describe('version suite', () => {

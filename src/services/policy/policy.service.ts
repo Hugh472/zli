@@ -35,4 +35,8 @@ export class PolicyService extends HttpService
     {
         return this.Post<AddPolicyRequest, PolicySummary>('add', req);
     }
+
+    public DeletePolicy(policyId: string): Promise<void> {
+        return this.Post('delete', { id: policyId });
+    }
 }

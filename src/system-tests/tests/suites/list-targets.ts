@@ -1,8 +1,9 @@
-import { callZli, testTargets } from '../system-test';
+import { testTargets } from '../system-test';
 import * as ListTargetsService from '../../../services/list-targets/list-targets.service';
-import { getMockResultValue } from '../utils';
+import { getMockResultValue } from '../utils/jest-utils';
 import { TargetType } from '../../../services/common.types';
 import { TargetSummary } from '../../../services/common.types';
+import { callZli } from '../utils/zli-utils';
 
 export const listTargetsSuite = () => {
     describe('list targets suite', () => {
@@ -13,31 +14,31 @@ export const listTargetsSuite = () => {
 
         test('list-targets', async () => {
             const listTargetsSpy = jest.spyOn(ListTargetsService, 'listTargets');
-            await callZli(['list-targets', '--json'], async () => {
-                expect(listTargetsSpy).toHaveBeenCalledTimes(1);
-                const returnedTargetSummaries = (await getMockResultValue(listTargetsSpy.mock.results[0]));
+            await callZli(['list-targets', '--json']);
 
-                const expectedSSMTargetSummaries = Array.from(testTargets.values()).map<TargetSummary>(t => ({
-                    type: TargetType.SSM,
-                    id: t.ssmTarget.id,
-                    name: t.ssmTarget.name,
-                    environmentId: t.ssmTarget.environmentId,
-                    agentVersion: t.ssmTarget.agentVersion,
-                    agentId: t.ssmTarget.agentId,
-                    status: t.ssmTarget.status,
-                    targetUsers: expect.anything()
-                }));
+            expect(listTargetsSpy).toHaveBeenCalledTimes(1);
+            const returnedTargetSummaries = (await getMockResultValue(listTargetsSpy.mock.results[0]));
 
-                for (const target of expectedSSMTargetSummaries) {
-                    const foundObject = returnedTargetSummaries.find(t => t.id === target.id);
+            const expectedSSMTargetSummaries = Array.from(testTargets.values()).map<TargetSummary>(t => ({
+                type: TargetType.SSM,
+                id: t.ssmTarget.id,
+                name: t.ssmTarget.name,
+                environmentId: t.ssmTarget.environmentId,
+                agentVersion: t.ssmTarget.agentVersion,
+                agentId: t.ssmTarget.agentId,
+                status: t.ssmTarget.status,
+                targetUsers: expect.anything()
+            }));
 
-                    if (foundObject) {
-                        expect(target).toMatchObject(foundObject);
-                    } else {
-                        throw new Error(`Failed to find target with id:${target.id}`);
-                    }
+            for (const target of expectedSSMTargetSummaries) {
+                const foundObject = returnedTargetSummaries.find(t => t.id === target.id);
+
+                if (foundObject) {
+                    expect(target).toMatchObject(foundObject);
+                } else {
+                    throw new Error(`Failed to find target with id:${target.id}`);
                 }
-            });
+            }
         });
     });
 };

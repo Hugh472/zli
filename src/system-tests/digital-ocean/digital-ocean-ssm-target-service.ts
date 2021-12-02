@@ -10,6 +10,7 @@ import { CreateNewDropletParameters, DigitalOceanSSMTarget, DigitalOceanSsmTarge
 import { EnvironmentService } from '../../services/environment/environment.service';
 import { getEnvironmentFromName } from '../../utils/utils';
 import axios from 'axios';
+import { checkAllSettledPromise } from '../tests/utils/utils';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;
@@ -59,23 +60,20 @@ export class DigitalOceanSSMTargetService {
      */
     public async deleteDigitalOceanSSMTarget(
         doSSMTarget: DigitalOceanSSMTarget
-    ): Promise<[PromiseSettledResult<void>, PromiseSettledResult<void>]> {
+    ): Promise<void> {
+        const cleanupPromises = [];
+
         // Only delete droplet if it is set
-        let deleteDropletPromise: Promise<void>;
         if (doSSMTarget.droplet) {
-            deleteDropletPromise = this.doClient.droplets.deleteDroplet(doSSMTarget.droplet.id);
-        } else {
-            deleteDropletPromise = Promise.resolve();
-        }
-        // Only delete SSM target if it is set
-        let deleteSSMTargetPromise: Promise<void>;
-        if (doSSMTarget.ssmTarget) {
-            deleteSSMTargetPromise = this.ssmTargetService.DeleteSsmTarget(doSSMTarget.ssmTarget.id);
-        } else {
-            deleteSSMTargetPromise = Promise.resolve();
+            cleanupPromises.push(this.doClient.droplets.deleteDroplet(doSSMTarget.droplet.id));
         }
 
-        return Promise.allSettled([deleteDropletPromise, deleteSSMTargetPromise]);
+        // Only delete SSM target if it is set
+        if (doSSMTarget.ssmTarget) {
+            cleanupPromises.push(this.ssmTargetService.DeleteSsmTarget(doSSMTarget.ssmTarget.id));
+        }
+
+        await checkAllSettledPromise(Promise.allSettled(cleanupPromises));
     }
 
     /**

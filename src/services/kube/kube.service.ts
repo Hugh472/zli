@@ -2,7 +2,7 @@ import os from 'os';
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
-import { GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, GetUserInfoResponse, GetUserInfoRequest } from './kube.mesagges';
+import { GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, GetUserInfoResponse, GetUserInfoRequest, DeleteClusterRequest } from './kube.messages';
 import { ClusterSummary } from './kube.types';
 
 const exec = require('child_process').execSync;
@@ -57,6 +57,14 @@ export class KubeService extends HttpService
 
     public ListKubeClusters(): Promise<ClusterSummary[]> {
         return this.Get('list', {});
+    }
+
+    public GetKubeCluster(clusterTargetId: string): Promise<ClusterSummary> {
+        return this.Get('', { id: clusterTargetId });
+    }
+
+    public DeleteKubeCluster(req: DeleteClusterRequest): Promise<void> {
+        return this.Post('delete', req);
     }
 }
 

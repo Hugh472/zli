@@ -16,4 +16,8 @@ export class EnvironmentService extends HttpService {
     public CreateEnvironment(req: CreateEnvironmentRequest): Promise<CreateEnvironmentResponse> {
         return this.Post<CreateEnvironmentRequest, CreateEnvironmentResponse>('create', req);
     }
+
+    public DeleteEnvironment(envId: string): Promise<void> {
+        return this.Post('delete', { id: envId });
+    }
 }

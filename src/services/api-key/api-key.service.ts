@@ -1,7 +1,7 @@
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
-import { ApiKeyDetails } from './api-key.types';
+import { ApiKeyDetails, DeleteApiKeyRequest, NewApiKeyRequest, NewApiKeyResponse } from './api-key.types';
 
 export class ApiKeyService extends HttpService
 {
@@ -10,8 +10,15 @@ export class ApiKeyService extends HttpService
         super(configService, 'api/v1/ApiKey', logger);
     }
 
-    public ListAllApiKeys(): Promise<ApiKeyDetails[]>
-    {
+    public ListAllApiKeys(): Promise<ApiKeyDetails[]> {
         return this.Post('list', {});
+    }
+
+    public createNewApiKey(request: NewApiKeyRequest) : Promise<NewApiKeyResponse> {
+        return this.Post('new', request);
+    }
+
+    public deleteApiKey(request: DeleteApiKeyRequest) : Promise<void> {
+        return this.Post('delete', request);
     }
 }

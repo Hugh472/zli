@@ -17,3 +17,7 @@ export interface GetUserInfoResponse {
 export interface GetUserInfoRequest{
     email: string;
 }
+
+export interface DeleteClusterRequest {
+    id: string;
+};

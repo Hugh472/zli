@@ -10,6 +10,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import yargs from 'yargs';
 import { tunnelArgs } from './tunnel.command-builder';
+import { waitUntilUsedOnHost } from 'tcp-port-used';
 const { spawn } = require('child_process');
 
 
@@ -114,8 +115,10 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
             kubeConfig['targetCluster'] = targetCluster;
             configService.setKubeConfig(kubeConfig);
 
+            await waitUntilUsedOnHost(parseInt(daemonPort), 'localhost', 100, 1000 * 5);
+
             logger.info(`Started kube daemon at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
-            process.exit(0);
+            await cleanExit(0, logger);
         } else {
             // Start our daemon process, but stream our stdio to the user (pipe)
             const daemonProcess = await spawn(finalDaemonPath, args,
@@ -258,7 +261,7 @@ function getAppEntrypoint() {
     if(pkgProcess) {
         return pkgProcess.entrypoint;
     } else {
-        return process.argv[1];
+        return `${process.cwd()}/src/index.ts`;
     }
 }
 

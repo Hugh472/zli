@@ -44,6 +44,14 @@ phases:
       # Install npm dependencies
       - apt-get update -y && apt-get install build-essential cmake -y
       - npm ci
+      # Build golang daemon
+      - npm run release
+      - # Install system-test dependencies
+      - # Install helm (ref: https://helm.sh/docs/intro/install/#from-apt-debianubuntu)
+      - curl https://baltocdn.com/helm/signing.asc | apt-key add -
+      - apt-get install apt-transport-https -y
+      - echo "deb https://baltocdn.com/helm/stable/debian/ all main" | tee /etc/apt/sources.list.d/helm-stable-debian.list
+      - apt-get update -y && apt-get install helm
   build:
     commands:
       - echo Build started `date`

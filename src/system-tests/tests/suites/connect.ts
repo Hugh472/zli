@@ -4,8 +4,9 @@ import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
 import { Subscription } from 'rxjs';
-import { callZli, imagesToRun, testTargets } from '../system-test';
-import { getMockResultValue } from '../utils';
+import { imagesToRun, testTargets } from '../system-test';
+import { getMockResultValue } from '../utils/jest-utils';
+import { callZli } from '../utils/zli-utils';
 
 export const connectSuite = () => {
     describe('connect suite', () => {
@@ -45,11 +46,7 @@ export const connectSuite = () => {
                 });
 
             // Call "zli connect"
-            const connectPromise = callZli(['connect', `ssm-user@${doTarget.ssmTarget.name}`], async (err, _argv, _output) => {
-                if (err) {
-                    throw new Error(`connect returned error: ${err}`);
-                }
-            });
+            const connectPromise = callZli(['connect', `ssm-user@${doTarget.ssmTarget.name}`]);
 
             // This promise is resolved when ShellTerminal sets blockInput
             // to false, and sends next(true) on the terminalRunning
