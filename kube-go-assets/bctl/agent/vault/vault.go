@@ -25,15 +25,14 @@ type Vault struct {
 }
 
 type SecretData struct {
-	PublicKey     string
-	PrivateKey    string
-	OrgId         string
-	ServiceUrl    string
-	ClusterName   string
-	EnvironmentId string
-	Namespace     string
-	IdpProvider   string
-	IdpOrgId      string
+	PublicKey   string
+	PrivateKey  string
+	OrgId       string
+	ServiceUrl  string
+	ClusterName string
+	Namespace   string
+	IdpProvider string
+	IdpOrgId    string
 }
 
 func LoadVault() (*Vault, error) {

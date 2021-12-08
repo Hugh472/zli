@@ -1,10 +1,10 @@
 package logger
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
-	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
@@ -25,7 +25,7 @@ type Logger struct {
 	logger zerolog.Logger
 }
 
-func NewLogger(debugLevel DebugLevel, logFilePath string) (*Logger, error) {
+func New(debugLevel DebugLevel, logFilePath string) (*Logger, error) {
 	// Let's us display stack info on errors
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	zerolog.SetGlobalLevel(debugLevel)
@@ -59,27 +59,25 @@ func (l *Logger) AddDaemonVersion(version string) {
 	l.logger = l.logger.With().Str("daemonVersion", version).Logger()
 }
 
-// TODO: instead of assigning random uuid, the control channel and data channel should both use
-// their respective connectionIds
-func (l *Logger) GetControlchannelLogger() *Logger {
+func (l *Logger) GetControlChannelLogger(id string) *Logger {
 	return &Logger{
-		logger: l.logger.With().Str("controlchannel", uuid.New().String()).Logger(),
+		logger: l.logger.With().Str("controlchannel", id).Logger(),
 	}
 }
 
-func (l *Logger) GetDatachannelLogger() *Logger {
+func (l *Logger) GetDatachannelLogger(id string) *Logger {
 	return &Logger{
-		logger: l.logger.With().Str("datachannel", uuid.New().String()).Logger(),
+		logger: l.logger.With().Str("datachannel", id).Logger(),
 	}
 }
 
-func (l *Logger) GetWebsocketLogger() *Logger {
+func (l *Logger) GetWebsocketLogger(id string) *Logger {
 	return &Logger{
-		logger: l.logger.With().Str("websocket", uuid.New().String()).Logger(),
+		logger: l.logger.With().Str("websocket", id).Logger(),
 	}
 }
 
-func (l *Logger) GetPluginLogger(pluginName plgn.PluginName) *Logger {
+func (l *Logger) GetPluginLogger(pluginName string) *Logger {
 	return &Logger{
 		logger: l.logger.With().Str("plugin", string(pluginName)).Logger(),
 	}
@@ -114,9 +112,19 @@ func (l *Logger) Info(msg string) {
 		Msg(msg)
 }
 
+func (l *Logger) Infof(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	l.Info(msg)
+}
+
 func (l *Logger) Debug(msg string) {
 	l.logger.Debug().
 		Msg(msg)
+}
+
+func (l *Logger) Debugf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	l.Debug(msg)
 }
 
 func (l *Logger) Error(err error) {
@@ -125,13 +133,17 @@ func (l *Logger) Error(err error) {
 		Msg(err.Error())
 }
 
+func (l *Logger) Errorf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	l.Error(errors.New(msg))
+}
+
 func (l *Logger) Trace(msg string) {
 	l.logger.Trace().
 		Msg(msg)
 }
 
-// ??
-// func (l *Logger) Fatal(err error) {
-// 	l.logger.Fatal().
-// 		Msg(err.Error())
-// }
+func (l *Logger) Tracef(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	l.Trace(msg)
+}

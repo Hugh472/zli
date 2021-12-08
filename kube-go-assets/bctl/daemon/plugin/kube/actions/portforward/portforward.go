@@ -13,37 +13,39 @@ import (
 	"sync"
 	"time"
 
-	portforward "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/portforward"
+	"bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/portforward"
 	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
-	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+	"gopkg.in/tomb.v2"
 
 	"golang.org/x/build/kubernetes/api"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	spdystream "k8s.io/apimachinery/pkg/util/httpstream/spdy"
 )
 
-type RequsetMapStruct struct {
+type RequestMapStruct struct {
 	streamMessageContent portforward.KubePortForwardStreamMessageContent
 	streamMessage        smsg.StreamMessage
 }
 type PortForwardAction struct {
-	requestId             string
-	logId                 string
-	commandBeingRun       string
-	ksResponseChannel     chan plgn.ActionWrapper
-	RequestChannel        chan plgn.ActionWrapper
-	streamChannel         chan smsg.StreamMessage
-	logger                *lggr.Logger
-	ctx                   context.Context
+	logger          *logger.Logger
+	requestId       string
+	logId           string
+	commandBeingRun string
+
+	outputChan      chan plugin.ActionWrapper
+	streamInputChan chan smsg.StreamMessage
+	ksInputChan     chan plugin.ActionWrapper
+
 	streamPairsLock       sync.RWMutex
 	streamPairs           map[string]*httpStreamPair
 	streamCreationTimeout time.Duration
 	endpoint              string
 
 	// Map of portforardId <-> PortForwardSubAction
-	requestMap     map[string]chan RequsetMapStruct
+	requestMap     map[string]chan RequestMapStruct
 	requestMapLock sync.Mutex
 }
 
@@ -57,30 +59,60 @@ type httpStreamPair struct {
 	complete    chan struct{}
 }
 
-func NewPortForwardAction(ctx context.Context,
-	logger *lggr.Logger,
+func New(logger *logger.Logger,
 	requestId string,
 	logId string,
-	ch chan plgn.ActionWrapper,
-	streamResponseChannel chan smsg.StreamMessage,
-	commandBeingRun string) (*PortForwardAction, error) {
+	command string) (*PortForwardAction, chan plugin.ActionWrapper) {
 
-	return &PortForwardAction{
+	portForward := &PortForwardAction{
+		logger:                logger,
 		requestId:             requestId,
 		logId:                 logId,
-		commandBeingRun:       commandBeingRun,
-		RequestChannel:        ch,
-		ksResponseChannel:     make(chan plgn.ActionWrapper),
-		streamChannel:         make(chan smsg.StreamMessage, 100),
-		logger:                logger,
-		ctx:                   ctx,
+		commandBeingRun:       command,
+		outputChan:            make(chan plugin.ActionWrapper, 10),
+		streamInputChan:       make(chan smsg.StreamMessage, 10),
+		ksInputChan:           make(chan plugin.ActionWrapper, 10),
 		streamPairs:           make(map[string]*httpStreamPair),
 		streamCreationTimeout: kubeutils.DefaultStreamCreationTimeout,
-		requestMap:            make(map[string]chan RequsetMapStruct),
-	}, nil
+		requestMap:            make(map[string]chan RequestMapStruct),
+	}
+
+	return portForward, portForward.outputChan
 }
 
-func (p *PortForwardAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
+func (p *PortForwardAction) ReceiveKeysplitting(wrappedAction plugin.ActionWrapper) {
+	p.ksInputChan <- wrappedAction
+}
+
+func (p *PortForwardAction) ReceiveStream(stream smsg.StreamMessage) {
+	// If this is our ready message, send to our ready channel
+	if stream.Type == string(portforward.ReadyPortForward) {
+		p.streamInputChan <- stream
+		return
+	}
+
+	// Unmarshal our content
+	var kubePortforwardStreamMessageContent portforward.KubePortForwardStreamMessageContent
+	contentBytes, _ := base64.StdEncoding.DecodeString(stream.Content)
+	err := json.Unmarshal(contentBytes, &kubePortforwardStreamMessageContent)
+	if err != nil {
+		p.logger.Error(fmt.Errorf("error unmarshalling stream output for portforward action: %+v", err))
+		return
+	}
+
+	// First get the stream
+	streamChan, ok := p.getRequestMap(kubePortforwardStreamMessageContent.PortForwardRequestId)
+	if !ok {
+		p.logger.Error(fmt.Errorf("unable to find stream chan for request: %s", kubePortforwardStreamMessageContent.PortForwardRequestId))
+		return
+	}
+	streamChan <- RequestMapStruct{
+		streamMessageContent: kubePortforwardStreamMessageContent,
+		streamMessage:        stream,
+	}
+}
+
+func (p *PortForwardAction) Start(tmb *tomb.Tomb, writer http.ResponseWriter, request *http.Request) error {
 	// Set our endpoint
 	p.endpoint = request.URL.String()
 
@@ -102,7 +134,7 @@ func (p *PortForwardAction) InputMessageHandler(writer http.ResponseWriter, requ
 		CommandBeingRun: p.commandBeingRun,
 	}
 	payloadBytes, _ := json.Marshal(payload)
-	p.RequestChannel <- plgn.ActionWrapper{
+	p.outputChan <- plugin.ActionWrapper{
 		Action:        string(portforward.StartPortForward),
 		ActionPayload: payloadBytes,
 	}
@@ -111,7 +143,7 @@ func (p *PortForwardAction) InputMessageHandler(writer http.ResponseWriter, requ
 readyMessageLoop:
 	for {
 		select {
-		case streamMessage := <-p.streamChannel:
+		case streamMessage := <-p.streamInputChan:
 			if streamMessage.Type == string(portforward.ReadyPortForward) {
 				// See if we have an error to bubble up to the user
 				if len(streamMessage.Content) != 0 {
@@ -135,7 +167,7 @@ readyMessageLoop:
 					}
 
 					// Send close message
-					p.SendCloseMessage()
+					p.sendCloseMessage()
 
 					return fmt.Errorf("error starting portforward stream: %s", streamMessage.Content)
 				}
@@ -155,7 +187,7 @@ readyMessageLoop:
 
 	// Upgrade the response
 	upgrader := spdystream.NewResponseUpgraderWithPings(kubeutils.DefaultStreamCreationTimeout)
-	conn := upgrader.UpgradeResponse(writer, request, p.httpStreamReceived(p.ctx, streamChan))
+	conn := upgrader.UpgradeResponse(writer, request, p.httpStreamReceived(context.TODO(), streamChan))
 	if conn == nil {
 		return fmt.Errorf("unable to upgrade websocket connection")
 	}
@@ -166,6 +198,8 @@ readyMessageLoop:
 	go func() {
 		for {
 			select {
+			case <-tmb.Dying():
+				return
 			case <-conn.CloseChan():
 				return
 			case stream := <-streamChan:
@@ -176,7 +210,7 @@ readyMessageLoop:
 					return
 				}
 				streamType := stream.Headers().Get(kubeutils.StreamType)
-				p.logger.Info(fmt.Sprintf("Received new stream %v of type %v.", requestID, streamType))
+				p.logger.Infof("Received new stream %v of type %v.", requestID, streamType)
 
 				// Now attempt to make our stream pair (error, data)
 				portforwardSession, created := p.getStreamPair(requestID)
@@ -200,11 +234,15 @@ readyMessageLoop:
 	// Keep this context till the user exits the http session
 	// Keep the connection alive till we get a closeChan messsage, then close the context as well
 	select {
+	case <-tmb.Dying():
+		break
 	case <-conn.CloseChan():
 		p.logger.Info("Portforwarding context finished. Sending close message to portforward action")
-		p.SendCloseMessage()
-		return nil
+		break
 	}
+
+	p.sendCloseMessage()
+	return nil
 }
 
 // portForward invokes the portForwardProxy's forwarder.PortForward
@@ -216,10 +254,10 @@ func (p *PortForwardAction) portForward(portforwardSession *httpStreamPair) {
 	portString := portforwardSession.dataStream.Headers().Get(kubeutils.PortHeader)
 	port, _ := strconv.ParseInt(portString, 10, 32)
 
-	p.logger.Info(fmt.Sprintf("Forwarding to port %v. Request: %v.", portString, portforwardSession.requestID))
+	p.logger.Infof("Forwarding to port %v. Request: %v.", portString, portforwardSession.requestID)
 	err := p.forwardStreamPair(portforwardSession, port)
-	p.SendCloseRequestMessage(portforwardSession.requestID)
-	p.logger.Info(fmt.Sprintf("Completed forwarding port %v. Request: %v.", portString, portforwardSession.requestID))
+	p.sendCloseRequestMessage(portforwardSession.requestID)
+	p.logger.Infof("Completed forwarding port %v. Request: %v.", portString, portforwardSession.requestID)
 
 	if err != nil {
 		msg := fmt.Errorf("error forwarding port %d to pod ?: %v", port, err)
@@ -227,7 +265,7 @@ func (p *PortForwardAction) portForward(portforwardSession *httpStreamPair) {
 	}
 }
 
-func (p *PortForwardAction) SendCloseRequestMessage(portforwardingRequestId string) {
+func (p *PortForwardAction) sendCloseRequestMessage(portforwardingRequestId string) {
 	// Now send this data to Bastion
 	payload := portforward.KubePortForwardStopRequestActionPayload{
 		RequestId:            p.requestId,
@@ -235,20 +273,20 @@ func (p *PortForwardAction) SendCloseRequestMessage(portforwardingRequestId stri
 		PortForwardRequestId: portforwardingRequestId,
 	}
 	payloadBytes, _ := json.Marshal(payload)
-	p.RequestChannel <- plgn.ActionWrapper{
+	p.outputChan <- plugin.ActionWrapper{
 		Action:        string(portforward.StopPortForwardRequest),
 		ActionPayload: payloadBytes,
 	}
 }
 
-func (p *PortForwardAction) SendCloseMessage() {
+func (p *PortForwardAction) sendCloseMessage() {
 	// Now send this data to Bastion
 	payload := portforward.KubePortForwardStopActionPayload{
 		RequestId: p.requestId,
 		LogId:     p.logId,
 	}
 	payloadBytes, _ := json.Marshal(payload)
-	p.RequestChannel <- plgn.ActionWrapper{
+	p.outputChan <- plugin.ActionWrapper{
 		Action:        string(portforward.StopPortForward),
 		ActionPayload: payloadBytes,
 	}
@@ -259,7 +297,7 @@ func (p *PortForwardAction) forwardStreamPair(portforwardSession *httpStreamPair
 	doneChan := make(chan bool)
 
 	// Make and update the stream channel for this requestId
-	p.updateRequestMap(make(chan RequsetMapStruct), portforwardSession.requestID)
+	p.updateRequestMap(make(chan RequestMapStruct), portforwardSession.requestID)
 
 	// Set up the go routine to push error data to Bastion
 	go func() {
@@ -284,7 +322,7 @@ func (p *PortForwardAction) forwardStreamPair(portforwardSession *httpStreamPair
 					PortForwardRequestId: portforwardSession.requestID,
 				}
 				payloadBytes, _ := json.Marshal(payload)
-				p.RequestChannel <- plgn.ActionWrapper{
+				p.outputChan <- plugin.ActionWrapper{
 					Action:        string(portforward.ErrorPortForward),
 					ActionPayload: payloadBytes,
 				}
@@ -319,7 +357,7 @@ func (p *PortForwardAction) forwardStreamPair(portforwardSession *httpStreamPair
 					PodPort:              remotePort,
 				}
 				payloadBytes, _ := json.Marshal(payload)
-				p.RequestChannel <- plgn.ActionWrapper{
+				p.outputChan <- plugin.ActionWrapper{
 					Action:        string(portforward.DataInPortForward),
 					ActionPayload: payloadBytes,
 				}
@@ -411,7 +449,6 @@ func (p *PortForwardAction) forwardStreamPair(portforwardSession *httpStreamPair
 			}
 		}
 	}
-	return nil
 }
 
 // requestID returns the request id for stream.
@@ -423,40 +460,8 @@ func (p *PortForwardAction) requestID(stream httpstream.Stream) (string, error) 
 	return requestID, nil
 }
 
-func (p *PortForwardAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
-	p.ksResponseChannel <- wrappedAction
-}
-
-func (p *PortForwardAction) PushStreamResponse(stream smsg.StreamMessage) {
-	// If this is our ready message, send to our ready channel
-	if stream.Type == string(portforward.ReadyPortForward) {
-		p.streamChannel <- stream
-		return
-	}
-
-	// Unmarshal our content
-	var kubePortforwardStreamMessageContent portforward.KubePortForwardStreamMessageContent
-	contentBytes, _ := base64.StdEncoding.DecodeString(stream.Content)
-	err := json.Unmarshal(contentBytes, &kubePortforwardStreamMessageContent)
-	if err != nil {
-		p.logger.Error(fmt.Errorf("error unmarsheling stream output for portforward action: %+v", err))
-		return
-	}
-
-	// First get the stream
-	streamChan, ok := p.getRequestMap(kubePortforwardStreamMessageContent.PortForwardRequestId)
-	if !ok {
-		p.logger.Error(fmt.Errorf("unable to find stream chan for request: %s", kubePortforwardStreamMessageContent.PortForwardRequestId))
-		return
-	}
-	streamChan <- RequsetMapStruct{
-		streamMessageContent: kubePortforwardStreamMessageContent,
-		streamMessage:        stream,
-	}
-}
-
 // Helper function so we avoid writing to this map at the same time
-func (p *PortForwardAction) updateRequestMap(newStreamChan chan RequsetMapStruct, key string) {
+func (p *PortForwardAction) updateRequestMap(newStreamChan chan RequestMapStruct, key string) {
 	p.requestMapLock.Lock()
 	p.requestMap[key] = newStreamChan
 	p.requestMapLock.Unlock()
@@ -468,7 +473,7 @@ func (p *PortForwardAction) deleteRequestMap(key string) {
 	p.requestMapLock.Unlock()
 }
 
-func (p *PortForwardAction) getRequestMap(key string) (chan RequsetMapStruct, bool) {
+func (p *PortForwardAction) getRequestMap(key string) (chan RequestMapStruct, bool) {
 	p.requestMapLock.Lock()
 	defer p.requestMapLock.Unlock()
 	act, ok := p.requestMap[key]

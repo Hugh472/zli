@@ -1,16 +1,16 @@
 package stream
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
+
+	"gopkg.in/tomb.v2"
 
 	kubestream "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/stream"
 	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
-	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
@@ -20,43 +20,60 @@ const (
 )
 
 type StreamAction struct {
-	requestId              string
-	logId                  string
-	ksResponseChannel      chan plgn.ActionWrapper
-	RequestChannel         chan plgn.ActionWrapper
-	streamResponseChannel  chan smsg.StreamMessage
-	logger                 *lggr.Logger
-	ctx                    context.Context
-	commandBeingRun        string
+	logger *logger.Logger
+
+	requestId       string
+	logId           string
+	commandBeingRun string
+
+	// input and output channels relative to this plugin
+	outputChan      chan plugin.ActionWrapper
+	streamInputChan chan smsg.StreamMessage
+	ksInputChan     chan plugin.ActionWrapper
+
 	expectedSequenceNumber int
 	outOfOrderMessages     map[int]smsg.StreamMessage
 	writer                 http.ResponseWriter
 }
 
-func NewStreamAction(ctx context.Context,
-	logger *lggr.Logger,
+func New(logger *logger.Logger,
 	requestId string,
 	logId string,
-	ch chan plgn.ActionWrapper,
-	commandBeingRun string) (*StreamAction, error) {
+	commandBeingRun string) (*StreamAction, chan plugin.ActionWrapper) {
 
-	return &StreamAction{
-		requestId:             requestId,
-		logId:                 logId,
-		RequestChannel:        ch,
-		ksResponseChannel:     make(chan plgn.ActionWrapper, 100),
-		streamResponseChannel: make(chan smsg.StreamMessage, 100),
-		logger:                logger,
-		ctx:                   ctx,
-		commandBeingRun:       commandBeingRun,
+	stream := &StreamAction{
+		logger: logger,
+
+		requestId:       requestId,
+		logId:           logId,
+		commandBeingRun: commandBeingRun,
+
+		outputChan:      make(chan plugin.ActionWrapper, 10),
+		streamInputChan: make(chan smsg.StreamMessage, 10),
+		ksInputChan:     make(chan plugin.ActionWrapper, 10),
 
 		// Start at 1 since we wait for our headers message
 		expectedSequenceNumber: 1,
 		outOfOrderMessages:     make(map[int]smsg.StreamMessage),
-	}, nil
+	}
+
+	return stream, stream.outputChan
 }
 
-func (s *StreamAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
+func (s *StreamAction) ReceiveKeysplitting(wrappedAction plugin.ActionWrapper) {
+	s.ksInputChan <- wrappedAction
+}
+
+func (s *StreamAction) ReceiveStream(smessage smsg.StreamMessage) {
+	s.logger.Debugf("Stream action recieved %v stream", smessage.Type)
+	s.streamInputChan <- smessage
+}
+
+func (s *StreamAction) Start(tmb *tomb.Tomb, writer http.ResponseWriter, request *http.Request) error {
+	// this action ends at the end of this function, in order to signal that to the parent plugin,
+	// we close the output channel which will close the go routine listening on it
+	defer close(s.outputChan)
+
 	// Set our writer
 	s.writer = writer
 
@@ -81,8 +98,9 @@ func (s *StreamAction) InputMessageHandler(writer http.ResponseWriter, request *
 		CommandBeingRun: s.commandBeingRun,
 	}
 
+	// Send payload to plugin output queue
 	payloadBytes, _ := json.Marshal(payload)
-	s.RequestChannel <- plgn.ActionWrapper{
+	s.outputChan <- plugin.ActionWrapper{
 		Action:        startStream,
 		ActionPayload: payloadBytes,
 	}
@@ -93,9 +111,10 @@ func (s *StreamAction) InputMessageHandler(writer http.ResponseWriter, request *
 outOfOrderMessageHandler:
 	for {
 		select {
-		case <-s.ctx.Done():
+		case <-tmb.Dying():
 			return nil
-		case watchData := <-s.streamResponseChannel:
+		case watchData := <-s.streamInputChan:
+
 			contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
 
 			// Attempt to decode contentBytes
@@ -122,10 +141,10 @@ outOfOrderMessageHandler:
 	// Keep this as a non-go routine so we hold onto the http request
 	for {
 		select {
-		case <-s.ctx.Done():
+		case <-tmb.Dying():
 			return nil
 		case <-request.Context().Done():
-			s.logger.Info(fmt.Sprintf("Watch request %v was requested to get cancelled", s.requestId))
+			s.logger.Infof("Watch request %v was cancelled", s.requestId)
 
 			// Build the action payload
 			payload := kubestream.KubeStreamActionPayload{
@@ -138,19 +157,20 @@ outOfOrderMessageHandler:
 			}
 
 			payloadBytes, _ := json.Marshal(payload)
-			s.RequestChannel <- plgn.ActionWrapper{
+			s.outputChan <- plugin.ActionWrapper{
 				Action:        stopStream,
 				ActionPayload: payloadBytes,
 			}
 
 			return nil
-		case watchData := <-s.streamResponseChannel:
+
+		case watchData := <-s.streamInputChan:
+
 			// Then stream the response to kubectl
 			if watchData.SequenceNumber == s.expectedSequenceNumber {
 				// If the incoming data is equal to the current expected seqNumber, show the user
 				contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
-				err := kubeutils.WriteToHttpRequest(contentBytes, writer)
-				if err != nil {
+				if err := kubeutils.WriteToHttpRequest(contentBytes, writer); err != nil {
 					s.logger.Error(err)
 					return nil
 				}
@@ -166,14 +186,6 @@ outOfOrderMessageHandler:
 
 		}
 	}
-}
-
-func (s *StreamAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
-	s.ksResponseChannel <- wrappedAction
-}
-
-func (s *StreamAction) PushStreamResponse(message smsg.StreamMessage) {
-	s.streamResponseChannel <- message
 }
 
 func (s *StreamAction) handleOutOfOrderMessage() {

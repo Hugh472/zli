@@ -1,15 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 
-	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
-	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bctl/daemon/httpserver"
+	am "bastionzero.com/bctl/v1/bzerolib/channels/agentmessage"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
 // Declaring flags as package-accesible variables
@@ -21,31 +20,30 @@ var (
 )
 
 const (
-	hubEndpoint   = "/api/v1/hub/kube"
-	autoReconnect = true
-	version       = "$DAEMON_VERSION"
+	hubEndpoint = "/api/v1/hub/kube"
+	version     = "$DAEMON_VERSION"
 )
 
 func main() {
 	parseFlags() // TODO: Output missing args error
 
 	// Setup our loggers
-	// TODO: Pass in debug level as flag
-	// TODO: Pass in stdout output as flag?
-	logger, err := lggr.NewLogger(lggr.Debug, getLogFilePath())
+	// TODO: Pass in debug level as flag or put it in the config
+	logger, err := logger.New(logger.Debug, getLogFilePath())
 	if err != nil {
 		os.Exit(1)
 	}
 	logger.AddDaemonVersion(version)
-	dcLogger := logger.GetDatachannelLogger()
 
-	logger.Info(fmt.Sprintf("Opening websocket to Bastion: %s", serviceUrl))
-	startDatachannel(dcLogger)
+	logger.Infof("Opening websocket to Bastion: %s", serviceUrl)
+	if err := startHTTPServer(logger); err != nil {
+		logger.Error(err)
+	}
 
 	select {} // sleep forever?
 }
 
-func startDatachannel(logger *lggr.Logger) {
+func startHTTPServer(logger *logger.Logger) error {
 	// Create our headers and params
 	headers := make(map[string]string)
 	headers["Authorization"] = authHeader
@@ -58,26 +56,36 @@ func startDatachannel(logger *lggr.Logger) {
 	params["target_cluster_id"] = targetClusterId
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel(logger, refreshTokenCommand, configPath, targetUser, targetGroups, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	subLogger := logger.GetComponentLogger("httpserver")
 
-	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
-		return
-	}
+	// TODO: I know this is insane, we need a config
+	return httpserver.StartHTTPServer(subLogger,
+		daemonPort,
+		certPath,
+		keyPath,
+		refreshTokenCommand,
+		configPath,
+		targetUser,
+		targetGroups,
+		localhostToken,
+		serviceUrl,
+		hubEndpoint,
+		params,
+		headers,
+		targetSelectHandler)
 }
 
-func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
-	var payload map[string]interface{}
-	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
-		if p, ok := payload["keysplittingPayload"].(map[string]interface{}); ok {
-			switch p["action"] {
-			case "kube/restapi/request", "kube/exec/start", "kube/exec/stop", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop", "kube/portforward/start", "kube/portforward/stop", "kube/portforward/request/stop", "kube/portforward/datain", "kube/portforward/errorin":
-				return "RequestDaemonToBastionV1", nil
-			}
-		} else {
-			return "", fmt.Errorf("fail on expected payload: %v", payload["keysplittingPayload"])
-		}
+func targetSelectHandler(agentMessage am.AgentMessage) (string, error) {
+	switch am.MessageType(agentMessage.MessageType) {
+	case am.Keysplitting:
+		return "RequestDaemonToBastionV1", nil
+	case am.OpenDataChannel:
+		return "OpenDataChannelDaemonToBastionV1", nil
+	case am.CloseDataChannel:
+		return "CloseDataChannelDaemonToBastionV1", nil
+	default:
+		return "", fmt.Errorf("unhandled message type: %s", agentMessage.MessageType)
 	}
-	return "", fmt.Errorf("")
 }
 
 func parseFlags() error {

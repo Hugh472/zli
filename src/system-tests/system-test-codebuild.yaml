@@ -9,6 +9,7 @@ env:
   parameter-store:
     # The SSH RSA Key used by our machine user
     build_ssh_key: "/cwc/ssh/rolandfrank"
+    KUBE_AGENT_VERSION: /webshell/development/kube-agent-version
   secrets-manager:
     DO_API_KEY: development/infra/system-test-secret:DO_API_KEY
   git-credential-helper: yes

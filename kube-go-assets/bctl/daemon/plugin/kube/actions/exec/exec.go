@@ -1,56 +1,66 @@
 package exec
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"gopkg.in/tomb.v2"
+
 	kubeexec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
 	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
-	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
 type ExecAction struct {
-	requestId         string
-	logId             string
-	commandBeingRun   string
-	ksResponseChannel chan plgn.ActionWrapper
-	RequestChannel    chan plgn.ActionWrapper
-	streamChannel     chan smsg.StreamMessage
-	logger            *lggr.Logger
-	ctx               context.Context
+	logger *logger.Logger
+
+	requestId       string
+	logId           string
+	commandBeingRun string
+
+	// input and output channels relative to this plugin
+	outputChan      chan plugin.ActionWrapper
+	streamInputChan chan smsg.StreamMessage
+	ksInputChan     chan plugin.ActionWrapper
 }
 
-func NewExecAction(ctx context.Context,
-	logger *lggr.Logger,
+func New(logger *logger.Logger,
 	requestId string,
 	logId string,
-	ch chan plgn.ActionWrapper,
-	streamResponseChannel chan smsg.StreamMessage,
-	commandBeingRun string) (*ExecAction, error) {
+	commandBeingRun string) (*ExecAction, chan plugin.ActionWrapper) {
 
-	return &ExecAction{
-		requestId:         requestId,
-		logId:             logId,
-		commandBeingRun:   commandBeingRun,
-		RequestChannel:    ch,
-		ksResponseChannel: make(chan plgn.ActionWrapper),
-		streamChannel:     make(chan smsg.StreamMessage, 100),
-		logger:            logger,
-		ctx:               ctx,
-	}, nil
+	exec := &ExecAction{
+		logger:          logger,
+		requestId:       requestId,
+		logId:           logId,
+		commandBeingRun: commandBeingRun,
+		outputChan:      make(chan plugin.ActionWrapper, 10),
+		streamInputChan: make(chan smsg.StreamMessage, 10),
+		ksInputChan:     make(chan plugin.ActionWrapper, 10),
+	}
+
+	return exec, exec.outputChan
 }
 
-func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
-	subLogger := r.logger.GetComponentLogger("SPDY")
+func (e *ExecAction) ReceiveKeysplitting(wrappedAction plugin.ActionWrapper) {
+	e.ksInputChan <- wrappedAction
+}
+
+func (e *ExecAction) ReceiveStream(stream smsg.StreamMessage) {
+	e.streamInputChan <- stream
+}
+
+func (e *ExecAction) Start(tmb *tomb.Tomb, writer http.ResponseWriter, request *http.Request) error {
+	// create new SPDY service for exec communication
+	subLogger := e.logger.GetComponentLogger("SPDY")
 	spdy, err := NewSPDYService(subLogger, writer, request)
 	if err != nil {
-		r.logger.Error(err)
+		e.logger.Error(err)
 		return err
 	}
 
@@ -58,57 +68,49 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	isTty := kubeutils.IsQueryParamPresent(request, "tty")
 
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
-	r.RequestChannel <- wrapStartPayload(isTty, r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
-
-	// Define our function to process each message
-	seqNumber := 0
-	processMessage := func(content []byte) bool {
-		// Check for agent-initiated end e.g. user typing 'exit'
-		if string(content) == kubeexec.EscChar {
-			r.logger.Info("stream ended")
-			spdy.conn.Close()
-			return true
-		}
-		spdy.stdoutStream.Write(content)
-		seqNumber++
-		return false
-	}
+	e.outputChan <- wrapStartPayload(isTty, e.requestId, e.logId, request.URL.Query()["command"], request.URL.String())
 
 	// Set up a go function for stdout
 	go func() {
+		defer close(e.outputChan)
 		streamQueue := make(map[int]smsg.StreamMessage)
+		seqNumber := 0
+
 		for {
 			select {
-			case <-r.ctx.Done():
+			case <-tmb.Dying():
 				return
-			case streamMessage := <-r.streamChannel:
-				contentBytes, _ := base64.StdEncoding.DecodeString(streamMessage.Content)
+			case streamMessage := <-e.streamInputChan:
 
-				// Check sequence number is correct, if not store it for later
-				if streamMessage.SequenceNumber == seqNumber {
-					if processMessage(contentBytes) {
-						return
-					}
-
-				} else {
+				// check if received message is out of order
+				if streamMessage.SequenceNumber != seqNumber {
 					streamQueue[streamMessage.SequenceNumber] = streamMessage
-				}
+				} else {
 
-				// Always process any existing messages that were recieved out of order
-				msg, ok := streamQueue[seqNumber]
-				for ok {
-					moreBytes, _ := base64.StdEncoding.DecodeString(msg.Content)
+					// process in-order message + any next messages that we already received
+					msg := streamMessage
+					ok := true
+					for ok {
 
-					if processMessage(moreBytes) {
-						return
+						// check for end of stream
+						contentBytes, _ := base64.StdEncoding.DecodeString(msg.Content)
+						if string(contentBytes) == kubeexec.EscChar {
+							e.logger.Info("exec stream ended")
+							spdy.conn.Close()
+							break
+						}
+
+						// write message to output
+						spdy.stdoutStream.Write(contentBytes)
+
+						// delete processed message, increment sequence number and grab next (if there is one)
+						delete(streamQueue, seqNumber)
+						seqNumber++
+						msg, ok = streamQueue[seqNumber]
 					}
-
-					delete(streamQueue, seqNumber-1) // seqNumber -1 since we incremented seq number in processMessage
-					msg, ok = streamQueue[seqNumber]
 				}
 			}
 		}
-
 	}()
 
 	// Set up a go function for stdin
@@ -122,7 +124,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			chunkSizeBuffer := make([]byte, kubeutils.ExecChunkSize)
 
 			select {
-			case <-r.ctx.Done():
+			case <-tmb.Dying():
 				return
 			default:
 				// Keep reading from our stdin stream if we see multiple chunks coming in
@@ -144,8 +146,8 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 				}
 
-				// Send message to agent in the background
-				r.RequestChannel <- wrapStdinPayload(r.requestId, r.logId, buffer)
+				// Send message to agent
+				e.outputChan <- wrapStdinPayload(e.requestId, e.logId, buffer)
 			}
 		}
 
@@ -156,7 +158,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		go func() {
 			for {
 				select {
-				case <-r.ctx.Done():
+				case <-tmb.Dying():
 					return
 				default:
 					decoder := json.NewDecoder(spdy.resizeStream)
@@ -166,11 +168,11 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 						if err == io.EOF {
 							return
 						} else {
-							r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
+							e.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
 						}
 					} else {
 						// Emit this as a new resize event
-						r.RequestChannel <- wrapResizePayload(r.requestId, r.logId, size.Width, size.Height)
+						e.outputChan <- wrapResizePayload(e.requestId, e.logId, size.Width, size.Height)
 					}
 				}
 			}
@@ -182,15 +184,17 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	go func() {
 		for {
 			select {
+			case <-tmb.Dying():
+				return
 			case <-closeChan:
 				// Send message to agent to close the stream
 				payload := kubeexec.KubeExecStopActionPayload{
-					RequestId: r.requestId,
-					LogId:     r.logId,
+					RequestId: e.requestId,
+					LogId:     e.logId,
 				}
 
 				payloadBytes, _ := json.Marshal(payload)
-				r.RequestChannel <- plgn.ActionWrapper{
+				e.outputChan <- plugin.ActionWrapper{
 					Action:        string(kubeexec.ExecStop),
 					ActionPayload: payloadBytes,
 				}
@@ -203,15 +207,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	return nil
 }
 
-func (r *ExecAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
-	r.ksResponseChannel <- wrappedAction
-}
-
-func (r *ExecAction) PushStreamResponse(stream smsg.StreamMessage) {
-	r.streamChannel <- stream
-}
-
-func wrapStartPayload(isTty bool, requestId string, logId string, command []string, endpoint string) plgn.ActionWrapper {
+func wrapStartPayload(isTty bool, requestId string, logId string, command []string, endpoint string) plugin.ActionWrapper {
 	payload := kubeexec.KubeExecStartActionPayload{
 		RequestId: requestId,
 		LogId:     logId,
@@ -221,13 +217,13 @@ func wrapStartPayload(isTty bool, requestId string, logId string, command []stri
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
-	return plgn.ActionWrapper{
+	return plugin.ActionWrapper{
 		Action:        string(kubeexec.ExecStart),
 		ActionPayload: payloadBytes,
 	}
 }
 
-func wrapResizePayload(requestId string, logId string, width uint16, height uint16) plgn.ActionWrapper {
+func wrapResizePayload(requestId string, logId string, width uint16, height uint16) plugin.ActionWrapper {
 	payload := kubeexec.KubeExecResizeActionPayload{
 		RequestId: requestId,
 		LogId:     logId,
@@ -236,13 +232,13 @@ func wrapResizePayload(requestId string, logId string, width uint16, height uint
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
-	return plgn.ActionWrapper{
+	return plugin.ActionWrapper{
 		Action:        string(kubeexec.ExecResize),
 		ActionPayload: payloadBytes,
 	}
 }
 
-func wrapStdinPayload(requestId string, logId string, stdin []byte) plgn.ActionWrapper {
+func wrapStdinPayload(requestId string, logId string, stdin []byte) plugin.ActionWrapper {
 	payload := kubeexec.KubeStdinActionPayload{
 		RequestId: requestId,
 		LogId:     logId,
@@ -250,7 +246,7 @@ func wrapStdinPayload(requestId string, logId string, stdin []byte) plgn.ActionW
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
-	return plgn.ActionWrapper{
+	return plugin.ActionWrapper{
 		Action:        string(kubeexec.ExecInput),
 		ActionPayload: payloadBytes,
 	}

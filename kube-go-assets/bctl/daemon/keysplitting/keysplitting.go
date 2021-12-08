@@ -60,7 +60,7 @@ type Keysplitting struct {
 	refreshTokenCommand string
 }
 
-func NewKeysplitting(targetId string, configPath string, refreshTokenCommand string) (IKeysplitting, error) {
+func New(targetId string, configPath string, refreshTokenCommand string) (IKeysplitting, error) {
 
 	// TODO: load keys from storage
 	keysplitter := &Keysplitting{
@@ -87,7 +87,7 @@ func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
 		return fmt.Errorf("error validating unhandled Keysplitting type")
 	}
 
-	// Verify recieved hash pointer matches expected
+	// Verify received hash pointer matches expected
 	if hpointer != k.expectedHPointer {
 		return fmt.Errorf("%T hash pointer did not match expected", ksMessage.KeysplittingPayload)
 	} else {
@@ -143,7 +143,7 @@ func (k *Keysplitting) BuildSyn(action string, payload []byte) (ksmsg.Keysplitti
 		nonce = k.expectedHPointer
 	}
 
-	// Build the BZ Certificate then store hash for future messages
+	// Build the BZero Certificate then store hash for future messages
 	bzCert, err := k.buildBZCert()
 	if err != nil {
 		return ksmsg.KeysplittingMessage{}, fmt.Errorf("error building bzecert: %v", err.Error())

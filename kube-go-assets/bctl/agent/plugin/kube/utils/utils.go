@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func ValidateRequestId(requestIdPassed string, requestIdSaved string) error {
+func MatchRequestId(requestIdPassed string, requestIdSaved string) error {
 	if requestIdPassed != requestIdSaved {
-		rerr := fmt.Errorf("invalid request ID passed")
+		rerr := fmt.Errorf("invalid request ID passed: %s", requestIdPassed)
 		return rerr
 	}
 	return nil

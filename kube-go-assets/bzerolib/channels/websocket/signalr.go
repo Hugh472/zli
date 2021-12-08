@@ -3,7 +3,9 @@ This package defines the messages needed to unwrap and rewrap SignalR messages.
 We've abstracted this wrapper so that we can move away from SignalR in the future,
 and not have to reinvent our message structure.
 */
-package message
+package websocket
+
+import am "bastionzero.com/bctl/v1/bzerolib/channels/agentmessage"
 
 type SignalRNegotiateResponse struct {
 	NegotiateVersion int
@@ -15,9 +17,9 @@ type SignalRNegotiateResponse struct {
 // able to unwrap and re-wrap it.  The AgentMessage is our generic
 // message for everything we care about.
 type SignalRWrapper struct {
-	Target    string         `json:"target"` // hub name
-	Type      int            `json:"type"`
-	Arguments []AgentMessage `json:"arguments"`
+	Target    string            `json:"target"` // hub name
+	Type      int               `json:"type"`
+	Arguments []am.AgentMessage `json:"arguments"`
 }
 
 // This is our close message struct
@@ -34,4 +36,11 @@ type GetChallengeMessage struct {
 
 type GetChallengeResponse struct {
 	Challenge string `json:"challenge"`
+}
+
+// Message definitions for provisioning websocket
+type ProvisionDataChannel struct {
+	DataChannelId string `json:"dataChannelId"`
+	Role          string `json:"role"`
+	Action        string `json:"action"`
 }

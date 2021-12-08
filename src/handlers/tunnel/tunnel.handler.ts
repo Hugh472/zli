@@ -11,6 +11,8 @@ import { LoggerConfigService } from '../../services/logger/logger-config.service
 import yargs from 'yargs';
 import { tunnelArgs } from './tunnel.command-builder';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
+import got from 'got/dist/source';
+import { Retrier } from '@jsier/retrier';
 const { spawn } = require('child_process');
 
 
@@ -115,8 +117,12 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
             kubeConfig['targetCluster'] = targetCluster;
             configService.setKubeConfig(kubeConfig);
 
+            // Wait for daemon HTTP server to be bound and running
             await waitUntilUsedOnHost(parseInt(daemonPort), 'localhost', 100, 1000 * 5);
 
+            // Poll ready endpoint
+            logger.info('Waiting for daemon to become ready...');
+            await pollDaemonReady(kubeConfig['localPort']);
             logger.info(`Started kube daemon at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
             await cleanExit(0, logger);
         } else {
@@ -173,6 +179,24 @@ async function getClusterInfoFromName(clusterTargets: ClusterDetails[], clusterN
 function isPkgProcess() {
     const process1 = <any>process;
     return process1.pkg;
+}
+
+function pollDaemonReady(daemonPort: number) : Promise<void> {
+    // 2 minutes
+    const retrier = new Retrier({
+        limit: 120,
+        delay: 1000 * 1,
+    });
+
+    return retrier.resolve(async () => {
+        const isDaemonReadyResp = await got.get(`https://localhost:${daemonPort}/bzero-is-ready`, { throwHttpErrors: false, https: { rejectUnauthorized: false } });
+
+        if (isDaemonReadyResp.statusCode === 200) {
+            return;
+        } else {
+            throw new Error('Daemon took too long to become ready');
+        }
+    });
 }
 
 async function copyExecutableToLocalDir(logger: Logger, configPath: string): Promise<string> {

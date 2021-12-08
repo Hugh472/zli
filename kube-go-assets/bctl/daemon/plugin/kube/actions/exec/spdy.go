@@ -10,7 +10,7 @@ import (
 	"time"
 
 	kubeutilsdaemon "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
@@ -23,7 +23,7 @@ type SPDYService struct {
 	stderrStream httpstream.Stream
 	writeStatus  func(status *StatusError) error
 	resizeStream httpstream.Stream
-	logger       *lggr.Logger
+	logger       *logger.Logger
 }
 
 type Options struct {
@@ -44,11 +44,11 @@ type StatusError struct {
 	ErrStatus metav1.Status
 }
 
-func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *http.Request) (*SPDYService, error) {
+func NewSPDYService(logger *logger.Logger, writer http.ResponseWriter, request *http.Request) (*SPDYService, error) {
 	// Extract the options of the exec
 	options := extractExecOptions(request)
 
-	logger.Info(fmt.Sprintf("Starting Exec for command: %s\n", options.Command))
+	logger.Infof("Starting Exec for command: %s\n", options.Command)
 
 	// Initiate a handshake and upgrade the request
 	supportedProtocols := []string{"v4.channel.k8s.io", "v3.channel.k8s.io", "v2.channel.k8s.io", "channel.k8s.io"}
@@ -56,7 +56,7 @@ func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *ht
 	if err != nil {
 		return &SPDYService{}, fmt.Errorf("could not complete http stream handshake: %v", err.Error())
 	}
-	logger.Info(fmt.Sprintf("Using protocol: %s\n", protocol))
+	logger.Infof("Using protocol: %s\n", protocol)
 
 	// Now make our stream channel
 	streamCh := make(chan streamAndReply)
@@ -114,7 +114,7 @@ WaitForStreams:
 		case stream := <-streams:
 			// Extract the stream type from the header
 			streamType := stream.Headers().Get(kubeutilsdaemon.StreamType)
-			s.logger.Info(fmt.Sprintf("Saw stream type: " + streamType))
+			s.logger.Infof("Saw stream type: " + streamType)
 
 			// Save the stream
 			switch streamType {

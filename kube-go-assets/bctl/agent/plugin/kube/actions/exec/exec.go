@@ -1,17 +1,16 @@
 package exec
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
 
+	"gopkg.in/tomb.v2"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 
-	kubeutils "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/utils"
 	kubedaemonutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 	stdin "bastionzero.com/bctl/v1/bzerolib/stream/stdreader"
 	stdout "bastionzero.com/bctl/v1/bzerolib/stream/stdwriter"
@@ -31,27 +30,27 @@ const (
 )
 
 type ExecAction struct {
+	logger *logger.Logger
+	tmb    *tomb.Tomb
+	closed bool
+
+	// output channel to send all of our stream messages directly to datachannel
+	streamOutputChan chan smsg.StreamMessage
+
+	// To send input/resize to our exec sessions
+	execStdinChannel  chan []byte
+	execResizeChannel chan KubeExecResizeActionPayload
+
 	serviceAccountToken string
 	kubeHost            string
 	targetGroups        []string
 	targetUser          string
 	logId               string
 	requestId           string
-	closed              bool
-	logger              *lggr.Logger
-	ctx                 context.Context
-	doneChannel         chan bool
-
-	// output channel to send all of our stream messages directly to datachannel
-	streamOutputChannel chan smsg.StreamMessage
-
-	// To send input/resize to our exec sessions
-	execStdinChannel  chan []byte
-	execResizeChannel chan KubeExecResizeActionPayload
 }
 
-func NewExecAction(ctx context.Context,
-	logger *lggr.Logger,
+func New(logger *logger.Logger,
+	pluginTmb *tomb.Tomb,
 	serviceAccountToken string,
 	kubeHost string,
 	targetGroups []string,
@@ -59,17 +58,16 @@ func NewExecAction(ctx context.Context,
 	ch chan smsg.StreamMessage) (*ExecAction, error) {
 
 	return &ExecAction{
+		logger:              logger,
+		tmb:                 pluginTmb,
+		closed:              false,
+		streamOutputChan:    ch,
+		execStdinChannel:    make(chan []byte, 10),
+		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
 		targetGroups:        targetGroups,
 		targetUser:          targetUser,
-		closed:              false,
-		streamOutputChannel: ch,
-		execStdinChannel:    make(chan []byte, 10),
-		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
-		logger:              logger,
-		ctx:                 ctx,
-		doneChannel:         make(chan bool),
 	}, nil
 }
 
@@ -77,7 +75,7 @@ func (e *ExecAction) Closed() bool {
 	return e.closed
 }
 
-func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+func (e *ExecAction) Receive(action string, actionPayload []byte) (string, []byte, error) {
 	switch ExecSubAction(action) {
 
 	// Start exec message required before anything else
@@ -141,7 +139,7 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 			return "", []byte{}, err
 		}
 
-		e.doneChannel <- true
+		e.closed = true
 		return string(ExecStop), []byte{}, nil
 	default:
 		rerr := fmt.Errorf("unhandled exec action: %v", action)
@@ -151,9 +149,10 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 }
 
 func (e *ExecAction) validateRequestId(requestId string) error {
-	if err := kubeutils.ValidateRequestId(requestId, e.requestId); err != nil {
-		e.logger.Error(err)
-		return err
+	if requestId != e.requestId {
+		rerr := fmt.Errorf("invalid request ID passed")
+		e.logger.Error(rerr)
+		return rerr
 	}
 	return nil
 }
@@ -196,26 +195,22 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 		return string(ExecStart), []byte{}, fmt.Errorf("error creating Spdy executor: %s", err)
 	}
 
-	stderrWriter := stdout.NewStdWriter(smsg.StdErr, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
-	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
+	stderrWriter := stdout.NewStdWriter(smsg.StdErr, e.streamOutputChan, startExecRequest.RequestId, e.logId)
+	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, e.streamOutputChan, startExecRequest.RequestId, e.logId)
 	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId, e.execStdinChannel)
 	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId, e.execResizeChannel)
 
+	// This function listens for a closed datachannel.  If the datachannel is closed, it doesn't necessarily mean
+	// that the exec was properly closed, and because the below exec.Stream only returns when it's done, there's
+	// no way to interrupt it or pass in a context. Therefore, we need to close the stream in order to pass an
+	// io.EOF message to exec which will close the exec.Stream and that will close the go routine.
+	// https://github.com/kubernetes/client-go/issues/554
 	go func() {
-		// This function listens for a closed datachannel.  If the datachannel is closed, it doesn't necessarily mean
-		// that the exec was properly closed, and because the below exec.Stream only returns when it's done, there's
-		// no way to interrupt it or pass in ctx. Therefore, we need to close the stream in order to pass an io.EOF message
-		// to exec which will close the exec.Stream and that will close the go routine.
-		// https://github.com/kubernetes/client-go/issues/554
-		select {
-		case <-e.ctx.Done():
-		case <-e.doneChannel:
-			e.logger.Info("Closing exec stdinReader")
-			stdinReader.Close()
-		}
-
+		<-e.tmb.Dying()
+		stdinReader.Close()
 	}()
 
+	// runs the exec interaction with the kube server
 	go func() {
 		if startExecRequest.IsTty {
 			err = exec.Stream(remotecommand.StreamOptions{
@@ -233,7 +228,6 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 			})
 		}
 
-		// First check the error to bubble up to the user
 		if err != nil {
 			// Log the error
 			rerr := fmt.Errorf("error in SPDY stream: %s", err)

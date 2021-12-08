@@ -10,21 +10,24 @@ import (
 	"net/http"
 
 	kubeutils "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/utils"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+	"gopkg.in/tomb.v2"
 )
 
 type StreamAction struct {
+	logger *logger.Logger
+	tmb    *tomb.Tomb
+	closed bool
+
+	streamOutputChan chan smsg.StreamMessage
+	doneChan         chan bool
+
 	requestId           string
 	serviceAccountToken string
 	kubeHost            string
 	targetGroups        []string
 	targetUser          string
-	streamOutputChannel chan smsg.StreamMessage
-	closed              bool
-	doneChannel         chan bool
-	logger              *lggr.Logger
-	ctx                 context.Context
 }
 
 type StreamSubAction string
@@ -35,17 +38,23 @@ const (
 	StreamStop  StreamSubAction = "kube/stream/stop"
 )
 
-func NewStreamAction(ctx context.Context, logger *lggr.Logger, serviceAccountToken string, kubeHost string, targetGroups []string, targetUser string, ch chan smsg.StreamMessage) (*StreamAction, error) {
+func New(logger *logger.Logger,
+	pluginTmb *tomb.Tomb,
+	serviceAccountToken string,
+	kubeHost string,
+	targetGroups []string,
+	targetUser string,
+	ch chan smsg.StreamMessage) (*StreamAction, error) {
 	return &StreamAction{
+		logger:              logger,
+		tmb:                 pluginTmb,
+		closed:              false,
+		streamOutputChan:    ch,
+		doneChan:            make(chan bool),
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
 		targetGroups:        targetGroups,
 		targetUser:          targetUser,
-		streamOutputChannel: ch,
-		doneChannel:         make(chan bool),
-		closed:              false,
-		logger:              logger,
-		ctx:                 ctx,
 	}, nil
 }
 
@@ -53,7 +62,7 @@ func (s *StreamAction) Closed() bool {
 	return s.closed
 }
 
-func (s *StreamAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+func (s *StreamAction) Receive(action string, actionPayload []byte) (string, []byte, error) {
 	switch StreamSubAction(action) {
 
 	// Start exec message required before anything else
@@ -75,15 +84,18 @@ func (s *StreamAction) InputMessageHandler(action string, actionPayload []byte) 
 			s.logger.Error(rerr)
 			return action, []byte{}, rerr
 		}
-		if err := s.validateRequestId(streamActionRequest.RequestId); err != nil {
+
+		// check requestid matches
+		if err := kubeutils.MatchRequestId(streamActionRequest.RequestId, s.requestId); err != nil {
+			s.logger.Error(err)
 			return "", []byte{}, err
 		}
 
 		s.logger.Info("Stopping Stream Action")
-
-		s.doneChannel <- true
+		s.doneChan <- true // close the go routines
 		s.closed = true
-		return string(StreamStop), []byte{}, nil
+
+		return "", []byte{}, nil
 	default:
 		rerr := fmt.Errorf("unhandled stream action: %v", action)
 		s.logger.Error(rerr)
@@ -91,23 +103,18 @@ func (s *StreamAction) InputMessageHandler(action string, actionPayload []byte) 
 	}
 }
 
-func (s *StreamAction) validateRequestId(requestId string) error {
-	if err := kubeutils.ValidateRequestId(requestId, s.requestId); err != nil {
-		s.logger.Error(err)
-		return err
-	}
-	return nil
-}
-
 func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, action string) (string, []byte, error) {
 	// Build our request
-	s.logger.Info(fmt.Sprintf("Making request for %s", streamActionRequest.Endpoint))
+	s.logger.Infof("Making request for %s", streamActionRequest.Endpoint)
+	ctx, cancel := context.WithCancel(context.Background())
 	req, err := s.buildHttpRequest(streamActionRequest.Endpoint, streamActionRequest.Body, streamActionRequest.Method, streamActionRequest.Headers)
 	if err != nil {
+		s.logger.Error(err)
 		return action, []byte{}, err
 	}
 
 	// Make the request and wait for the body to close
+	req = req.WithContext(ctx)
 	httpClient := &http.Client{}
 	res, err := httpClient.Do(req)
 	if err != nil {
@@ -135,7 +142,7 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 		SequenceNumber: 0,
 		Content:        content,
 	}
-	s.streamOutputChannel <- message
+	s.streamOutputChan <- message
 
 	// Create our bufio object
 	buf := make([]byte, 1024)
@@ -144,22 +151,24 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 	sequenceNumber := 1
 
 	go func() {
+		defer res.Body.Close()
 		for {
 			select {
-			case <-s.ctx.Done():
+			case <-s.tmb.Dying():
 				return
 			default:
 				// Read into the buffer
 				numBytes, err := io.ReadFull(br, buf)
 
-				// Check the errors
-				if err == io.EOF {
-					// This means we are done
-					s.logger.Info("Received  EOF error on Watch stream")
-					return
-				}
 				if err != nil {
-					s.logger.Info(fmt.Sprintf("Error reading HTTP response: %s", err))
+					switch err {
+					case context.Canceled:
+						s.logger.Info("Stream action stream closed")
+					case io.EOF:
+						s.logger.Info("Received EOF on stream action stream")
+					default:
+						s.logger.Error(fmt.Errorf("could not read HTTP response: %s", err))
+					}
 					return
 				}
 
@@ -172,21 +181,21 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 					SequenceNumber: sequenceNumber,
 					Content:        content,
 				}
-				s.streamOutputChannel <- message
+
+				s.streamOutputChan <- message
 				sequenceNumber += 1
 			}
-
 		}
 	}()
 
 	// Subscribe to our done channel
 	go func() {
+		defer cancel()
 		for {
-			defer res.Body.Close()
 			select {
-			case <-s.ctx.Done():
+			case <-s.tmb.Dying():
 				return
-			case <-s.doneChannel:
+			case <-s.doneChan:
 				return
 			}
 		}
@@ -197,7 +206,6 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 
 func (s *StreamAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) (*http.Request, error) {
 	if toReturn, err := kubeutils.BuildHttpRequest(s.kubeHost, endpoint, body, method, headers, s.serviceAccountToken, s.targetUser, s.targetGroups); err != nil {
-		s.logger.Error(err)
 		return nil, err
 	} else {
 		return toReturn, nil

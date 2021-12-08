@@ -1,12 +1,5 @@
 package controlchannel
 
-type NewDatachannelMessage struct {
-	ConnectionId string   `json:"connectionId"`
-	TargetUser   string   `json:"targetUser"`
-	TargetGroups []string `json:"targetGroups"`
-	Token        string   `json:"token"`
-}
-
 type AliveCheckClusterToBastionMessage struct {
 	Alive        bool     `json:"alive"`
 	ClusterUsers []string `json:"clusterUsers"`
@@ -24,4 +17,31 @@ type RegisterAgentMessage struct {
 
 type HealthCheckMessage struct {
 	ClusterName string `json:"clusterName"`
+}
+
+// websocket and datachannel management payloads
+type OpenWebsocketMessage struct {
+	ConnectionId string `json:"connectionId"`
+	Token        string `json:"token"`
+}
+
+type CloseWebsocketMessage struct {
+	ConnectionId string `json:"connectionId"`
+}
+
+type OpenDataChannelMessage struct {
+	DataChannelId string   `json:"dataChannelId"`
+	ConnectionId  string   `json:"connectionId"`
+	TargetUser    string   `json:"targetUser"`
+	TargetGroups  []string `json:"targetGroups"`
+}
+
+type CloseDataChannelMessage struct {
+	DataChannelId string `json:"dataChannelId"`
+	ConnectionId  string `json:"connectionId"`
+}
+
+type DataChannelReadyMessage struct {
+	DataChannelId string `json:"dataChannelId"`
+	ConnectionId  string `json:"connectionId"`
 }

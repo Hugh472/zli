@@ -19,11 +19,11 @@ func (p *PortForwardAction) getStreamPair(requestID string) (*httpStreamPair, bo
 	defer p.streamPairsLock.Unlock()
 
 	if portforwardStreamPair, ok := p.streamPairs[requestID]; ok {
-		p.logger.Info(fmt.Sprintf("Request %s, found existing stream pair", requestID))
+		p.logger.Infof("Request %s, found existing stream pair", requestID)
 		return portforwardStreamPair, false
 	}
 
-	p.logger.Info(fmt.Sprintf("Request %s, creating new stream pair.", requestID))
+	p.logger.Infof("Request %s, creating new stream pair.", requestID)
 
 	portforwardStreamPair := newPortForwardPair(requestID)
 	p.streamPairs[requestID] = portforwardStreamPair
@@ -121,7 +121,7 @@ func (p *PortForwardAction) monitorStreamPair(portforwardStreamPair *httpStreamP
 	case <-timeout:
 		p.logger.Error(fmt.Errorf("request %s, timed out waiting for streams", portforwardStreamPair.requestID))
 	case <-portforwardStreamPair.complete:
-		p.logger.Info(fmt.Sprintf("Request %s, successfully received error and data streams.", portforwardStreamPair.requestID))
+		p.logger.Infof("Request %s, successfully received error and data streams.", portforwardStreamPair.requestID)
 	}
 	p.removeStreamPair(portforwardStreamPair.requestID)
 }

@@ -9,13 +9,16 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"bastionzero.com/bctl/v1/bzerolib/bzhttp"
-	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
-func newChallenge(logger *lggr.Logger, orgId string, clusterId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
+const (
+	challengeEndpoint = "/api/v1/kube/get-challenge"
+)
+
+func newChallenge(logger *logger.Logger, orgId string, clusterId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
 	// Get challenge
-	challengeRequest := wsmsg.GetChallengeMessage{
+	challengeRequest := GetChallengeMessage{
 		OrgId:       orgId,
 		ClusterId:   clusterId,
 		ClusterName: clusterName,
@@ -23,18 +26,18 @@ func newChallenge(logger *lggr.Logger, orgId string, clusterId string, clusterNa
 
 	challengeJson, err := json.Marshal(challengeRequest)
 	if err != nil {
-		return "", fmt.Errorf("Error marshalling register data: %s", err)
+		return "", fmt.Errorf("error marshalling register data: %s", err)
 	}
 
 	// Make our POST request
-	response, err := bzhttp.Post("https://"+serviceUrl+challengeEndpoint, "application/json", challengeJson, logger)
+	response, err := bzhttp.PostContent(logger, "https://"+serviceUrl+challengeEndpoint, "application/json", challengeJson)
 	if err != nil {
-		return "", fmt.Errorf("Error making post request to challenge agent. Error: %s. Response: %+v", err, response)
+		return "", fmt.Errorf("error making post request to challenge agent. Error: %s. Response: %+v", err, response)
 	}
 	defer response.Body.Close()
 
 	// Extract the challenge
-	responseDecoded := wsmsg.GetChallengeResponse{}
+	responseDecoded := GetChallengeResponse{}
 	json.NewDecoder(response.Body).Decode(&responseDecoded)
 
 	// Solve Challenge

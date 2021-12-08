@@ -9,10 +9,11 @@ import (
 	"net/http"
 	"time"
 
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
+
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
 // Some of the code here is taken from teleports open source repo (Apache 2.0)
@@ -30,7 +31,7 @@ type ExecSPDYService struct {
 
 type SPDYService struct {
 	Conn   io.Closer
-	logger *lggr.Logger
+	logger *logger.Logger
 }
 
 type streamAndReply struct {
@@ -42,7 +43,7 @@ type StatusError struct {
 	ErrStatus metav1.Status
 }
 
-func NewExecSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *http.Request, expectedStreams int) (*ExecSPDYService, error) {
+func NewExecSPDYService(logger *logger.Logger, writer http.ResponseWriter, request *http.Request, expectedStreams int) (*ExecSPDYService, error) {
 	// Build a generic spdy serice
 	service, streamCh, err := NewSPDYService(logger, writer, request, expectedStreams)
 	if err != nil {
@@ -66,14 +67,14 @@ func NewExecSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request
 	}
 }
 
-func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *http.Request, expectedStreams int) (*SPDYService, chan streamAndReply, error) {
+func NewSPDYService(logger *logger.Logger, writer http.ResponseWriter, request *http.Request, expectedStreams int) (*SPDYService, chan streamAndReply, error) {
 	// Initiate a handshake and upgrade the request
 	supportedProtocols := []string{"v4.channel.k8s.io", "v3.channel.k8s.io", "v2.channel.k8s.io", "channel.k8s.io"}
 	protocol, err := httpstream.Handshake(request, writer, supportedProtocols)
 	if err != nil {
 		return &SPDYService{}, nil, fmt.Errorf("could not complete http stream handshake: %v", err.Error())
 	}
-	logger.Info(fmt.Sprintf("Using protocol: %s\n", protocol))
+	logger.Infof("Using protocol: %s\n", protocol)
 
 	// Now make our stream channel
 	streamCh := make(chan streamAndReply)
@@ -122,7 +123,7 @@ WaitForStreams:
 		case stream := <-streams:
 			// Extract the stream type from the header
 			streamType := stream.Headers().Get(StreamType)
-			s.Service.logger.Info(fmt.Sprintf("Saw stream type: " + streamType))
+			s.Service.logger.Infof("Saw stream type: " + streamType)
 
 			// Save the stream
 			switch streamType {

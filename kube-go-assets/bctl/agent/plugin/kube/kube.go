@@ -1,7 +1,6 @@
 package kube
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -10,19 +9,19 @@ import (
 	"strings"
 	"sync"
 
-	exec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
-	portforward "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/portforward"
-	rest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
-	stream "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/stream"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
-	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	"bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	"bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/portforward"
+	"bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
+	"bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/stream"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+	"gopkg.in/tomb.v2"
 
 	kuberest "k8s.io/client-go/rest"
 )
 
 type IKubeAction interface {
-	InputMessageHandler(action string, actionPayload []byte) (string, []byte, error)
+	Receive(action string, actionPayload []byte) (string, []byte, error)
 	Closed() bool
 }
 
@@ -40,18 +39,25 @@ const (
 )
 
 type KubePlugin struct {
-	targetUser          string
-	targetGroups        []string
-	streamOutputChannel chan smsg.StreamMessage
+	logger         *logger.Logger
+	actionsMapLock sync.Mutex
+	tmb            *tomb.Tomb
+
+	streamOutputChan chan smsg.StreamMessage
+	actions          map[string]IKubeAction
+
 	serviceAccountToken string
 	kubeHost            string
-	actions             map[string]IKubeAction
-	actionsMapLock      sync.Mutex
-	logger              *lggr.Logger
-	ctx                 context.Context
+	targetUser          string
+	targetGroups        []string
 }
 
-func NewPlugin(ctx context.Context, logger *lggr.Logger, ch chan smsg.StreamMessage, targetUser string, targetGroups []string) plgn.IPlugin {
+func New(parentTmb *tomb.Tomb,
+	logger *logger.Logger,
+	ch chan smsg.StreamMessage,
+	targetUser string,
+	targetGroups []string) *KubePlugin {
+
 	// First load in our Kube variables
 	config, err := kuberest.InClusterConfig()
 	if err != nil {
@@ -66,33 +72,25 @@ func NewPlugin(ctx context.Context, logger *lggr.Logger, ch chan smsg.StreamMess
 	return &KubePlugin{
 		targetUser:          targetUser,
 		targetGroups:        targetGroups,
-		streamOutputChannel: ch,
+		logger:              logger,
+		tmb:                 parentTmb, // if datachannel dies, so should we
+		streamOutputChan:    ch,
+		actions:             make(map[string]IKubeAction),
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
-		actions:             make(map[string]IKubeAction),
-		logger:              logger,
-		ctx:                 ctx,
 	}
 }
 
-func (k *KubePlugin) GetName() plgn.PluginName {
-	return plgn.Kube
-}
-
-func (k *KubePlugin) PushStreamInput(smessage smsg.StreamMessage) error {
-	return fmt.Errorf("")
-}
-
-func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+func (k *KubePlugin) Receive(action string, actionPayload []byte) (string, []byte, error) {
 	// Get the action so we know where to send the payload
-	msg := fmt.Sprintf("Plugin received Data message with %v action", action)
-	k.logger.Info(msg)
+	k.logger.Infof("Plugin received Data message with %v action", action)
 
-	x := strings.Split(action, "/")
-	if len(x) < 2 {
+	// parse action
+	parsedAction := strings.Split(action, "/")
+	if len(parsedAction) < 2 {
 		return "", []byte{}, fmt.Errorf("malformed action: %s", action)
 	}
-	kubeAction := x[1]
+	kubeAction := parsedAction[1]
 
 	// TODO: The below line removes the extra, surrounding quotation marks that get added at some point in the marshal/unmarshal
 	// so it messes up the umarshalling into a valid action payload.  We need to figure out why this is happening
@@ -104,7 +102,7 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 	// Json unmarshalling encodes bytes in base64
 	actionPayloadSafe, _ := base64.StdEncoding.DecodeString(string(actionPayload))
 
-	// Grab just the request Id so that we can look up whether it's associated with a previously started action object
+	// Grab just the request ID so that we can look up whether it's associated with a previously started action object
 	var justrid JustRequestId
 	var rid string
 	if err := json.Unmarshal(actionPayloadSafe, &justrid); err != nil {
@@ -116,7 +114,7 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 	// Interactive commands like exec and log need to be able to receive multiple inputs, so we start them and track them
 	// and send any new messages with the same request ID to the existing action object
 	if act, ok := k.getActionsMap(rid); ok {
-		action, payload, err := act.InputMessageHandler(action, actionPayloadSafe)
+		action, payload, err := act.Receive(action, actionPayloadSafe)
 
 		// Check if that last message closed the action, if so delete from map
 		if act.Closed() {
@@ -133,20 +131,21 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 
 		switch KubeAction(kubeAction) {
 		case RestApi:
-			a, err = rest.NewRestApiAction(subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser)
+			a, err = restapi.New(subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser)
 		case Exec:
-			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChannel)
+			a, err = exec.New(subLogger, k.tmb, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChan)
 			k.updateActionsMap(a, rid) // save action for later input
 		case Stream:
-			a, err = stream.NewStreamAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChannel)
+			a, err = stream.New(subLogger, k.tmb, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChan)
 			k.updateActionsMap(a, rid) // save action for later input
 		case PortForward:
-			a, err = portforward.NewPortForwardAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChannel)
+			a, err = portforward.New(subLogger, k.tmb, k.serviceAccountToken, k.kubeHost, k.targetGroups, k.targetUser, k.streamOutputChan)
 			k.updateActionsMap(a, rid) // save action for later input
 		default:
 			msg := fmt.Sprintf("unhandled kubeAction: %s", kubeAction)
 			err = errors.New(msg)
 		}
+
 		if err != nil {
 			rerr := fmt.Errorf("could not start new action object: %s", err)
 			k.logger.Error(rerr)
@@ -154,7 +153,7 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		}
 
 		// Send the payload to the action and add it to the map for future incoming requests
-		action, payload, err := a.InputMessageHandler(action, actionPayloadSafe)
+		action, payload, err := a.Receive(action, actionPayloadSafe)
 		return action, payload, err
 	}
 }

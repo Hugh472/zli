@@ -34,7 +34,7 @@ type Keysplitting struct {
 	orgId            string
 }
 
-func NewKeysplitting() (IKeysplitting, error) {
+func New() (IKeysplitting, error) {
 	// Generate public private key pair along ed25519 curve
 	if publicKey, privateKey, err := ed.GenerateKey(nil); err != nil {
 		return &Keysplitting{}, fmt.Errorf("error generating key pair: %v", err.Error())
@@ -100,7 +100,7 @@ func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
 			}
 		}
 
-		// Verify recieved hash pointer matches expected
+		// Verify received hash pointer matches expected
 		if dataPayload.HPointer != k.expectedHPointer {
 			return fmt.Errorf("data's hash pointer did not match expected")
 		}

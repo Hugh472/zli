@@ -10,13 +10,13 @@ import (
 
 	ed "crypto/ed25519"
 
-	cc "bastionzero.com/bctl/v1/bctl/agent/controlchannel"
-	dc "bastionzero.com/bctl/v1/bctl/agent/datachannel"
+	"bastionzero.com/bctl/v1/bctl/agent/controlchannel"
 	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	"bastionzero.com/bctl/v1/bzerolib/bzhttp"
-	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
-	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+	am "bastionzero.com/bctl/v1/bzerolib/channels/agentmessage"
+	"bastionzero.com/bctl/v1/bzerolib/channels/websocket"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
+	"github.com/google/uuid"
 )
 
 var (
@@ -27,8 +27,9 @@ var (
 )
 
 const (
-	hubEndpoint      = "/api/v1/hub/kube-server"
-	registerEndpoint = "/api/v1/kube/register-agent"
+	hubEndpoint        = "/api/v1/hub/kube-server"
+	controlHubEndpoint = "/api/v1/hub/kube-control"
+	registerEndpoint   = "/api/v1/kube/register-agent"
 
 	// Disable auto-reconnect
 	autoReconnect = false
@@ -39,14 +40,11 @@ func main() {
 	agentVersion := getAgentVersion()
 
 	// setup our loggers
-	logger, err := lggr.NewLogger(lggr.Debug, "")
+	logger, err := logger.New(logger.Debug, "")
 	if err != nil {
 		return
 	}
 	logger.AddAgentVersion(agentVersion)
-
-	ccLogger := logger.GetControlchannelLogger()
-	dcLogger := logger.GetDatachannelLogger()
 
 	if err := parseFlags(); err != nil {
 		logger.Error(err)
@@ -54,80 +52,69 @@ func main() {
 	}
 
 	// Populate keys if they haven't been generated already
-	err = newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName, clusterId, idpProvider, idpOrgId, namespace)
+	err = newAgent(logger, agentVersion)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
 	// Connect to the control channel
-	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, clusterId, environmentId, agentVersion, controlchannelTargetSelectHandler)
-	if err != nil {
-		select {} // TODO: Should we be trying again here?
-	}
-
-	// Subscribe to control channel
-	go func() {
-		for {
-			select {
-			case message := <-control.NewDatachannelChan:
-				// We have an incoming websocket request, attempt to make a new Daemon Websocket Client for the request
-				startDatachannel(dcLogger, message)
-			}
-		}
-	}()
+	startControlChannel(logger, agentVersion)
 
 	// Sleep forever because otherwise kube will endlessly try restarting
 	// Ref: https://stackoverflow.com/questions/36419054/go-projects-main-goroutine-sleep-forever
 	select {}
 }
 
-func startDatachannel(logger *lggr.Logger, message cc.NewDatachannelMessage) {
+func startControlChannel(logger *logger.Logger, agentVersion string) error {
+	// Load in our saved config
+	config, _ := vault.LoadVault()
+
 	// Create our headers and params, headers are empty
-	// TODO: We need to drop this session id auth header req and move to a token based system
 	headers := make(map[string]string)
 
-	// Add our token to our params
-	params := make(map[string]string)
-	params["daemon_connection_id"] = message.ConnectionId
-	params["token"] = message.Token
+	// Make and add our params
+	params := map[string]string{
+		"public_key":    config.Data.PublicKey,
+		"agent_version": agentVersion,
+		"org_id":        orgId,
+		"cluster_id":    clusterId,
+		"cluster_name":  clusterName,
+	}
 
-	// Create our response channels
-	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
-	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel(logger, message.TargetUser, message.TargetGroups, serviceUrl, hubEndpoint, params, headers, datachannelTargetSelectHandler, autoReconnect)
+	// create a websocket
+	wsId := uuid.New().String()
+	wsLogger := logger.GetWebsocketLogger(wsId) // TODO: replace with actual connectionId
+	websocket, err := websocket.New(wsLogger, wsId, serviceUrl, controlHubEndpoint, params, headers, ccTargetSelectHandler, true, true)
+	if err != nil {
+		return err
+	}
+
+	// create logger for control channel
+	ccId := uuid.New().String()
+	ccLogger := logger.GetControlChannelLogger(ccId)
+
+	return controlchannel.Start(ccLogger, ccId, websocket, serviceUrl, hubEndpoint, dcTargetSelectHandler)
 }
 
-func controlchannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
-	switch wsmsg.MessageType(agentMessage.MessageType) {
-	case wsmsg.HealthCheck:
+func ccTargetSelectHandler(agentMessage am.AgentMessage) (string, error) {
+	switch am.MessageType(agentMessage.MessageType) {
+	case am.HealthCheck:
 		return "AliveCheckClusterToBastion", nil
 	default:
 		return "", fmt.Errorf("unsupported message type")
 	}
 }
 
-func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
-	switch wsmsg.MessageType(agentMessage.MessageType) {
-	case wsmsg.Keysplitting:
-		var keysplittingPayload map[string]interface{}
-		if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
-			if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
-				switch keysplittingPayloadVal["action"] {
-				case "kube/restapi/response", "kube/restapi/request", "kube/exec/start", "kube/exec/stop", "kube/exec/input", "kube/exec/resize", "kube/stream/start", "kube/stream/stop", "kube/portforward/start", "kube/portforward/stop", "kube/portforward/request/stop", "kube/portforward/datain", "kube/portforward/errorin":
-					return "ResponseClusterToBastionV1", nil
-				}
-			}
-		}
-	case wsmsg.Stream:
-		var messagePayload smsg.StreamMessage
-		if err := json.Unmarshal(agentMessage.MessagePayload, &messagePayload); err == nil {
-			switch messagePayload.Type {
-			case "kube/stream/stdout", "kube/exec/stdout", "kube/exec/stderr", "kube/portforward/data", "kube/portforward/error", "kube/portforward/ready":
-				return "ResponseClusterToBastionV1", nil
-			}
-		}
-	case wsmsg.Error:
+func dcTargetSelectHandler(agentMessage am.AgentMessage) (string, error) {
+	switch am.MessageType(agentMessage.MessageType) {
+	case am.DataChannelReady:
+		return "DataChannelReadyV1", nil
+	case am.Keysplitting:
+		return "ResponseClusterToBastionV1", nil
+	case am.Stream:
+		return "ResponseClusterToBastionV1", nil
+	case am.Error:
 		return "ResponseClusterToBastionV1", nil
 	}
 
@@ -187,7 +174,7 @@ func getAgentVersion() string {
 	}
 }
 
-func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string, clusterId string, idpProvider string, idpOrgId string, namespace string) error {
+func newAgent(logger *logger.Logger, agentVersion string) error {
 	config, _ := vault.LoadVault()
 
 	// Check if vault is empty, if so generate a private, public key pair
@@ -200,20 +187,19 @@ func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, ag
 			pubkeyString := base64.StdEncoding.EncodeToString([]byte(publicKey))
 			privkeyString := base64.StdEncoding.EncodeToString([]byte(privateKey))
 			config.Data = vault.SecretData{
-				PublicKey:     pubkeyString,
-				PrivateKey:    privkeyString,
-				OrgId:         orgId,
-				ServiceUrl:    serviceUrl,
-				ClusterName:   clusterName,
-				EnvironmentId: environmentId,
-				Namespace:     namespace,
-				IdpProvider:   idpProvider,
-				IdpOrgId:      idpOrgId,
+				PublicKey:   pubkeyString,
+				PrivateKey:  privkeyString,
+				OrgId:       orgId,
+				ServiceUrl:  serviceUrl,
+				ClusterName: clusterName,
+				Namespace:   namespace,
+				IdpProvider: idpProvider,
+				IdpOrgId:    idpOrgId,
 			}
 
 			// Register with Bastion
 			logger.Info("Registering agent with Bastion")
-			register := cc.RegisterAgentMessage{
+			register := controlchannel.RegisterAgentMessage{
 				PublicKey:      pubkeyString,
 				ActivationCode: activationToken,
 				AgentVersion:   agentVersion,
@@ -230,7 +216,7 @@ func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, ag
 			}
 
 			// Make our POST request
-			response, err := bzhttp.PostRegister("https://"+serviceUrl+registerEndpoint, "application/json", registerJson, logger)
+			response, err := bzhttp.PostRegister(logger, "https://"+serviceUrl+registerEndpoint, "application/json", registerJson)
 			if err != nil || response.StatusCode != http.StatusOK {
 				rerr := fmt.Errorf("error making post request to register agent. Error: %s. Response: %v", err, response)
 				return rerr

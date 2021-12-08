@@ -39,6 +39,11 @@ if (!doApiKey) {
 const doService = new DigitalOceanSSMTargetService(doApiKey, configService, logger);
 const doKubeService = new DigitalOceanKubeService(doApiKey, configService, logger);
 
+const agentVersion = process.env.KUBE_AGENT_VERSION;
+if(! agentVersion) {
+    throw new Error('Must set the KUBE_AGENT_VERSION environment variable');
+}
+
 // Create a new API Key to be used for cluster registration
 const apiKeyService = new ApiKeyService(configService, logger);
 let systemTestApiKey: NewApiKeyResponse;
@@ -140,6 +145,7 @@ async function createDOTestClusters() {
             // helm chart expects the service to not cannot contain a
             // trailing slash and our config service includes the slash
             'serviceUrl': { value: stripTrailingSlash(configService.serviceUrl()), type: 'single' },
+            'image.agentTag': { value: agentVersion, type: 'single'},
             'apiKey': { value: systemTestApiKey.secret, type: 'single' },
             'clusterName': { value: cluster.name, type: 'single' },
             'users': { value: [configService.me().email], type: 'multi' },

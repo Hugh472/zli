@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	kubeutils "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/utils"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
 const (
@@ -21,10 +21,10 @@ type RestApiAction struct {
 	targetGroups        []string
 	targetUser          string
 	closed              bool
-	logger              *lggr.Logger
+	logger              *logger.Logger
 }
 
-func NewRestApiAction(logger *lggr.Logger, serviceAccountToken string, kubeHost string, targetGroups []string, targetUser string) (*RestApiAction, error) {
+func New(logger *logger.Logger, serviceAccountToken string, kubeHost string, targetGroups []string, targetUser string) (*RestApiAction, error) {
 	return &RestApiAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
@@ -39,7 +39,7 @@ func (r *RestApiAction) Closed() bool {
 	return r.closed
 }
 
-func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+func (r *RestApiAction) Receive(action string, actionPayload []byte) (string, []byte, error) {
 	defer func() {
 		r.closed = true
 	}()
@@ -52,7 +52,7 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	}
 
 	// Build the request
-	r.logger.Info(fmt.Sprintf("Making request for %s", apiRequest.Endpoint))
+	r.logger.Infof("Making request for %s", apiRequest.Endpoint)
 	req, err := r.buildHttpRequest(apiRequest.Endpoint, apiRequest.Body, apiRequest.Method, apiRequest.Headers)
 	if err != nil {
 		return action, []byte{}, err

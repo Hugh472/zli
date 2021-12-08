@@ -1,113 +1,124 @@
 package datachannel
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
-	ks "bastionzero.com/bctl/v1/bctl/agent/keysplitting"
-	kube "bastionzero.com/bctl/v1/bctl/agent/plugin/kube"
-	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
-	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
+	"gopkg.in/tomb.v2"
+
+	"bastionzero.com/bctl/v1/bctl/agent/keysplitting"
+	"bastionzero.com/bctl/v1/bctl/agent/plugin"
+	"bastionzero.com/bctl/v1/bctl/agent/plugin/kube"
+	am "bastionzero.com/bctl/v1/bzerolib/channels/agentmessage"
+	"bastionzero.com/bctl/v1/bzerolib/channels/websocket"
 	rrr "bastionzero.com/bctl/v1/bzerolib/error"
 	ksmsg "bastionzero.com/bctl/v1/bzerolib/keysplitting/message"
-	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
-	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	"bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
-type IDataChannel interface {
-	Send(messageType wsmsg.MessageType, messagePayload interface{})
-	Receive(agentMessage wsmsg.AgentMessage)
-}
+// Plugins this datachannel accepts
+type PluginName string
+
+const (
+	Kube PluginName = "kube"
+)
 
 type DataChannel struct {
-	websocket *ws.Websocket
-	logger    *lggr.Logger
-	ctx       context.Context
+	websocket *websocket.Websocket
+	logger    *logger.Logger
+	tmb       tomb.Tomb
+	id        string
 
-	plugin       plgn.IPlugin
-	keysplitting ks.IKeysplitting
+	plugin       plugin.IPlugin
+	keysplitting keysplitting.IKeysplitting
+
+	// incoming and outgoing message channels
+	inputChan chan am.AgentMessage
 
 	// Kube-specific vars
 	targetUser   string
 	targetGroups []string
 }
 
-func NewDataChannel(logger *lggr.Logger,
+func New(logger *logger.Logger,
+	parentTmb *tomb.Tomb,
+	websocket *websocket.Websocket,
 	targetUser string,
 	targetGroups []string,
-	serviceUrl string,
-	hubEndpoint string,
-	params map[string]string,
-	headers map[string]string,
-	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
-	autoReconnect bool) (*DataChannel, error) {
-	subLogger := logger.GetWebsocketLogger()
+	id string) (*DataChannel, error) {
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	wsClient, err := ws.NewWebsocket(ctx, subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
+	keysplitter, err := keysplitting.New()
 	if err != nil {
-		cancel()
-		logger.Error(err)
-		return &DataChannel{}, err // TODO: how are we going to report these? control channel, bro
-	}
-
-	keysplitter, err := ks.NewKeysplitting()
-	if err != nil {
-		cancel()
 		logger.Error(err)
 		return &DataChannel{}, err
 	}
 
-	ret := &DataChannel{
-		websocket:    wsClient,
+	datachannel := &DataChannel{
+		websocket:    websocket,
+		logger:       logger,
 		keysplitting: keysplitter,
 		targetUser:   targetUser,
 		targetGroups: targetGroups,
-		logger:       logger, // TODO: get debug level from flag
-		ctx:          ctx,
+		inputChan:    make(chan am.AgentMessage, 50),
+		id:           id,
 	}
 
-	// Subscribe to our input channel
-	go func() {
+	// register with websocket so datachannel can send a receive messages
+	websocket.Subscribe(id, datachannel)
+
+	// listener for incoming messages
+	datachannel.tmb.Go(func() error {
+		defer websocket.Unsubscribe(id) // causes decoupling from websocket
+		defer datachannel.logger.Infof("Datachannel closed")
 		for {
 			select {
-			case agentMessage := <-ret.websocket.InputChan:
-				// Handle each message in its own thread
-				go func() {
-					ret.Receive(agentMessage)
-				}()
-			case <-ret.websocket.DoneChan:
-				// The websocket has been closed
-				ret.logger.Info("Websocket has been closed, closing datachannel")
-				cancel()
-				return
+			case <-parentTmb.Dying(): // control channel is dying
+				return errors.New("agent was orphaned too young and can't be batman :'(")
+			case <-datachannel.tmb.Dying():
+				time.Sleep(30 * time.Second) // allow the datachannel to close gracefully
+				return nil
+			case agentMessage := <-datachannel.inputChan: // receive messages
+				datachannel.process(agentMessage)
 			}
 		}
-	}()
+	})
 
-	return ret, nil
+	return datachannel, nil
+}
+
+func (d *DataChannel) Close(reason error) {
+	d.tmb.Kill(reason) // kills all datachannel, plugin, and action goroutines
+	d.tmb.Wait()
 }
 
 // Wraps and sends the payload
-func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interface{}) {
-	// Stop any further messages from being sent once context is cancelled
-	if d.ctx.Err() == context.Canceled {
-		return
-	}
-
+func (d *DataChannel) send(messageType am.MessageType, messagePayload interface{}) {
 	messageBytes, _ := json.Marshal(messagePayload)
-	agentMessage := wsmsg.AgentMessage{
+	agentMessage := am.AgentMessage{
+		ChannelId:      d.id,
 		MessageType:    string(messageType),
-		SchemaVersion:  wsmsg.SchemaVersion,
+		SchemaVersion:  am.SchemaVersion,
 		MessagePayload: messageBytes,
 	}
 
 	// Push message to websocket channel output
-	d.websocket.OutputChan <- agentMessage
+	d.websocket.Send(agentMessage)
+}
+
+func (d *DataChannel) sendKeysplitting(keysplittingMessage *ksmsg.KeysplittingMessage, action string, payload []byte) error {
+	// Build and send response
+	if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, payload); err != nil {
+		rerr := fmt.Errorf("could not build response message: %s", err)
+		d.logger.Error(rerr)
+		return rerr
+	} else {
+		d.send(am.Keysplitting, respKSMessage)
+		return nil
+	}
 }
 
 func (d *DataChannel) sendError(errType rrr.ErrorType, err error) {
@@ -117,14 +128,18 @@ func (d *DataChannel) sendError(errType rrr.ErrorType, err error) {
 		Message:  err.Error(),
 		HPointer: d.keysplitting.GetHpointer(),
 	}
-	d.Send(wsmsg.Error, errMsg)
+	d.send(am.Error, errMsg)
 }
 
-func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) {
+func (d *DataChannel) Receive(agentMessage am.AgentMessage) {
+	d.inputChan <- agentMessage
+}
+
+func (d *DataChannel) process(agentMessage am.AgentMessage) {
 	d.logger.Info("received message type: " + agentMessage.MessageType)
 
-	switch wsmsg.MessageType(agentMessage.MessageType) {
-	case wsmsg.Keysplitting:
+	switch am.MessageType(agentMessage.MessageType) {
+	case am.Keysplitting:
 		var ksMessage ksmsg.KeysplittingMessage
 		if err := json.Unmarshal(agentMessage.MessagePayload, &ksMessage); err != nil {
 			rerr := fmt.Errorf("malformed Keysplitting message")
@@ -149,9 +164,9 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 	case ksmsg.Syn:
 		synPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.SynPayload)
 		// Grab user's action
-		if x := strings.Split(synPayload.Action, "/"); len(x) <= 1 {
+		if parsedAction := strings.Split(synPayload.Action, "/"); len(parsedAction) <= 1 {
 			rerr := fmt.Errorf("malformed action: %s", synPayload.Action)
-			d.sendError(rrr.KeysplittingValidationError, rerr)
+			d.sendError(rrr.KeysplittingExecutionError, rerr)
 			return
 		} else {
 			if d.plugin != nil { // Don't start plugin if there's already one started
@@ -159,68 +174,56 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 			}
 
 			// Start plugin
-			if err := d.startPlugin(plgn.PluginName(x[0])); err != nil {
+			if err := d.startPlugin(PluginName(parsedAction[0])); err != nil {
 				d.sendError(rrr.ComponentStartupError, err)
 				return
 			}
 
-			d.sendKeysplittingMessage(keysplittingMessage, "", []byte{}) // empty payload
+			d.sendKeysplitting(keysplittingMessage, "", []byte{}) // empty payload
 		}
 	case ksmsg.Data:
 		dataPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataPayload)
 
 		// Send message to plugin and catch response action payload
-		if _, returnPayload, err := d.plugin.InputMessageHandler(dataPayload.Action, dataPayload.ActionPayload); err == nil {
+		if _, returnPayload, err := d.plugin.Receive(dataPayload.Action, dataPayload.ActionPayload); err == nil {
 
 			// Build and send response
-			d.sendKeysplittingMessage(keysplittingMessage, dataPayload.Action, returnPayload)
+			d.sendKeysplitting(keysplittingMessage, dataPayload.Action, returnPayload)
 		} else {
-			rerr := fmt.Errorf("unrecognized keysplitting message type: %s", keysplittingMessage.Type)
-			d.sendError(rrr.KeysplittingValidationError, rerr)
+			rerr := fmt.Errorf("plugin error processing keysplitting message: %s", err)
+			d.sendError(rrr.KeysplittingExecutionError, rerr)
 		}
 	default:
 		rerr := fmt.Errorf("invalid Keysplitting Payload")
-		d.sendError(rrr.KeysplittingValidationError, rerr)
+		d.sendError(rrr.KeysplittingExecutionError, rerr)
 	}
 }
 
-func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
-	msg := fmt.Sprintf("Starting %v plugin", plugin)
-	d.logger.Info(msg)
+func (d *DataChannel) startPlugin(pluginName PluginName) error {
+	d.logger.Infof("Starting %v plugin", pluginName)
 
-	switch plugin {
-	case plgn.Kube:
+	switch pluginName {
+	case Kube:
 
 		// create channel and listener and pass it to the new plugin
-		ch := make(chan smsg.StreamMessage)
+		streamOutputChan := make(chan smsg.StreamMessage, 20)
 		go func() {
 			for {
 				select {
-				case <-d.ctx.Done():
+				case <-d.tmb.Dying():
 					return
-				case streamMessage := <-ch:
-					d.Send(wsmsg.Stream, streamMessage)
+				case streamMessage := <-streamOutputChan:
+					d.logger.Infof("Sending %s stream message", streamMessage.Type)
+					d.send(am.Stream, streamMessage)
 				}
 			}
 		}()
 
-		subLogger := d.logger.GetPluginLogger(plugin)
-		d.plugin = kube.NewPlugin(d.ctx, subLogger, ch, d.targetUser, d.targetGroups)
-		d.logger.Info("Plugin started!")
-		return nil
+		subLogger := d.logger.GetPluginLogger(string(pluginName))
+		d.plugin = kube.New(&d.tmb, subLogger, streamOutputChan, d.targetUser, d.targetGroups)
+		d.logger.Infof("%s plugin started!", pluginName)
 	default:
 		return fmt.Errorf("tried to start an unhandled plugin")
 	}
-}
-
-func (d *DataChannel) sendKeysplittingMessage(keysplittingMessage *ksmsg.KeysplittingMessage, action string, payload []byte) error {
-	// Build and send response
-	if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, payload); err != nil {
-		rerr := fmt.Errorf("could not build response message: %s", err)
-		d.logger.Error(rerr)
-		return rerr
-	} else {
-		d.Send(wsmsg.Keysplitting, respKSMessage)
-		return nil
-	}
+	return nil
 }
