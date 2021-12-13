@@ -1,4 +1,3 @@
-import os from 'os';
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
@@ -6,6 +5,7 @@ import { GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlReque
 import { ClusterSummary } from './kube.types';
 
 const exec = require('child_process').execSync;
+const pids = require('port-pid');
 
 export interface KubeConfig {
     keyPath: string,
@@ -71,41 +71,61 @@ export class KubeService extends HttpService
 export async function killDaemon(configService: ConfigService, logger: Logger) {
     const kubeConfig = configService.getKubeConfig();
 
+    let toReturn = false;
+
     // then kill the daemon
     if ( kubeConfig['localPid'] != null) {
         // First try to kill the process
         try {
-            if (process.platform === 'win32') {
-                exec(`taskkill /F /T /PID ${kubeConfig['localPid'].toString()}`);
-            } else if (process.platform === 'linux') {
-                exec(`pkill -s ${kubeConfig['localPid'].toString()}`);
-            } else {
-                // Determine if we are on a m1 mac
-                // Ref: https://stackoverflow.com/questions/65146751/detecting-apple-silicon-mac-in-javascript
-                const osCpus = os.cpus();
-                if (osCpus.length < 1) {
-                    throw new Error(`Unable to determine OS CPU type. Please manually kill the daemon PID: ${kubeConfig['localPid'].toString()}`);
-                }
-
-                const isM1 = osCpus[0].model.includes('Apple M1');
-                if (isM1) {
-                    exec(`pkill -TERM -P ${kubeConfig['localPid'].toString()}`);
-                } else {
-                    exec(`kill -9 ${kubeConfig['localPid'].toString()}`);
-                }
-            }
+            killPid(kubeConfig['localPid'].toString());
         } catch (err: any) {
             // If the daemon pid was killed, or doesn't exist, just continue
             logger.warn(`Attempt to kill existing daemon failed. This is expected if the daemon has been killed already. Make sure no program is using port: ${kubeConfig['localPort']}.\nError: ${err}`);
         }
-
         // Update the config
         kubeConfig['localPid'] = null;
         configService.setKubeConfig(kubeConfig);
 
-        return true;
+        toReturn = true;
+    }
+    // Always ensure nothing is using the localport
+    await killPortProcess(kubeConfig['localPort']);
+
+    return toReturn;
+}
+
+export async function killPortProcess(port: number) {
+    // Helper function to kill a process running on a given port (if it exists)
+    try {
+        const portPids = await getPidForPort(port);
+
+        // Loop over all pids and kill
+        portPids.forEach( (portPid: number) => {
+            killPid(portPid.toString());
+        });
+    } catch {
+        // Don't try to capture any errors incase the process has already been killed
+    }
+}
+
+async function getPidForPort(port: number): Promise<number[]> {
+    // Helper function to get a pids from a port number
+    const getPidPromise = new Promise<number[]>(async (resolve, _) => {
+        pids(port).then((pids: any) => {
+            resolve(pids.tcp);
+        });
+    });
+    return await getPidPromise;
+}
+
+function killPid(pid: string) {
+    // Helper function to kill a process for a given pid
+    if (process.platform === 'win32') {
+        exec(`taskkill /F /T /PID ${pid}`);
+    } else if (process.platform === 'linux') {
+        exec(`pkill -s ${pid}`);
     } else {
-        return false;
+        exec(`kill -9 ${pid}`);
     }
 }
 
