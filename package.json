@@ -1,6 +1,6 @@
 {
   "name": "@bastionzero/zli",
-  "version": "5.2.3",
+  "version": "5.2.4",
   "description": "BastionZero cli",
   "repository": {
     "type": "git",
@@ -15,13 +15,13 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc && cd kube-go-assets/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o daemon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
-    "update-daemon-version": "replace '\\$DAEMON_VERSION' \"$(cat kube-go-assets/VERSION)\" kube-go-assets/bctl/daemon/daemon.go",
+    "build": "tsc && cd bzero/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o daemon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
+    "update-daemon-version": "replace '\\$DAEMON_VERSION' \"$(cat bzero/VERSION)\" bzero/bctl/daemon/daemon.go",
     "package": "npm run copy-files && pkg .",
     "release": "npm run build && npm run package",
     "release-prod": "npm run update-daemon-version && npm run release",
     "release-dev": "tsc && npm run package",
-    "copy-files": "copyfiles src/**/*.html src/**/*.css kube-go-assets/bctl/daemon/* dist/",
+    "copy-files": "copyfiles src/**/*.html src/**/*.css bzero/bctl/daemon/* dist/",
     "clean": "rimraf dist/ && rimraf bin/",
     "test": "jest --config jest-config-unit-tests.js",
     "system-test": "jest --config src/system-tests/jest-config-system-tests.js --forceExit",
@@ -111,9 +111,9 @@
     "scripts": [],
     "assets": [
       "node_modules/figlet/fonts/Standard.flf",
-      "kube-go-assets/bctl/daemon/daemon-windows",
-      "kube-go-assets/bctl/daemon/daemon-macos",
-      "kube-go-assets/bctl/daemon/daemon-linux"
+      "bzero/bctl/daemon/daemon-windows",
+      "bzero/bctl/daemon/daemon-macos",
+      "bzero/bctl/daemon/daemon-linux"
     ],
     "outputPath": "bin",
     "targets": [

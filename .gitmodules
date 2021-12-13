@@ -1,3 +1,6 @@
 [submodule "webshell-common-ts"]
 	path = webshell-common-ts
 	url = git@github.com:bastionzero/webshell-common-ts.git
+[submodule "bzero"]
+	path = bzero
+	url = git@github.com:bastionzero/bzero.git

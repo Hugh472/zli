@@ -338,8 +338,3 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
-
-# Our built agent 
-kube-go-assets/bctl/daemon/daemon-linux
-kube-go-assets/bctl/daemon/daemon-macos
-kube-go-assets/bctl/daemon/daemon-windows

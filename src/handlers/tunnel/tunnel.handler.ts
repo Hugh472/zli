@@ -203,9 +203,9 @@ async function copyExecutableToLocalDir(logger: Logger, configPath: string): Pro
     // Helper function to copy the Daemon executable to a local dir on the file system
     // Ref: https://github.com/vercel/pkg/issues/342
 
-    const WINDOWS_DAEMON_PATH : string = 'kube-go-assets/bctl/daemon/daemon-windows';
-    const LINUX_DAEMON_PATH   : string = 'kube-go-assets/bctl/daemon/daemon-linux';
-    const MACOS_DAEMON_PATH   : string = 'kube-go-assets/bctl/daemon/daemon-macos';
+    const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
+    const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
+    const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
 
     let prefix = '';
     if(isPkgProcess()) {
