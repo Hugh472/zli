@@ -26,3 +26,7 @@ export interface ClusterDetails
     lastAgentUpdate: Date;
     agentVersion: string;
 }
+
+export interface StatusResponse {
+    ExitMessage: string;
+}
