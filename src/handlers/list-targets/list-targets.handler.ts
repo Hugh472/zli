@@ -13,7 +13,7 @@ import yargs from 'yargs';
 import { listTargetsArgs } from './list-targets.command-builder';
 
 import { listTargets } from '../../services/list-targets/list-targets.service';
-import { EnvironmentService } from '../../services/environment/environment.service';
+import { EnvironmentService } from '../../services/v1/environment/environment.service';
 
 export async function listTargetsHandler(
     configService: ConfigService,

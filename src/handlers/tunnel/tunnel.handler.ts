@@ -1,9 +1,9 @@
 import path from 'path';
 import utils from 'util';
 import fs from 'fs';
-import { killDaemon } from '../../services/kube/kube.service';
-import { ClusterDetails, KubeClusterStatus } from '../../services/kube/kube.types';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { killDaemon } from '../../services/v1/kube/kube.service';
+import { ClusterDetails, KubeClusterStatus } from '../../services/v1/kube/kube.types';
+import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';

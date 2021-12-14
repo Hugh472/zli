@@ -3,9 +3,9 @@ import readline from 'readline';
 import { ConfigService } from '../services/config/config.service';
 import { Logger } from '../services/logger/logger.service';
 import { ShellTerminal } from '../terminal/terminal';
-import { ConnectionSummary } from '../services/connection/connection.types';
-import { SessionService } from '../services/session/session.service';
-import { SessionDetails, SessionState } from '../services/session/session.types';
+import { ConnectionSummary } from '../services/v1/connection/connection.types';
+import { SessionService } from '../services/v1/session/session.service';
+import { SessionDetails, SessionState } from '../services/v1/session/session.types';
 
 export async function createAndRunShell(
     configService: ConfigService,

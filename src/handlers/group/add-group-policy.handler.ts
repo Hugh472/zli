@@ -1,7 +1,7 @@
-import { GroupsService } from '../../services/groups/groups.service';
-import { GroupSummary } from '../../services/groups/groups.types';
-import { PolicyService } from '../../services/policy/policy.service';
-import { PolicyType, Group } from '../../services/policy/policy.types';
+import { GroupsService } from '../../services/v1/groups/groups.service';
+import { GroupSummary } from '../../services/v1/groups/groups.types';
+import { PolicyService } from '../../services/v1/policy/policy.service';
+import { PolicyType, Group } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';

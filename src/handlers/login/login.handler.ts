@@ -4,13 +4,13 @@ import { OAuthService } from '../../services/oauth/oauth.service';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import qrcode from 'qrcode';
-import { MfaService } from '../../services/mfa/mfa.service';
-import { MfaActionRequired } from '../../services/mfa/mfa.types';
-import { UserService } from '../../services/user/user.service';
+import { MfaService } from '../../services/v1/mfa/mfa.service';
+import { MfaActionRequired } from '../../services/v1/mfa/mfa.types';
+import { UserService } from '../../services/v1/user/user.service';
 import yargs from 'yargs';
 import { loginArgs } from './login.command-builder';
-import { UserSummary } from '../../services/user/user.types';
-import { UserRegisterResponse } from '../../../src/services/user/user.messages';
+import { UserSummary } from '../../services/v1/user/user.types';
+import { UserRegisterResponse } from '../../services/v1/user/user.messages';
 import prompts, { PromptObject } from 'prompts';
 
 export interface LoginResult {

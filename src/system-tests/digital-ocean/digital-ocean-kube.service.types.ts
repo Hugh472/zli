@@ -1,5 +1,5 @@
 import { KubernetesCluster } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
-import { ClusterSummary } from '../../services/kube/kube.types';
+import { ClusterSummary } from '../../services/v1/kube/kube.types';
 import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.types';
 
 /**

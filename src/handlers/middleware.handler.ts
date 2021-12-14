@@ -5,13 +5,13 @@ import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { TargetSummary, TargetType } from '../services/common.types';
-import { DynamicAccessConfigService } from '../services/dynamic-access-config/dynamic-access-config.service';
-import { EnvironmentService } from '../services/environment/environment.service';
-import { KubeService } from '../services/kube/kube.service';
-import { ClusterDetails } from '../services/kube/kube.types';
+import { DynamicAccessConfigService } from '../services/v1/dynamic-access-config/dynamic-access-config.service';
+import { EnvironmentService } from '../services/v1/environment/environment.service';
+import { KubeService } from '../services/v1/kube/kube.service';
+import { ClusterDetails } from '../services/v1/kube/kube.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
-import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
-import { EnvironmentDetails } from '../services/environment/environment.types';
+import { SsmTargetService } from '../services/v1/ssm-target/ssm-target.service';
+import { EnvironmentDetails } from '../services/v1/environment/environment.types';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {

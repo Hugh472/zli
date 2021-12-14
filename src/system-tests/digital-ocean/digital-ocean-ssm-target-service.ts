@@ -1,13 +1,13 @@
 import { Retrier } from '@jsier/retrier';
 import { DigitalOcean, Droplet } from 'digitalocean-js';
-import { getAutodiscoveryScript } from '../../services/auto-discovery-script/auto-discovery-script.service';
+import { getAutodiscoveryScript } from '../../services/v1/auto-discovery-script/auto-discovery-script.service';
 import { TargetStatus } from '../../services/common.types';
 import { ConfigService } from '../../services/config/config.service';
-import { SsmTargetService } from '../../services/ssm-target/ssm-target.service';
-import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
+import { SsmTargetService } from '../../services/v1/ssm-target/ssm-target.service';
+import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { Logger } from '../../services/logger/logger.service';
 import { CreateNewDropletParameters, DigitalOceanSSMTarget, DigitalOceanSsmTargetParameters, SsmTargetStatusPollError } from './digital-ocean-ssm-target.service.types';
-import { EnvironmentService } from '../../services/environment/environment.service';
+import { EnvironmentService } from '../../services/v1/environment/environment.service';
 import { getEnvironmentFromName } from '../../utils/utils';
 import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';

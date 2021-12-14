@@ -1,5 +1,5 @@
 import { ConfigService } from '../../services/config/config.service';
-import { killDaemon } from '../../services/kube/kube.service';
+import { killDaemon } from '../../services/v1/kube/kube.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 

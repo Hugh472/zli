@@ -2,11 +2,11 @@ import { dynamicConfigToTargetSummary, parseTargetStatus, ssmTargetToTargetSumma
 import { TargetSummary, TargetType } from '../common.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
-import { VerbType } from '../policy-query/policy-query.types';
-import { PolicyQueryService } from '../policy-query/policy-query.service';
-import { SsmTargetService } from '../ssm-target/ssm-target.service';
-import { KubeService } from '../kube/kube.service';
-import { DynamicAccessConfigService } from '../dynamic-access-config/dynamic-access-config.service';
+import { VerbType } from '../v1/policy-query/policy-query.types';
+import { PolicyQueryService } from '../v1/policy-query/policy-query.service';
+import { SsmTargetService } from '../v1/ssm-target/ssm-target.service';
+import { KubeService } from '../v1/kube/kube.service';
+import { DynamicAccessConfigService } from '../v1/dynamic-access-config/dynamic-access-config.service';
 
 export async function listTargets(
     configService: ConfigService,

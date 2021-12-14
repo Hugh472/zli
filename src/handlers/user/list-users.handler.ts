@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfUsers } from '../../utils/utils';
-import { UserService } from '../../services/user/user.service';
+import { UserService } from '../../services/v1/user/user.service';
 import yargs from 'yargs';
 import { userArgs } from './user.command-builder';
 

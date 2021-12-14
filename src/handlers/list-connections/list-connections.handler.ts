@@ -4,8 +4,8 @@ import { getTableOfConnections } from '../../utils/utils';
 import { cleanExit } from '../clean-exit.handler';
 import { getCliSpace } from '../../utils/shell-utils';
 import { TargetSummary } from '../../services/common.types';
-import { ConnectionState, ConnectionDetails } from '../../services/connection/connection.types';
-import { SessionService } from '../../services/session/session.service';
+import { ConnectionState, ConnectionDetails } from '../../services/v1/connection/connection.types';
+import { SessionService } from '../../services/v1/session/session.service';
 import yargs from 'yargs';
 import { listConnectionsArgs } from './list-connections.command-builder';
 

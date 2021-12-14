@@ -6,11 +6,11 @@ import { targetStringExample } from '../../utils/utils';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
-import { ConnectionService } from '../../services/connection/connection.service';
+import { ConnectionService } from '../../services/v1/connection/connection.service';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
-import { VerbType } from '../../services/policy-query/policy-query.types';
-import { SessionService } from '../../services/session/session.service';
+import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
+import { VerbType } from '../../services/v1/policy-query/policy-query.types';
+import { SessionService } from '../../services/v1/session/session.service';
 
 
 export async function connectHandler(

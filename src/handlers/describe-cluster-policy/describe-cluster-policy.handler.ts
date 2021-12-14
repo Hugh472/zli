@@ -1,10 +1,10 @@
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
-import { ClusterDetails } from '../../services/kube/kube.types';
+import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
+import { ClusterDetails } from '../../services/v1/kube/kube.types';
 import { getTableOfDescribeCluster } from '../../utils/utils';
-import { KubePolicySummary, KubernetesPolicyContext } from '../../services/policy/policy.types';
+import { KubePolicySummary, KubernetesPolicyContext } from '../../services/v1/policy/policy.types';
 
 
 export async function describeClusterPolicyHandler(

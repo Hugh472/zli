@@ -2,13 +2,13 @@ import { Retrier } from '@jsier/retrier';
 import { DigitalOcean } from 'digitalocean-js';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { KubeService } from '../../services/kube/kube.service';
+import { KubeService } from '../../services/v1/kube/kube.service';
 import { KubernetesCluster, KubernetesWorkerNodePool } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
 import { ClusterTargetStatusPollError, CreateNewKubeClusterParameters, RegisteredDigitalOceanKubernetesCluster } from './digital-ocean-kube.service.types';
-import { ClusterSummary, KubeClusterStatus } from '../../services/kube/kube.types';
+import { ClusterSummary, KubeClusterStatus } from '../../services/v1/kube/kube.types';
 import { checkAllSettledPromise } from '../tests/utils/utils';
-import { PolicyService } from '../../services/policy/policy.service';
-import { EnvironmentService } from '../../services/environment/environment.service';
+import { PolicyService } from '../../services/v1/policy/policy.service';
+import { EnvironmentService } from '../../services/v1/environment/environment.service';
 
 export class DigitalOceanKubeService {
     private doClient: DigitalOcean;

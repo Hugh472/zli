@@ -1,9 +1,9 @@
 import { ConfigService } from '../../services/config/config.service';
-import { EnvironmentDetails } from '../../services/environment/environment.types';
+import { EnvironmentDetails } from '../../services/v1/environment/environment.types';
 import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
 import { cleanExit } from '../clean-exit.handler';
-import { KubeService } from '../../services/kube/kube.service';
+import { KubeService } from '../../services/v1/kube/kube.service';
 import yargs from 'yargs';
 import { generateKubeArgs } from './generate-kube.command-builder';
 import { getEnvironmentFromName } from '../../../src/utils/utils';

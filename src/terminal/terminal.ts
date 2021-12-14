@@ -8,10 +8,10 @@ import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from
 import { ZliAuthConfigService } from '../services/config/zli-auth-config.service';
 import { Logger } from '../services/logger/logger.service';
 import { TargetType } from '../services/common.types';
-import { ConnectionService } from '../services/connection/connection.service';
-import { ConnectionSummary } from '../services/connection/connection.types';
-import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
-import { SsmTargetSummary } from '../services/ssm-target/ssm-target.types';
+import { ConnectionService } from '../services/v1/connection/connection.service';
+import { ConnectionSummary } from '../services/v1/connection/connection.types';
+import { SsmTargetService } from '../services/v1/ssm-target/ssm-target.service';
+import { SsmTargetSummary } from '../services/v1/ssm-target/ssm-target.types';
 
 export class ShellTerminal implements IDisposable
 {
