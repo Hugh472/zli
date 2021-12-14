@@ -91,7 +91,7 @@ export class HttpService {
         }, new FormData());
     }
 
-    protected async Get<TResp>(route: string, queryParams: Dictionary<string>, extraHeaders? : Dictionary<string>): Promise<TResp> {
+    protected async Get<TResp>(route?: string, queryParams?: Dictionary<string>, extraHeaders? : Dictionary<string>): Promise<TResp> {
         this.setHeaders(extraHeaders);
 
         try {
@@ -108,11 +108,44 @@ export class HttpService {
         }
     }
 
+    protected async Delete<TResp>(route?: string, extraHeaders? : Dictionary<string>): Promise<TResp> {
+        this.setHeaders(extraHeaders);
+
+        try {
+            const resp: TResp = await this.httpClient.delete(
+                route,
+                {
+                    parseJson: text => JSON.parse(text),
+                }
+            ).json();
+            return resp;
+        } catch (error) {
+            throw new Error(this.getHttpErrorMessage(route, error));
+        }
+    }
+
     protected async Post<TReq, TResp>(route: string, body: TReq, extraHeaders? : Dictionary<string>): Promise<TResp> {
         this.setHeaders(extraHeaders);
 
         try {
             const resp: TResp = await this.httpClient.post(
+                route,
+                {
+                    json: body,
+                    parseJson: text => JSON.parse(text),
+                }
+            ).json();
+            return resp;
+        } catch (error) {
+            throw new Error(this.getHttpErrorMessage(route, error));
+        }
+    }
+
+    protected async Patch<TReq, TResp>(route: string, body?: TReq, extraHeaders? : Dictionary<string>): Promise<TResp> {
+        this.setHeaders(extraHeaders);
+
+        try {
+            const resp: TResp = await this.httpClient.patch(
                 route,
                 {
                     json: body,

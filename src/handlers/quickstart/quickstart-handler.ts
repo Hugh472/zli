@@ -3,13 +3,13 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { EnvironmentService } from '../../services/environment/environment.service';
-import { PolicyService } from '../../services/policy/policy.service';
+import { EnvironmentService } from '../../services/v1/environment/environment.service';
+import { PolicyService } from '../../services/v1/policy/policy.service';
 import { readFile } from '../../utils/utils';
-import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
+import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';
-import { UserSummary } from '../../services/user/user.types';
+import { UserSummary } from '../../services/v1/user/user.types';
 import { version } from '../../../package.json';
 
 import prompts, { PromptObject } from 'prompts';

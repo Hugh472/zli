@@ -11,10 +11,10 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
-import { EnvironmentDetails } from './services/environment/environment.types';
+import { EnvironmentDetails } from './services/v1/environment/environment.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
-import { PolicyType } from './services/policy/policy.types';
-import { ClusterDetails } from './services/kube/kube.types';
+import { PolicyType } from './services/v1/policy/policy.types';
+import { ClusterDetails } from './services/v1/kube/kube.types';
 
 
 // Handlers

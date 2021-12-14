@@ -1,5 +1,5 @@
 import SSHConfig from 'ssh2-promise/lib/sshConfig';
-import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
+import { SsmTargetSummary } from '../v1/ssm-target/ssm-target.types';
 
 // Interface types for SSHConfig parsing package
 export interface SSHHostConfig {

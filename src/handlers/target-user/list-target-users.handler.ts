@@ -2,8 +2,8 @@ import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfTargetUsers } from '../../utils/utils';
-import { PolicyService } from '../../services/policy/policy.service';
-import { PolicyType, KubernetesPolicyContext, TargetConnectContext } from '../../services/policy/policy.types';
+import { PolicyService } from '../../services/v1/policy/policy.service';
+import { PolicyType, KubernetesPolicyContext, TargetConnectContext } from '../../services/v1/policy/policy.types';
 import yargs from 'yargs';
 import { targetUserArgs } from './target-user.command-builder';
 

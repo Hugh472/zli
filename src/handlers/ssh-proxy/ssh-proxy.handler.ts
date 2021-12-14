@@ -5,9 +5,9 @@ import { SsmTunnelService } from '../../services/ssm-tunnel/ssm-tunnel.service';
 import { cleanExit } from '../clean-exit.handler';
 import { includes } from 'lodash';
 import { targetStringExample } from '../../utils/utils';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { ParsedTargetString } from '../../services/common.types';
-import { VerbType } from '../../services/policy-query/policy-query.types';
+import { VerbType } from '../../services/v1/policy-query/policy-query.types';
 import { EnvMap } from '../../cli-driver';
 
 

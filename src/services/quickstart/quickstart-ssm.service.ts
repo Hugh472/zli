@@ -1,8 +1,8 @@
 import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, QuickstartSSMTarget, RegistrableSSHHost } from './quickstart-ssm.service.types';
-import { getAutodiscoveryScript } from '../auto-discovery-script/auto-discovery-script.service';
+import { getAutodiscoveryScript } from '../v1/auto-discovery-script/auto-discovery-script.service';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
-import { SsmTargetService } from '../ssm-target/ssm-target.service';
+import { SsmTargetService } from '../v1/ssm-target/ssm-target.service';
 import { TargetStatus } from '../common.types';
 import { readFile } from '../../utils/utils';
 
@@ -11,11 +11,11 @@ import path from 'path';
 import os from 'os';
 import prompts, { PromptObject } from 'prompts';
 import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
-import { PolicyService } from '../policy/policy.service';
-import { PolicyEnvironment, PolicySummary, PolicyTargetUser, PolicyType, Subject, SubjectType, TargetConnectContext } from '../policy/policy.types';
-import { Verb, VerbType } from '../policy-query/policy-query.types';
-import { EnvironmentService } from '../environment/environment.service';
-import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
+import { PolicyService } from '../v1/policy/policy.service';
+import { PolicyEnvironment, PolicySummary, PolicyTargetUser, PolicyType, Subject, SubjectType, TargetConnectContext } from '../v1/policy/policy.types';
+import { Verb, VerbType } from '../v1/policy-query/policy-query.types';
+import { EnvironmentService } from '../v1/environment/environment.service';
+import { SsmTargetSummary } from '../v1/ssm-target/ssm-target.types';
 import { Retrier } from '@jsier/retrier';
 import chalk from 'chalk';
 import { ConsoleWithTranscriptService } from '../consoleWithTranscript/consoleWithTranscript.service';
