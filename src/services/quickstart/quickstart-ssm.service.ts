@@ -38,9 +38,9 @@ export class QuickstartSsmService {
      * @returns Information about the target
      */
     private async pollSsmTargetOnline(ssmTargetId: string): Promise<SsmTargetSummary> {
-        // Try 30 times with a delay of 10 seconds between each attempt.
+        // Try 60 times with a delay of 10 seconds between each attempt (10 min).
         const retrier = new Retrier({
-            limit: 30,
+            limit: 60,
             delay: 1000 * 10
         });
         return retrier.resolve(() => new Promise<SsmTargetSummary>(async (resolve, reject) => {

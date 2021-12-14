@@ -83,9 +83,9 @@ export class DigitalOceanSSMTargetService {
      * @returns Information about the target
      */
     public async pollSsmTargetOnline(ssmTargetName: string): Promise<SsmTargetSummary> {
-        // Try 30 times with a delay of 10 seconds between each attempt.
+        // Try 60 times with a delay of 10 seconds between each attempt (10 min).
         const retrier = new Retrier({
-            limit: 30,
+            limit: 60,
             delay: 1000 * 10,
             stopRetryingIf: (reason: any) => reason instanceof SsmTargetStatusPollError && reason.ssmTarget.status === TargetStatus.Error
         });
@@ -130,9 +130,9 @@ export class DigitalOceanSSMTargetService {
      * @returns Droplet information after its status == "active"
      */
     private async pollDropletUntilActive(dropletId: number): Promise<Droplet> {
-        // Try 30 times with a delay of 10 seconds between each attempt.
+        // Try 60 times with a delay of 10 seconds between each attempt (10 min).
         const retrier = new Retrier({
-            limit: 30,
+            limit: 60,
             delay: 1000 * 10,
             stopRetryingIf: (reason: any) => axios.isAxiosError(reason)
         });
