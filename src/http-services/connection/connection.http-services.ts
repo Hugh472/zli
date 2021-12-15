@@ -1,11 +1,11 @@
-import { CreateConnectionRequest } from "http/v2/connection/requests/create-connection.request";
-import { CreateConnectionResponse } from "http/v2/connection/responses/create-connection.responses";
-import { ConnectionSummary } from "http/v2/connection/types/connection-summary.types";
-import { ConnectionType } from "http/v2/connection/types/connection.types";
-import { ShellConnectionAuthDetails } from "http/v2/connection/types/shell-connection-auth-details.types";
-import { ConfigService } from "services/config/config.service";
-import { HttpService } from "services/http/http.service";
-import { Logger } from "services/logger/logger.service";
+import { CreateConnectionRequest } from 'http/v2/connection/requests/create-connection.request';
+import { CreateConnectionResponse } from 'http/v2/connection/responses/create-connection.responses';
+import { ConnectionSummary } from 'http/v2/connection/types/connection-summary.types';
+import { ConnectionType } from 'http/v2/connection/types/connection.types';
+import { ShellConnectionAuthDetails } from 'http/v2/connection/types/shell-connection-auth-details.types';
+import { ConfigService } from 'services/config/config.service';
+import { HttpService } from 'services/http/http.service';
+import { Logger } from 'services/logger/logger.service';
 
 export class ConnectionHttpService extends HttpService
 {

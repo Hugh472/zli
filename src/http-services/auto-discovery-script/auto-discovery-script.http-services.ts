@@ -1,7 +1,7 @@
-import { ScriptResponse } from "http/v2/autodiscovery-script/responses/script.responses";
-import { ConfigService } from "services/config/config.service";
-import { HttpService } from "services/http/http.service";
-import { Logger } from "services/logger/logger.service";
+import { ScriptResponse } from 'http/v2/autodiscovery-script/responses/script.responses';
+import { ConfigService } from 'services/config/config.service';
+import { HttpService } from 'services/http/http.service';
+import { Logger } from 'services/logger/logger.service';
 
 export class AutoDiscoveryScriptHttpService extends HttpService {
     constructor(configService: ConfigService, logger: Logger) {
