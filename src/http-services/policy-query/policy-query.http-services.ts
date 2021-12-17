@@ -1,15 +1,15 @@
-import { GetKubePoliciesRequest } from 'http/v2/policy-query/requests/get-kube-policies.requests';
-import { KubeTunnelRequest } from 'http/v2/policy-query/requests/kube-tunnel.requests';
-import { TargetPolicyQueryRequest } from 'http/v2/policy-query/requests/target-policy-query.requests';
-import { GetKubePoliciesResponse } from 'http/v2/policy-query/responses/get-kube-policies.responses';
-import { KubeTunnelResponse } from 'http/v2/policy-query/responses/kube-tunnel.responses';
-import { TargetPolicyQueryResponse } from 'http/v2/policy-query/responses/target-policy-query.responses';
-import { TargetUser } from 'http/v2/policy/types/target-user.types';
-import { Verb } from 'http/v2/policy/types/verb.types';
-import { TargetType } from 'http/v2/target/types/target.types';
-import { ConfigService } from 'services/config/config.service';
-import { HttpService } from 'services/http/http.service';
-import { Logger } from 'services/logger/logger.service';
+import { GetKubePoliciesRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/get-kube-policies.requests';
+import { KubeTunnelRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/kube-tunnel.requests';
+import { TargetPolicyQueryRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/target-policy-query.requests';
+import { GetKubePoliciesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/get-kube-policies.responses';
+import { KubeTunnelResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/kube-tunnel.responses';
+import { TargetPolicyQueryResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/target-policy-query.responses';
+import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
+import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.types';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { ConfigService } from '../../services/config/config.service';
+import { HttpService } from '../../services/http/http.service';
+import { Logger } from '../../services/logger/logger.service';
 
 export class PolicyQueryHttpService extends HttpService
 {

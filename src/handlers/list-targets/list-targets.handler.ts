@@ -12,8 +12,8 @@ import { TargetStatus } from '../../services/common.types';
 import yargs from 'yargs';
 import { listTargetsArgs } from './list-targets.command-builder';
 import { listTargets } from '../../services/list-targets/list-targets.service';
-import { EnvironmentHttpService } from 'http-services/environment/environment.http-services';
-import { TargetType } from 'http/v2/target/types/target.types';
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 export async function listTargetsHandler(
     configService: ConfigService,

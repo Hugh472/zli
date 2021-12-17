@@ -2,11 +2,9 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
-import { ConnectionService } from '../../services/v1/connection/connection.service';
 import { ConnectionState } from '../../services/v1/connection/connection.types';
-import { SessionService } from '../../services/v1/session/session.service';
-import { ConnectionHttpService } from 'http-services/connection/connection.http-services';
-import { SpaceHttpService } from 'http-services/space/space.http-services';
+import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
+import { SpaceHttpService } from '../../http-services/space/space.http-services';
 
 export async function attachHandler(
     configService: ConfigService,

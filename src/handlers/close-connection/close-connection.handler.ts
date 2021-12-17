@@ -4,8 +4,8 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { ConnectionState } from '../../services/v1/connection/connection.types';
 import { SessionService } from '../../services/v1/session/session.service';
-import { ConnectionHttpService } from 'http-services/connection/connection.http-services';
-import { SpaceHttpService } from 'http-services/space/space.http-services';
+import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
+import { SpaceHttpService } from '../../http-services/space/space.http-services';
 
 export async function closeConnectionHandler(
     configService: ConfigService,

@@ -12,8 +12,8 @@ import { tunnelArgs } from './tunnel.command-builder';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
 import got from 'got/dist/source';
 import { Retrier } from '@jsier/retrier';
-import { KubeClusterSummary } from 'http/v2/target/kube/types/kube-cluster-summary.types';
-import { AgentStatus } from 'http/v2/target/kube/types/agent-status.types';
+import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 const { spawn } = require('child_process');
 
 

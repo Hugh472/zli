@@ -3,12 +3,11 @@ import { TargetSummary } from '../common.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 import { VerbType } from '../v1/policy-query/policy-query.types';
-import { SsmTargetService } from '../v1/ssm-target/ssm-target.service';
-import { PolicyQueryHttpService } from 'http-services/policy-query/policy-query.http-services';
-import { DynamicAccessConfigHttpService } from 'http-services/targets/dynamic-access/dynamic-access-config.http-services';
-import { TargetType } from 'http/v2/target/types/target.types';
-import { KubeHttpService } from 'http-services/targets/kube/kube.http-services';
-import { SsmTargetHttpService } from 'http-services/targets/ssm/ssm-target.http-services';
+import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
+import { DynamicAccessConfigHttpService } from '../../http-services/targets/dynamic-access/dynamic-access-config.http-services';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 
 export async function listTargets(
     configService: ConfigService,

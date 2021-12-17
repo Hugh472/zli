@@ -1,10 +1,10 @@
-import { MfaClearRequest } from 'http/v2/mfa/requests/mfa-clear.requests';
-import { MfaResetRequest } from 'http/v2/mfa/requests/mfa-reset.requests';
-import { MfaTokenRequest } from 'http/v2/mfa/requests/mfa-token.requests';
-import { MfaResetResponse } from 'http/v2/mfa/responses/mfa-reset.responses';
-import { ConfigService } from 'services/config/config.service';
-import { HttpService } from 'services/http/http.service';
-import { Logger } from 'services/logger/logger.service';
+import { MfaClearRequest } from '../../../webshell-common-ts/http/v2/mfa/requests/mfa-clear.requests';
+import { MfaResetRequest } from '../../../webshell-common-ts/http/v2/mfa/requests/mfa-reset.requests';
+import { MfaTokenRequest } from '../../../webshell-common-ts/http/v2/mfa/requests/mfa-token.requests';
+import { MfaResetResponse } from '../../../webshell-common-ts/http/v2/mfa/responses/mfa-reset.responses';
+import { ConfigService } from '../../services/config/config.service';
+import { HttpService } from '../../services/http/http.service';
+import { Logger } from '../../services/logger/logger.service';
 
 export class MfaHttpService extends HttpService
 {

@@ -21,8 +21,8 @@ import chalk from 'chalk';
 import { ConsoleWithTranscriptService } from '../consoleWithTranscript/consoleWithTranscript.service';
 import { TranscriptMessage } from '../consoleWithTranscript/consoleWithTranscript.types';
 import ora from 'ora';
-import { EnvironmentHttpService } from 'http-services/environment/environment.http-services';
-import { SsmTargetHttpService } from 'http-services/targets/ssm/ssm-target.http-services';
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 
 export class QuickstartSsmService {
     constructor(

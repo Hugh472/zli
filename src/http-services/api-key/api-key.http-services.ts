@@ -1,8 +1,8 @@
 
-import { NewApiKeyRequest } from 'http/v2/api-key/requests/new-api-key.request';
-import { NewApiKeyResponse } from 'http/v2/api-key/responses/new-api-key.responses';
-import { ApiKeySummary } from 'http/v2/api-key/types/api-key-summary.types';
-import { HttpService } from 'services/http/http.service';
+import { NewApiKeyRequest } from '../../../webshell-common-ts/http/v2/api-key/requests/new-api-key.request';
+import { NewApiKeyResponse } from '../../../webshell-common-ts/http/v2/api-key/responses/new-api-key.responses';
+import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
+import { HttpService } from '../../services/http/http.service';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 

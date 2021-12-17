@@ -16,15 +16,13 @@
         "paths": {
             "*": [
                 "node_modules/*",
-                "src/*",
-                "webshell-common-ts/*"
+                "src/types/*"
             ]
         },
         "declaration": true
     },
     "include": [
-        "src/**/*",
-        "webshell-common-ts/**/*"
+        "src/**/*"
     ],
     "files": ["src/index.ts"], // Mark index.ts as our entry point for packaged release
     "exclude": ["node_modules"]

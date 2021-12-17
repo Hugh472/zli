@@ -12,8 +12,8 @@ import { loginArgs } from './login.command-builder';
 import { UserSummary } from '../../services/v1/user/user.types';
 import { UserRegisterResponse } from '../../services/v1/user/user.messages';
 import prompts, { PromptObject } from 'prompts';
-import { MfaHttpService } from 'http-services/mfa/mfa.http-services';
-import { UserHttpService } from 'http-services/user/user.http-services';
+import { MfaHttpService } from '../../http-services/mfa/mfa.http-services';
+import { UserHttpService } from '../../http-services/user/user.http-services';
 
 export interface LoginResult {
     userSummary: UserSummary;

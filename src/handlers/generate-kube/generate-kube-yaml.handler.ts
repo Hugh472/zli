@@ -7,8 +7,8 @@ import { KubeService } from '../../services/v1/kube/kube.service';
 import yargs from 'yargs';
 import { generateKubeArgs } from './generate-kube.command-builder';
 import { getEnvironmentFromName } from '../../../src/utils/utils';
-import { EnvironmentSummary } from 'http/v2/environment/types/environment-summary.responses';
-import { KubeHttpService } from 'http-services/targets/kube/kube.http-services';
+import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 
 const fs = require('fs');
 

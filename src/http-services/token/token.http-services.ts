@@ -1,10 +1,10 @@
-import { IdentityProvider } from "auth-service/auth.types";
-import { ClientSecretResponse } from "http/v2/token/responses/client-secret.responses";
-import { MixpanelTokenResponse } from "http/v2/token/responses/mixpanel-token.responses";
-import { OktaClientResponse } from "http/v2/token/responses/okta-client.responses";
-import { ConfigService } from "services/config/config.service";
-import { HttpService } from "services/http/http.service";
-import { Logger } from "services/logger/logger.service";
+import { IdentityProvider } from "../../../webshell-common-ts/auth-service/auth.types";
+import { ClientSecretResponse } from "../../../webshell-common-ts/http/v2/token/responses/client-secret.responses";
+import { MixpanelTokenResponse } from "../../../webshell-common-ts/http/v2/token/responses/mixpanel-token.responses";
+import { OktaClientResponse } from "../../../webshell-common-ts/http/v2/token/responses/okta-client.responses";
+import { ConfigService } from "../../services/config/config.service";
+import { HttpService } from "../../services/http/http.service";
+import { Logger } from "../../services/logger/logger.service";
 
 export class TokenHttpService extends HttpService
 {

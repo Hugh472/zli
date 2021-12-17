@@ -15,8 +15,7 @@ import { ConfigService } from '../config/config.service';
 import { SsmTunnelWebsocketService } from '../../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.service';
 import { ZliAuthConfigService } from '../config/zli-auth-config.service';
 import { ParsedTargetString } from '../common.types';
-import { SsmTargetService } from '../v1/ssm-target/ssm-target.service';
-import { SsmTargetHttpService } from 'http-services/targets/ssm/ssm-target.http-services';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 
 export class SsmTunnelService
 {

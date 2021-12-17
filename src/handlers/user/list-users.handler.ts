@@ -5,7 +5,7 @@ import { getTableOfUsers } from '../../utils/utils';
 import { UserService } from '../../services/v1/user/user.service';
 import yargs from 'yargs';
 import { userArgs } from './user.command-builder';
-import { UserHttpService } from 'http-services/user/user.http-services';
+import { UserHttpService } from '../../http-services/user/user.http-services';
 
 export async function listUsersHandler(
     argv: yargs.Arguments<userArgs>,

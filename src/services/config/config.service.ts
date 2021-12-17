@@ -8,7 +8,7 @@ import { TokenService } from '../v1/token/token.service';
 import { UserSummary } from '../v1/user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../v1/kube/kube.service';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
-import { TokenHttpService } from 'http-services/token/token.http-services';
+import { TokenHttpService } from '../../http-services/token/token.http-services';
 
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14

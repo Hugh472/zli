@@ -11,10 +11,8 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { TargetSummary, TargetStatus } from './services/common.types';
-import { EnvironmentDetails } from './services/v1/environment/environment.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/v1/policy/policy.types';
-import { ClusterDetails } from './services/v1/kube/kube.types';
 
 
 // Handlers
@@ -77,9 +75,9 @@ import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-build
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
-import { TargetType } from 'http/v2/target/types/target.types';
-import { KubeClusterSummary } from 'http/v2/target/kube/types/kube-cluster-summary.types';
-import { EnvironmentSummary } from 'http/v2/environment/types/environment-summary.responses';
+import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
 
 export type EnvMap = Readonly<{
     configName: string;
