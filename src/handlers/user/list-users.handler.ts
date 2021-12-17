@@ -5,14 +5,15 @@ import { getTableOfUsers } from '../../utils/utils';
 import { UserService } from '../../services/v1/user/user.service';
 import yargs from 'yargs';
 import { userArgs } from './user.command-builder';
+import { UserHttpService } from 'http-services/user/user.http-services';
 
 export async function listUsersHandler(
     argv: yargs.Arguments<userArgs>,
     configService: ConfigService,
     logger: Logger,
 ){
-    const userService = new UserService(configService, logger);
-    const users = await userService.ListUsers();
+    const userHttpService = new UserHttpService(configService, logger);
+    const users = await userHttpService.ListUsers();
     if(!! argv.json) {
         // json output
         console.log(JSON.stringify(users));

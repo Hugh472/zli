@@ -28,18 +28,6 @@ export class KubeHttpService extends HttpService
         return this.Post('', request);
     }
 
-    // public GetUserInfoFromEmail(
-    //     email: string
-    // ): Promise<GetUserInfoResponse>
-    // {
-    //     const request: GetUserInfoRequest = {
-    //         email: email,
-    //     };
-
-    //     return this.Post('get-user', request);
-    // }
-    // MOVED TO USER CONTROLLER
-
     public ListKubeClusters(): Promise<KubeClusterSummary[]> {
         return this.Get();
     }

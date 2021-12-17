@@ -1,4 +1,4 @@
-import { TargetType } from '../../common.types';
+import { TargetType } from 'http/v2/target/types/target.types';
 import { ConnectionSummary } from '../connection/connection.types';
 
 export interface SessionDetails {

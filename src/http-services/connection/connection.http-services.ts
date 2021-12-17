@@ -1,8 +1,8 @@
 import { CreateConnectionRequest } from 'http/v2/connection/requests/create-connection.request';
 import { CreateConnectionResponse } from 'http/v2/connection/responses/create-connection.responses';
 import { ConnectionSummary } from 'http/v2/connection/types/connection-summary.types';
-import { ConnectionType } from 'http/v2/connection/types/connection.types';
 import { ShellConnectionAuthDetails } from 'http/v2/connection/types/shell-connection-auth-details.types';
+import { TargetType } from 'http/v2/target/types/target.types';
 import { ConfigService } from 'services/config/config.service';
 import { HttpService } from 'services/http/http.service';
 import { Logger } from 'services/logger/logger.service';
@@ -19,12 +19,12 @@ export class ConnectionHttpService extends HttpService
         return this.Get(connectionId);
     }
 
-    public async CreateConnection(targetType: ConnectionType, targetId: string, sessionId: string, targetUser: string) : Promise<string>
+    public async CreateConnection(targetType: TargetType, targetId: string, sessionId: string, targetUser: string) : Promise<string>
     {
         const req : CreateConnectionRequest = {
             spaceId: sessionId,
             targetId: targetId,
-            connectionType: targetType,
+            targetType: targetType,
             targetUser: targetUser
         };
 

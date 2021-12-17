@@ -1,4 +1,5 @@
 import { KubernetesCluster } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
+import { KubeClusterSummary } from 'http/v2/target/kube/types/kube-cluster-summary.types';
 import { ClusterSummary } from '../../services/v1/kube/kube.types';
 import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.types';
 
@@ -8,7 +9,7 @@ import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.typ
  */
 export type RegisteredDigitalOceanKubernetesCluster = {
     doClusterSummary: KubernetesCluster;
-    bzeroClusterTargetSummary: ClusterSummary;
+    bzeroClusterTargetSummary: KubeClusterSummary;
     kubeConfigFileContents: string;
 };
 
@@ -63,7 +64,7 @@ export type AutoScaleParameters = {
  */
 export class ClusterTargetStatusPollError extends Error {
     constructor(
-        public clusterSummary: ClusterSummary,
+        public clusterSummary: KubeClusterSummary,
         message?: string) {
         super(message);
         this.name = 'ClusterTargetStatusPollError';

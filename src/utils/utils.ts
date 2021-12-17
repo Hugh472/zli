@@ -5,7 +5,7 @@ import util from 'util';
 import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.types';
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { ApiKeyDetails } from '../services/v1/api-key/api-key.types';
-import { ParsedTargetString, TargetStatus, TargetSummary, TargetType } from '../services/common.types';
+import { ParsedTargetString, TargetStatus, TargetSummary } from '../services/common.types';
 import { ConnectionDetails } from '../services/v1/connection/connection.types';
 import { DynamicAccessConfigSummary } from '../services/v1/dynamic-access-config/dynamic-access-config.types';
 import { EnvironmentDetails } from '../services/v1/environment/environment.types';
@@ -15,6 +15,9 @@ import { Logger } from '../services/logger/logger.service';
 import { KubePolicySummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext } from '../services/v1/policy/policy.types';
 import { SsmTargetSummary } from '../services/v1/ssm-target/ssm-target.types';
 import { UserSummary } from '../services/v1/user/user.types';
+import { TargetType } from 'http/v2/target/types/target.types';
+import { EnvironmentSummary } from 'http/v2/environment/types/environment-summary.responses';
+import { ConnectionSummary } from 'http/v2/connection/types/connection-summary.types';
 
 
 // case insensitive substring search, 'find targetString in searchString'
@@ -25,14 +28,14 @@ export function findSubstring(targetString: string, searchString: string) : bool
 
 export const targetStringExample : string = '[targetUser@]<targetId-or-targetName>';
 
-export function parseTargetType(targetType: string) : TargetType
+export function parseTargetType(connectionType: string) : TargetType
 {
-    const targetTypePattern = /^(ssm|ssh|dynamic|cluster)$/i; // case insensitive check for targetType
+    const connectionTypePattern = /^(ssm|dynamic|cluster)$/i; // case insensitive check for connectionType
 
-    if(! targetTypePattern.test(targetType))
+    if(! connectionTypePattern.test(connectionType))
         return undefined;
 
-    return <TargetType> targetType.toUpperCase();
+    return <TargetType> connectionType.toUpperCase();
 }
 
 export function parsePolicyType(policyType: string) : PolicyType
@@ -136,7 +139,7 @@ export function isGuid(id: string): boolean{
     return guidPattern.test(id);
 }
 
-export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
+export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSummary[], showDetail: boolean = false, showGuid: boolean = false) : string
 {
     // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
     const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16; // || 16 here means that when there are no targets default the length to 16
@@ -189,10 +192,10 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     return table.toString();
 }
 
-export function getTableOfConnections(connections: ConnectionDetails[], allTargets: TargetSummary[]) : string
+export function getTableOfConnections(connections: ConnectionSummary[], allTargets: TargetSummary[]) : string
 {
     const connIdLength = max(connections.map(c => c.id.length).concat(36));
-    const targetUserLength = max(connections.map(c => c.userName.length).concat(16));
+    const targetUserLength = max(connections.map(c => c.targetUser.length).concat(16));
     const targetNameLength = max(allTargets.map(t => t.name.length).concat(16));
     const header: string[] = ['Connection ID', 'Target User', 'Target', 'Time Created'];
     const columnWidths = [connIdLength + 2, targetUserLength + 2, targetNameLength + 2, 20];
@@ -200,7 +203,7 @@ export function getTableOfConnections(connections: ConnectionDetails[], allTarge
     const table = new Table({ head: header, colWidths: columnWidths });
     const dateOptions = {year: '2-digit', month: 'numeric', day: 'numeric', hour:'numeric', minute:'numeric', hour12: true};
     connections.forEach(connection => {
-        const row = [connection.id, connection.userName, allTargets.filter(t => t.id == connection.targetId).pop().name, new Date(connection.timeCreated).toLocaleString('en-US', dateOptions as any)];
+        const row = [connection.id, connection.targetUser, allTargets.filter(t => t.id == connection.targetId).pop().name, new Date(connection.timeCreated).toLocaleString('en-US', dateOptions as any)];
         table.push(row);
     });
 
@@ -310,7 +313,7 @@ export function getTableOfPolicies(
     policies: PolicySummary[],
     userMap: {[id: string]: UserSummary},
     apiKeyMap: {[id: string]: ApiKeyDetails},
-    environmentMap: {[id: string]: EnvironmentDetails},
+    environmentMap: {[id: string]: EnvironmentSummary},
     targetMap : {[id: string]: string},
     groupMap : {[id: string]: GroupSummary}
 ) : string
@@ -437,7 +440,7 @@ function getUserName(userId: string, userMap: {[id: string]: UserSummary}) : str
         : 'USER DELETED';
 }
 
-function getEnvironmentName(envId: string, environmentMap: {[id: string]: EnvironmentDetails}) : string {
+function getEnvironmentName(envId: string, environmentMap: {[id: string]: EnvironmentSummary}) : string {
     return environmentMap[envId]
         ? environmentMap[envId].name
         : 'ENVIRONMENT DELETED';
@@ -463,7 +466,7 @@ export async function disambiguateTarget(
     logger: Logger,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
-    envs: Promise<EnvironmentDetails[]>): Promise<ParsedTargetString> {
+    envs: Promise<EnvironmentSummary[]>): Promise<ParsedTargetString> {
 
     const parsedTarget = parseTargetString(targetString);
 
@@ -474,7 +477,7 @@ export async function disambiguateTarget(
     let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
-    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
+    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SsmTarget || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
 
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);
@@ -510,7 +513,7 @@ export function readFile(filePath: string): Promise<string> {
     return util.promisify(fs.readFile)(filePath, 'utf8');
 }
 
-export async function getEnvironmentFromName(enviromentName: string, envs: EnvironmentDetails[], logger: Logger): Promise<EnvironmentDetails> {
+export async function getEnvironmentFromName(enviromentName: string, envs: EnvironmentSummary[], logger: Logger): Promise<EnvironmentSummary> {
     const environment = envs.find(envDetails => envDetails.name == enviromentName);
     if (!environment) {
         logger.error(`Environment ${enviromentName} does not exist`);
@@ -531,9 +534,9 @@ export function randomAlphaNumericString(length: number) : string {
 
 
 export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
-    return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
+    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
 }
 
 export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
-    return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
+    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
 }

@@ -8,7 +8,7 @@ export class AutoDiscoveryScriptHttpService extends HttpService {
         super(configService, 'api/v2/autodiscovery-scripts', logger);
     }
 
-    public getAutodiscoveryScript(
+    public GetAutodiscoveryScript(
         targetNameScript: string,
         environmentId: string,
         agentVersion: string

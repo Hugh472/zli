@@ -4,7 +4,7 @@ import { ConfigService } from 'services/config/config.service';
 import { HttpService } from 'services/http/http.service';
 import { Logger } from 'services/logger/logger.service';
 
-export class UserService extends HttpService
+export class UserHttpService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
     {
@@ -24,5 +24,12 @@ export class UserService extends HttpService
     public ListUsers(): Promise<UserSummary[]>
     {
         return this.Get();
+    }
+
+    public GetUserByEmail(
+        email: string
+    ): Promise<UserSummary>
+    {
+        return this.Get(email);
     }
 }
