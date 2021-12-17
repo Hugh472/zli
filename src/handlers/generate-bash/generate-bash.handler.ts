@@ -2,7 +2,6 @@ import util from 'util';
 import fs from 'fs';
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
-import { EnvironmentDetails } from '../../services/v1/environment/environment.types';
 import { getAutodiscoveryScript } from '../../services/v1/auto-discovery-script/auto-discovery-script.service';
 import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
