@@ -2,7 +2,6 @@ import path from 'path';
 import utils from 'util';
 import fs from 'fs';
 import { killDaemon } from '../../services/v1/kube/kube.service';
-import { ClusterDetails, KubeClusterStatus } from '../../services/v1/kube/kube.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
@@ -13,13 +12,15 @@ import { tunnelArgs } from './tunnel.command-builder';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
 import got from 'got/dist/source';
 import { Retrier } from '@jsier/retrier';
+import { KubeClusterSummary } from 'http/v2/target/kube/types/kube-cluster-summary.types';
+import { AgentStatus } from 'http/v2/target/kube/types/agent-status.types';
 const { spawn } = require('child_process');
 
 
-export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, targetCluster, logger);
-    if (clusterTarget.status != KubeClusterStatus.Online) {
+    if (clusterTarget.status != AgentStatus.Online) {
         logger.error('Target cluster is offline!');
         await cleanExit(1, logger);
     }
@@ -166,9 +167,9 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     }
 }
 
-async function getClusterInfoFromName(clusterTargets: ClusterDetails[], clusterName: string, logger: Logger): Promise<ClusterDetails> {
+async function getClusterInfoFromName(clusterTargets: KubeClusterSummary[], clusterName: string, logger: Logger): Promise<KubeClusterSummary> {
     for (const clusterTarget of clusterTargets) {
-        if (clusterTarget.name == clusterName) {
+        if (clusterTarget.clusterName == clusterName) {
             return clusterTarget;
         }
     }

@@ -7,15 +7,16 @@ import { SsmTargetService } from '../../services/v1/ssm-target/ssm-target.servic
 import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { Logger } from '../../services/logger/logger.service';
 import { CreateNewDropletParameters, DigitalOceanSSMTarget, DigitalOceanSsmTargetParameters, SsmTargetStatusPollError } from './digital-ocean-ssm-target.service.types';
-import { EnvironmentService } from '../../services/v1/environment/environment.service';
 import { getEnvironmentFromName } from '../../utils/utils';
 import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';
+import { EnvironmentHttpService } from 'http-services/environment/environment.http-services';
+import { SsmTargetHttpService } from 'http-services/targets/ssm/ssm-target.http-services';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;
-    private ssmTargetService: SsmTargetService;
-    private environmentService: EnvironmentService
+    private ssmTargetHttpService: SsmTargetHttpService;
+    private environmentHttpService: EnvironmentHttpService
 
     constructor(
         apiToken: string,
@@ -23,8 +24,8 @@ export class DigitalOceanSSMTargetService {
         private logger: Logger
     ) {
         this.doClient = new DigitalOcean(apiToken);
-        this.ssmTargetService = new SsmTargetService(this.configService, this.logger);
-        this.environmentService = new EnvironmentService(this.configService, this.logger);
+        this.ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
+        this.environmentHttpService = new EnvironmentHttpService(this.configService, this.logger);
     }
 
     /**
@@ -36,7 +37,7 @@ export class DigitalOceanSSMTargetService {
 
         // Use default environment if no environment ID is passed
         if (!envId) {
-            const environments = await this.environmentService.ListEnvironments();
+            const environments = await this.environmentHttpService.ListEnvironments();
             const defaultEnvironment = await getEnvironmentFromName('Default', environments, this.logger);
             envId = defaultEnvironment.id;
         }
@@ -70,7 +71,7 @@ export class DigitalOceanSSMTargetService {
 
         // Only delete SSM target if it is set
         if (doSSMTarget.ssmTarget) {
-            cleanupPromises.push(this.ssmTargetService.DeleteSsmTarget(doSSMTarget.ssmTarget.id));
+            cleanupPromises.push(this.ssmTargetHttpService.DeleteSsmTarget(doSSMTarget.ssmTarget.id));
         }
 
         await checkAllSettledPromise(Promise.allSettled(cleanupPromises));
@@ -104,7 +105,7 @@ export class DigitalOceanSSMTargetService {
                 if (ssmTargetId === '') {
                     // We don't know the SSM target ID yet, so we have to use
                     // the less efficient list API to learn about the ID
-                    const targets = await this.ssmTargetService.ListSsmTargets(false);
+                    const targets = await this.ssmTargetHttpService.ListSsmTargets(false);
                     const foundTarget = targets.find(target => target.name === ssmTargetName);
                     if (foundTarget) {
                         ssmTargetId = foundTarget.id;
@@ -114,7 +115,7 @@ export class DigitalOceanSSMTargetService {
                     }
                 } else {
                     // SSM target ID is known
-                    const target = await this.ssmTargetService.GetSsmTarget(ssmTargetId);
+                    const target = await this.ssmTargetHttpService.GetSsmTarget(ssmTargetId);
                     checkIsTargetOnline(target);
                 }
             } catch (error) {

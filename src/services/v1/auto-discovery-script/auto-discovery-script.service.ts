@@ -5,6 +5,7 @@ import { GetAutodiscoveryScriptResponse, GetAutodiscoveryScriptRequest } from '.
 import { OperatingSystem } from './auto-discovery-script.types';
 import { getAutodiscoveryScriptTargetNameScript } from '../../../../webshell-common-ts/autodiscovery-script/autodiscovery-script';
 import { TargetName } from '../../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
+import { AutoDiscoveryScriptHttpService } from 'http-services/auto-discovery-script/auto-discovery-script.http-services';
 export class AutoDiscoveryScriptService extends HttpService {
     constructor(configService: ConfigService, logger: Logger) {
         super(configService, 'api/v1/AutodiscoveryScript', logger);
@@ -37,8 +38,8 @@ export async function getAutodiscoveryScript(
 ) {
     const targetNameScript = getAutodiscoveryScriptTargetNameScript(targetName);
 
-    const autodiscoveryScriptService = new AutoDiscoveryScriptService(configService, logger);
-    const autodiscoveryScriptResponse = await autodiscoveryScriptService.getAutodiscoveryScript(operatingSystem, targetNameScript, environmentId, agentVersion);
+    const autodiscoveryScriptHttpService = new AutoDiscoveryScriptHttpService(configService, logger);
+    const scriptResponse = await autodiscoveryScriptHttpService.GetAutodiscoveryScript(targetNameScript, environmentId, agentVersion);
 
-    return autodiscoveryScriptResponse.autodiscoveryScript;
+    return scriptResponse.autodiscoveryScript;
 }

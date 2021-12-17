@@ -8,6 +8,7 @@ import { TokenService } from '../v1/token/token.service';
 import { UserSummary } from '../v1/user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../v1/kube/kube.service';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
+import { TokenHttpService } from 'http-services/token/token.http-services';
 
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
@@ -30,7 +31,7 @@ type BastionZeroConfigSchema = {
 export class ConfigService implements ConfigInterface {
     private config: Conf<BastionZeroConfigSchema>;
     private configName: string;
-    private tokenService: TokenService;
+    private tokenHttpService: TokenHttpService;
     private logoutDetectedSubject: Subject<boolean> = new Subject<boolean>();
 
     public logoutDetected : Observable<boolean> = this.logoutDetectedSubject.asObservable();
@@ -86,7 +87,7 @@ export class ConfigService implements ConfigInterface {
             process.exit(1);
         }
 
-        this.tokenService = new TokenService(this, logger);
+        this.tokenHttpService = new TokenService(this, logger);
 
         this.config.onDidChange('tokenSet',
             (newValue : TokenSetParameters, oldValue : TokenSetParameters) => {
@@ -218,7 +219,7 @@ export class ConfigService implements ConfigInterface {
 
         // IdP specific login setup
         if (idp == IdentityProvider.Google || idp == IdentityProvider.Microsoft) {
-            const clientSecret = await this.tokenService.getClientIdAndSecretForProvider(idp);
+            const clientSecret = await this.tokenHttpService.getClientIdAndSecretForProvider(idp);
             this.config.set('clientId', clientSecret.clientId);
             this.config.set('clientSecret', clientSecret.clientSecret);
             this.config.set('authUrl', this.getCommonAuthUrl(idp));
@@ -226,7 +227,7 @@ export class ConfigService implements ConfigInterface {
             if(! email)
                 throw new Error('User email is required for logging in with okta');
 
-            const oktaClientResponse = await this.tokenService.getOktaClient(email);
+            const oktaClientResponse = await this.tokenHttpService.getOktaClient(email);
             if(! oktaClientResponse)
                 throw new Error(`Unknown organization for email ${email}`);
 
@@ -301,6 +302,6 @@ export class ConfigService implements ConfigInterface {
     }
 
     private async getMixpanelToken(): Promise<string> {
-        return (await this.tokenService.getMixpanelToken()).token;
+        return (await this.tokenHttpService.getMixpanelToken()).token;
     }
 }

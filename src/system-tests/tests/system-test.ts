@@ -12,13 +12,13 @@ import { versionSuite } from './suites/version';
 import { DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
 import { ClusterTargetStatusPollError, DigitalOceanKubernetesClusterVersion, RegisteredDigitalOceanKubernetesCluster } from '../digital-ocean/digital-ocean-kube.service.types';
 import { DigitalOceanKubeService } from '../digital-ocean/digital-ocean-kube-service';
-import { ApiKeyService } from '../../services/v1/api-key/api-key.service';
 import { NewApiKeyResponse } from '../../services/v1/api-key/api-key.types';
 import { kubeSuite } from './suites/kube';
 import { promisify } from 'util';
 import fs from 'fs';
 import { addRepo, install, MultiStringValue, SingleStringValue } from './utils/helm/helm-utils';
 import { checkAllSettledPromise, stripTrailingSlash } from './utils/utils';
+import { ApiKeyHttpService } from 'http-services/api-key/api-key.http-services';
 
 // Uses config name from ZLI_CONFIG_NAME environment variable (defaults to prod
 // if unset) This can be run against dev/stage/prod when running system tests
@@ -45,7 +45,7 @@ if(! agentVersion) {
 }
 
 // Create a new API Key to be used for cluster registration
-const apiKeyService = new ApiKeyService(configService, logger);
+const apiKeyHttpService = new ApiKeyHttpService(configService, logger);
 let systemTestApiKey: NewApiKeyResponse;
 
 // Global mapping of system test targets
@@ -271,12 +271,12 @@ async function cleanupDOTestTargets() {
 
 async function setupSystemTestApiKey() {
     const apiKeyName = `system-test-${systemTestUniqueId}-api-key`;
-    systemTestApiKey = await apiKeyService.createNewApiKey({ name: apiKeyName, isRegistrationKey: false });
+    systemTestApiKey = await apiKeyHttpService.CreateNewApiKey({ name: apiKeyName, isRegistrationKey: false });
     console.log('created api key ' + systemTestApiKey.apiKeyDetails.id);
 }
 
 async function cleanupSystemTestApiKey() {
-    await apiKeyService.deleteApiKey({ id: systemTestApiKey.apiKeyDetails.id });
+    await apiKeyHttpService.DeleteApiKey(systemTestApiKey.apiKeyDetails.id);
 }
 
 // Call various test suites

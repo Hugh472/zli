@@ -8,12 +8,13 @@ import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
 import { TargetName } from '../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
 import { getEnvironmentFromName } from '../../../src/utils/utils';
+import { EnvironmentSummary } from 'http/v2/environment/types/environment-summary.responses';
 
 export async function generateBashHandler(
     argv: yargs.Arguments<generateBashArgs>,
     logger: Logger,
     configService: ConfigService,
-    environments: Promise<EnvironmentDetails[]>
+    environments: Promise<EnvironmentSummary[]>
 ) {
     let targetName: TargetName;
 

@@ -1,4 +1,5 @@
-import { TargetUser, TargetType } from '../../common.types';
+import { TargetType } from 'http/v2/target/types/target.types';
+import { TargetUser } from '../../common.types';
 import { PolicySummary } from '../policy/policy.types';
 import { Verb } from './policy-query.types';
 

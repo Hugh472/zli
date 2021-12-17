@@ -21,6 +21,7 @@ import { TranscriptMessage } from '../../services/consoleWithTranscript/consoleW
 import ora from 'ora';
 import { login } from '../login/login.handler';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { EnvironmentHttpService } from 'http-services/environment/environment.http-services';
 
 const welcomeMessage = `Welcome to BastionZero and the journey to zero trust access via our multi root zero trust access protocol (MrZAP). We're excited to have you!\n
 Our quickstart installer is a fast and easy method for you to try BastionZero using your existing SSH configuration.
@@ -139,7 +140,7 @@ export async function quickstartHandler(
     await validateQuickstartArgs(argv);
 
     const policyService = new PolicyService(configService, logger);
-    const envService = new EnvironmentService(configService, logger);
+    const envHttpService = new EnvironmentHttpService(configService, logger);
     const consoleWithTranscript = new ConsoleWithTranscriptService(chalk.magenta);
 
     // Callback on cancel prompt
@@ -154,7 +155,7 @@ export async function quickstartHandler(
         consoleWithTranscript.pushToTranscript(`${prompt.message} ${answer}`);
     };
 
-    const quickstartService = new QuickstartSsmService(logger, consoleWithTranscript, configService, policyService, envService);
+    const quickstartService = new QuickstartSsmService(logger, consoleWithTranscript, configService, policyService, envHttpService);
 
     // Clear console before we begin
     clearScreen();

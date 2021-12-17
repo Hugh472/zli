@@ -1,13 +1,8 @@
+import { TargetType } from "http/v2/target/types/target.types";
+
 export interface TargetUser
 {
     userName: string;
-}
-
-export enum TargetType {
-    SSM = 'SSM',
-    SSH = 'SSH',
-    DYNAMIC = 'DYNAMIC',
-    CLUSTER = 'CLUSTER'
 }
 
 export enum IdP {
@@ -44,3 +39,10 @@ export interface ParsedTargetString
     envId: string;
     envName: string;
 }
+
+// export enum TargetType {
+//     SSM = 'SSM',
+//     SSH = 'SSH',
+//     DYNAMIC = 'DYNAMIC',
+//     CLUSTER = 'CLUSTER'
+// }

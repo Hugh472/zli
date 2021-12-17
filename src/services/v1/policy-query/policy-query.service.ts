@@ -1,4 +1,5 @@
-import { TargetType, TargetUser } from '../../common.types';
+import { TargetType } from 'http/v2/target/types/target.types';
+import { TargetUser } from '../../common.types';
 import { ConfigService } from '../../config/config.service';
 import { HttpService } from '../../http/http.service';
 import { Logger } from '../../logger/logger.service';
