@@ -16,9 +16,9 @@
         "paths": {
             "*": [
                 "node_modules/*",
-                "src/*"
-            ],
-            "webshell-common-ts/*": ["webshell-common-ts/*"]
+                "src/*",
+                "webshell-common-ts/*"
+            ]
         },
         "declaration": true
     },
