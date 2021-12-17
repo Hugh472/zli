@@ -3,7 +3,7 @@ import { PolicyType } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { OrganizationHttpService } from 'http-services/organization/organization.http-services';
+import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 
 export async function deleteGroupFromPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the group

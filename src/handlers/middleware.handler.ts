@@ -5,19 +5,14 @@ import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { TargetSummary } from '../services/common.types';
-import { EnvironmentService } from '../services/v1/environment/environment.service';
-import { KubeService } from '../services/v1/kube/kube.service';
-import { ClusterDetails } from '../services/v1/kube/kube.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
-import { SsmTargetService } from '../services/v1/ssm-target/ssm-target.service';
-import { EnvironmentDetails } from '../services/v1/environment/environment.types';
-import { TargetType } from 'http/v2/target/types/target.types';
-import { DynamicAccessConfigHttpService } from 'http-services/targets/dynamic-access/dynamic-access-config.http-services';
-import { EnvironmentHttpService } from 'http-services/environment/environment.http-services';
-import { EnvironmentSummary } from 'http/v2/environment/types/environment-summary.responses';
-import { KubeHttpService } from 'http-services/targets/kube/kube.http-services';
-import { KubeClusterSummary } from 'http/v2/target/kube/types/kube-cluster-summary.types';
-import { SsmTargetHttpService } from 'http-services/targets/ssm/ssm-target.http-services';
+import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
+import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
+import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
+import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {

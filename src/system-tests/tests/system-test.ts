@@ -18,7 +18,7 @@ import { promisify } from 'util';
 import fs from 'fs';
 import { addRepo, install, MultiStringValue, SingleStringValue } from './utils/helm/helm-utils';
 import { checkAllSettledPromise, stripTrailingSlash } from './utils/utils';
-import { ApiKeyHttpService } from 'http-services/api-key/api-key.http-services';
+import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 
 // Uses config name from ZLI_CONFIG_NAME environment variable (defaults to prod
 // if unset) This can be run against dev/stage/prod when running system tests

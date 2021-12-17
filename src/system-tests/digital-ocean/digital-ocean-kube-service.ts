@@ -2,17 +2,14 @@ import { Retrier } from '@jsier/retrier';
 import { DigitalOcean } from 'digitalocean-js';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { KubeService } from '../../services/v1/kube/kube.service';
 import { KubernetesCluster, KubernetesWorkerNodePool } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
 import { ClusterTargetStatusPollError, CreateNewKubeClusterParameters, RegisteredDigitalOceanKubernetesCluster } from './digital-ocean-kube.service.types';
-import { ClusterSummary, KubeClusterStatus } from '../../services/v1/kube/kube.types';
 import { checkAllSettledPromise } from '../tests/utils/utils';
 import { PolicyService } from '../../services/v1/policy/policy.service';
-import { EnvironmentHttpService } from 'http-services/environment/environment.http-services';
-import { KubeHttpService } from 'http-services/targets/kube/kube.http-services';
-import { KubeClusterSummary } from 'http/v2/target/kube/types/kube-cluster-summary.types';
-import { AgentStatus } from 'http/v2/target/kube/types/agent-status.types';
-
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
+import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 export class DigitalOceanKubeService {
     private doClient: DigitalOcean;
     private kubeHttpService: KubeHttpService;

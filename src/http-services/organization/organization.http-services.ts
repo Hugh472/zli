@@ -1,10 +1,10 @@
-import { IdentityProvider } from 'auth-service/auth.types';
-import { IdentityProviderGroupsMetadataResponse } from 'http/v2/organization/responses/identity-provider-groups-metadata.responses';
-import { GroupSummary } from 'http/v2/organization/types/group-summary.types';
+import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
+import { IdentityProviderGroupsMetadataResponse } from '../../../webshell-common-ts/http/v2/organization/responses/identity-provider-groups-metadata.responses';
+import { GroupSummary } from '../../../webshell-common-ts/http/v2/organization/types/group-summary.types';
 import { Dictionary } from 'lodash';
-import { ConfigService } from 'services/config/config.service';
-import { HttpService } from 'services/http/http.service';
-import { Logger } from 'services/logger/logger.service';
+import { ConfigService } from '../../services/config/config.service';
+import { HttpService } from '../../services/http/http.service';
+import { Logger } from '../../services/logger/logger.service';
 
 const MicrosoftAdminScopes = ['User.Read.All', 'Group.Read.All'];
 

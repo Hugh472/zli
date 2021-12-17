@@ -3,7 +3,7 @@ import * as ListTargetsService from '../../../services/list-targets/list-targets
 import { getMockResultValue } from '../utils/jest-utils';
 import { TargetSummary } from '../../../services/common.types';
 import { callZli } from '../utils/zli-utils';
-import { TargetType } from 'http/v2/target/types/target.types';
+import { TargetType } from '../../../../webshell-common-ts/http/v2/target/types/target.types';
 
 export const listTargetsSuite = () => {
     describe('list targets suite', () => {

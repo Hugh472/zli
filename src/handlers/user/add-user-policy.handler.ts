@@ -3,7 +3,7 @@ import { PolicyType, Subject, SubjectType } from '../../services/v1/policy/polic
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { UserHttpService } from 'http-services/user/user.http-services';
+import { UserHttpService } from '../../http-services/user/user.http-services';
 
 export async function addUserToPolicyHandler(userEmail: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user

@@ -13,11 +13,11 @@ import { UserService } from '../../services/v1/user/user.service';
 import { UserSummary } from '../../services/v1/user/user.types';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
-import { ApiKeyHttpService } from 'http-services/api-key/api-key.http-services';
-import { OrganizationHttpService } from 'http-services/organization/organization.http-services';
-import { UserHttpService } from 'http-services/user/user.http-services';
-import { KubeClusterSummary } from 'http/v2/target/kube/types/kube-cluster-summary.types';
-import { EnvironmentSummary } from 'http/v2/environment/types/environment-summary.responses';
+import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
+import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
+import { UserHttpService } from '../../http-services/user/user.http-services';
+import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 
 export async function listPoliciesHandler(
     argv: yargs.Arguments<policyArgs>,

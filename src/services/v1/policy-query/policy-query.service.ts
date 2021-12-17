@@ -1,4 +1,4 @@
-import { TargetType } from 'http/v2/target/types/target.types';
+import { TargetType } from '../../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetUser } from '../../common.types';
 import { ConfigService } from '../../config/config.service';
 import { HttpService } from '../../http/http.service';

@@ -1,9 +1,9 @@
-import { CreateSpaceRequest } from 'http/v2/space/requests/create-space.requests';
-import { CreateSpaceResponse } from 'http/v2/space/responses/create-space.responses';
-import { SpaceSummary } from 'http/v2/space/types/space-summary.types';
-import { ConfigService } from 'services/config/config.service';
-import { HttpService } from 'services/http/http.service';
-import { Logger } from 'services/logger/logger.service';
+import { CreateSpaceRequest } from '../../../webshell-common-ts/http/v2/space/requests/create-space.requests';
+import { CreateSpaceResponse } from '../../../webshell-common-ts/http/v2/space/responses/create-space.responses';
+import { SpaceSummary } from '../../../webshell-common-ts/http/v2/space/types/space-summary.types';
+import { ConfigService } from '../../services/config/config.service';
+import { HttpService } from '../../services/http/http.service';
+import { Logger } from '../../services/logger/logger.service';
 
 export class SpaceHttpService extends HttpService
 {

@@ -6,18 +6,16 @@ import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.typ
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { ApiKeyDetails } from '../services/v1/api-key/api-key.types';
 import { ParsedTargetString, TargetStatus, TargetSummary } from '../services/common.types';
-import { ConnectionDetails } from '../services/v1/connection/connection.types';
 import { DynamicAccessConfigSummary } from '../services/v1/dynamic-access-config/dynamic-access-config.types';
-import { EnvironmentDetails } from '../services/v1/environment/environment.types';
 import { GroupSummary } from '../services/v1/groups/groups.types';
 import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
 import { KubePolicySummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext } from '../services/v1/policy/policy.types';
 import { SsmTargetSummary } from '../services/v1/ssm-target/ssm-target.types';
 import { UserSummary } from '../services/v1/user/user.types';
-import { TargetType } from 'http/v2/target/types/target.types';
-import { EnvironmentSummary } from 'http/v2/environment/types/environment-summary.responses';
-import { ConnectionSummary } from 'http/v2/connection/types/connection-summary.types';
+import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 
 
 // case insensitive substring search, 'find targetString in searchString'

@@ -10,8 +10,8 @@ import { CreateNewDropletParameters, DigitalOceanSSMTarget, DigitalOceanSsmTarge
 import { getEnvironmentFromName } from '../../utils/utils';
 import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';
-import { EnvironmentHttpService } from 'http-services/environment/environment.http-services';
-import { SsmTargetHttpService } from 'http-services/targets/ssm/ssm-target.http-services';
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;

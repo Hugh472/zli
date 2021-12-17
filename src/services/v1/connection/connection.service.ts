@@ -1,5 +1,5 @@
 // import { TargetType } from '../../common.types';
-import { TargetType } from 'http/v2/target/types/target.types';
+import { TargetType } from '../../../../webshell-common-ts/http/v2/target/types/target.types';
 import { ConfigService } from '../../config/config.service';
 import { HttpService } from '../../http/http.service';
 import { Logger } from '../../logger/logger.service';
