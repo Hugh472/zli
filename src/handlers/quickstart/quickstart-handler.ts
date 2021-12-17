@@ -3,7 +3,6 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { EnvironmentService } from '../../services/v1/environment/environment.service';
 import { PolicyService } from '../../services/v1/policy/policy.service';
 import { readFile } from '../../utils/utils';
 import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';

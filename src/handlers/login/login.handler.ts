@@ -4,9 +4,7 @@ import { OAuthService } from '../../services/oauth/oauth.service';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import qrcode from 'qrcode';
-import { MfaService } from '../../services/v1/mfa/mfa.service';
 import { MfaActionRequired } from '../../services/v1/mfa/mfa.types';
-import { UserService } from '../../services/v1/user/user.service';
 import yargs from 'yargs';
 import { loginArgs } from './login.command-builder';
 import { UserSummary } from '../../services/v1/user/user.types';

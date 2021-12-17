@@ -9,7 +9,6 @@ import { ParsedTargetString } from '../../services/common.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { VerbType } from '../../services/v1/policy-query/policy-query.types';
-import { SessionService } from '../../services/v1/session/session.service';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 
