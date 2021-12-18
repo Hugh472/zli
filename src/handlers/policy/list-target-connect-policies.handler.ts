@@ -1,12 +1,10 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { parsePolicyType } from '../../utils/utils';
 import _ from 'lodash';
 import { ApiKeyDetails } from '../../services/v1/api-key/api-key.types';
 import { TargetSummary } from '../../services/common.types';
 import { GroupSummary } from '../../services/v1/groups/groups.types';
-import { PolicyService } from '../../services/v1/policy/policy.service';
 import { UserSummary } from '../../services/v1/user/user.types';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
@@ -15,8 +13,10 @@ import { OrganizationHttpService } from '../../http-services/organization/organi
 import { UserHttpService } from '../../http-services/user/user.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
+import { getTableOfTargetConnectPolicies } from '../../../src/utils/utils';
 
-export async function listPoliciesHandler(
+export async function listTargetConnectPoliciesHandler(
     argv: yargs.Arguments<policyArgs>,
     configService: ConfigService,
     logger: Logger,
@@ -25,18 +25,12 @@ export async function listPoliciesHandler(
     clusterTargets: Promise<KubeClusterSummary[]>,
     environments: Promise<EnvironmentSummary[]>
 ){
-    const policyService = new PolicyService(configService, logger);
+    const policyHttpService = new PolicyHttpService(configService, logger);
     const userHttpService = new UserHttpService(configService, logger);
     const apiKeyHttpService = new ApiKeyHttpService(configService, logger);
     const organizationHttpService = new OrganizationHttpService(configService, logger);
 
-    let policies = await policyService.ListAllPolicies();
-
-    // If provided type filter, apply it
-    if(!! argv.type) {
-        const policyType = parsePolicyType(argv.type);
-        policies = _.filter(policies,p => p.type == policyType);
-    }
+    let targetConnectPolicies = await policyHttpService.ListTargetConnectPolicies();
 
     // Fetch all the users, apiKeys, environments and targets
     // We will use that info to print the policies in a readable way
@@ -77,15 +71,15 @@ export async function listPoliciesHandler(
 
     if(!! argv.json) {
         // json output
-        console.log(JSON.stringify(policies));
+        console.log(JSON.stringify(targetConnectPolicies));
     } else {
-        if (policies.length === 0){
-            logger.info('There are no available policies');
+        if (targetConnectPolicies.length === 0){
+            logger.info('There are no available Target Connect policies');
             await cleanExit(0, logger);
         }
         // regular table output
-        // const tableString = getTableOfPolicies(policies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
-        // console.log(tableString);
+        const tableString = getTableOfTargetConnectPolicies(targetConnectPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
+        console.log(tableString);
     }
 
     await cleanExit(0, logger);
