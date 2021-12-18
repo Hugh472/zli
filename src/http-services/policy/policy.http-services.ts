@@ -1,3 +1,9 @@
+import { Environment } from '../../../webshell-common-ts/http/v2/policy/types/environment.types';
+import { Group } from '../../../webshell-common-ts/http/v2/policy/types/group.types';
+import { Subject } from '../../../webshell-common-ts/http/v2/policy/types/subject.types';
+import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
+import { Target } from '../../../webshell-common-ts/http/v2/policy/types/target.types';
+import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.types';
 import { KubeTunnelPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/requests/kube-tunnel-policy-create.requests';
 import { KubeTunnelPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/requests/kube-tunnel-policy-update.requests';
 import { KubeTunnelPolicySummary } from '../../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/types/kube-tunnel-policy-summary.types';
@@ -13,6 +19,9 @@ import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
+import { Cluster } from '../../../webshell-common-ts/http/v2/policy/types/cluster.types';
+import { ClusterUser } from '../../../webshell-common-ts/http/v2/policy/types/cluster-user.types';
+import { ClusterGroup } from '../../../webshell-common-ts/http/v2/policy/types/cluster-group.types';
 
 const KUBE: string = 'kubernetes-tunnel';
 const ORG: string = 'organization-controls';
@@ -107,59 +116,81 @@ export class PolicyHttpService extends HttpService
 
 
     public AddKubeTunnelPolicy(
-        policy: KubeTunnelPolicySummary
+        name: string,
+        subjects: Subject[],
+        groups: Group[],
+        description: string,
+        environments: Environment[],
+        clusters: Cluster[],
+        clusterUsers: ClusterUser[],
+        clusterGroups: ClusterGroup[]
     ): Promise<KubeTunnelPolicySummary> {
         const request: KubeTunnelPolicyCreateRequest = {
-            name: policy.name,
-            subjects: policy.subjects,
-            groups: policy.groups,
-            description: policy.description,
-            environments: policy.environments,
-            clusters: policy.clusters,
-            clusterUsers: policy.clusterUsers,
-            clusterGroups: policy.clusterGroups,
+            name: name,
+            subjects: subjects,
+            groups: groups,
+            description: description,
+            environments: environments,
+            clusters: clusters,
+            clusterUsers: clusterUsers,
+            clusterGroups: clusterGroups,
         };
         return this.Post(KUBE, request);
     }
 
     public AddOrganizationControlPolicy(
-        policy: OrganizationControlsPolicySummary
+        name: string,
+        subjects: Subject[],
+        groups: Group[],
+        description: string,
+        mfaEnabled: boolean
     ): Promise<OrganizationControlsPolicySummary> {
         const request: OrganizationControlsPolicyCreateRequest = {
-            name: policy.name,
-            subjects: policy.subjects,
-            groups: policy.groups,
-            description: policy.description,
-            mfaEnabled: policy.mfaEnabled
+            name: name,
+            subjects: subjects,
+            groups: groups,
+            description: description,
+            mfaEnabled: mfaEnabled
         };
         return this.Post(ORG, request);
     }
 
     public AddSessionRecordingPolicy(
-        policy: SessionRecordingPolicySummary
+        name: string,
+        subjects: Subject[],
+        groups: Group[],
+        description: string,
+        recordInput: boolean
     ): Promise<SessionRecordingPolicySummary> {
         const request: SessionRecordingPolicyCreateRequest = {
-            name: policy.name,
-            subjects: policy.subjects,
-            groups: policy.groups,
-            description: policy.description,
-            recordInput: policy.recordInput
+            name: name,
+            subjects: subjects,
+            groups: groups,
+            description: description,
+            recordInput: recordInput
         };
-        return this.Patch(`${SESSION}/${policy.id}`, request);
+        return this.Post(SESSION, request);
     }
 
     public AddTargetConnectPolicy(
-        policy: TargetConnectPolicySummary
+        name: string,
+        subjects: Subject[],
+        groups: Group[],
+        description: string,
+        environments: Environment[],
+        targets: Target[],
+        targetUsers: TargetUser[],
+        verbs: Verb[]
     ): Promise<TargetConnectPolicySummary> {
         const request: TargetConnectPolicyCreateRequest = {
-            name: policy.name,
-            subjects: policy.subjects,
-            groups: policy.groups,
-            description: policy.description,
-            environments: policy.environments,
-            targets: policy.targets,
-            targetUsers: policy.targetUsers,
-            verbs: policy.verbs
+            name: name,
+            subjects: subjects,
+            groups: groups,
+            description: description,
+            environments: environments,
+            targets: targets,
+            targetUsers: targetUsers,
+            verbs: verbs
         };
         return this.Post(TARGET, request);
     }

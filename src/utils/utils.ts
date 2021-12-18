@@ -12,10 +12,10 @@ import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
 import { KubePolicySummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext } from '../services/v1/policy/policy.types';
 import { SsmTargetSummary } from '../services/v1/ssm-target/ssm-target.types';
-import { UserSummary } from '../services/v1/user/user.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
+import { UserSummary } from '../../webshell-common-ts/http/v2/user/types/user-summary.types';
 
 
 // case insensitive substring search, 'find targetString in searchString'
