@@ -3,8 +3,8 @@ import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfKubeStatus } from '../../../src/utils/utils';
-import { killPortProcess } from '../../../src/services/kube/kube.service';
-import { StatusResponse } from '../../../src/services/kube/kube.types';
+import { killPortProcess } from '../../../src/services/v1/kube/kube.service';
+import { StatusResponse } from '../../../src/services/v1/kube/kube.types';
 
 export async function kubeStatusHandler(
     configService: ConfigService,
