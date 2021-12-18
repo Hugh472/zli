@@ -5,15 +5,15 @@ import { Logger } from '../../services/logger/logger.service';
 import { KubernetesCluster, KubernetesWorkerNodePool } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
 import { ClusterTargetStatusPollError, CreateNewKubeClusterParameters, RegisteredDigitalOceanKubernetesCluster } from './digital-ocean-kube.service.types';
 import { checkAllSettledPromise } from '../tests/utils/utils';
-import { PolicyService } from '../../services/v1/policy/policy.service';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
 import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
+import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
 export class DigitalOceanKubeService {
     private doClient: DigitalOcean;
     private kubeHttpService: KubeHttpService;
-    private policyService: PolicyService;
+    private policyHttpService: PolicyHttpService;
     private envHttpService: EnvironmentHttpService;
 
     constructor(
@@ -23,7 +23,7 @@ export class DigitalOceanKubeService {
     ) {
         this.doClient = new DigitalOcean(apiToken);
         this.kubeHttpService = new KubeHttpService(this.configService, this.logger);
-        this.policyService = new PolicyService(this.configService, this.logger);
+        this.policyHttpService = new PolicyHttpService(this.configService, this.logger);
         this.envHttpService = new EnvironmentHttpService(this.configService, this.logger);
     }
 
@@ -123,10 +123,10 @@ export class DigitalOceanKubeService {
     private async deleteClusterPolicy(registeredCluster: RegisteredDigitalOceanKubernetesCluster): Promise<void> {
         // Find the policy that Helm creates and delete it
         const policyName = this.getHelmClusterPolicyName(registeredCluster.doClusterSummary.name);
-        const policies = await this.policyService.ListAllPolicies();
-        const kubePolicy = policies.find(p => p.name === policyName);
-        if (kubePolicy) {
-            await this.policyService.DeletePolicy(kubePolicy.id);
+        const kubeTunnelPolicies = await this.policyHttpService.ListKubeTunnelPolicies();
+        const kubeTunnelPolicy = kubeTunnelPolicies.find(p => p.name === policyName);
+        if (kubeTunnelPolicy) {
+            await this.policyHttpService.DeleteKubeTunnelPolicy(kubeTunnelPolicy.id);
         } else {
             throw new Error(`Unexpected error! Expected to find at least one policy with name: ${policyName}`);
         }

@@ -3,7 +3,6 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { PolicyService } from '../../services/v1/policy/policy.service';
 import { readFile } from '../../utils/utils';
 import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
@@ -21,6 +20,7 @@ import ora from 'ora';
 import { login } from '../login/login.handler';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
 
 const welcomeMessage = `Welcome to BastionZero and the journey to zero trust access via our multi root zero trust access protocol (MrZAP). We're excited to have you!\n
 Our quickstart installer is a fast and easy method for you to try BastionZero using your existing SSH configuration.
@@ -138,7 +138,7 @@ export async function quickstartHandler(
 ) {
     await validateQuickstartArgs(argv);
 
-    const policyService = new PolicyService(configService, logger);
+    const policyHttpService = new PolicyHttpService(configService, logger);
     const envHttpService = new EnvironmentHttpService(configService, logger);
     const consoleWithTranscript = new ConsoleWithTranscriptService(chalk.magenta);
 
@@ -154,7 +154,7 @@ export async function quickstartHandler(
         consoleWithTranscript.pushToTranscript(`${prompt.message} ${answer}`);
     };
 
-    const quickstartService = new QuickstartSsmService(logger, consoleWithTranscript, configService, policyService, envHttpService);
+    const quickstartService = new QuickstartSsmService(logger, consoleWithTranscript, configService, policyHttpService, envHttpService);
 
     // Clear console before we begin
     clearScreen();
