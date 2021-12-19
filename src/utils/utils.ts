@@ -10,7 +10,7 @@ import { DynamicAccessConfigSummary } from '../services/v1/dynamic-access-config
 import { GroupSummary } from '../services/v1/groups/groups.types';
 import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
-import { KubePolicySummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext } from '../services/v1/policy/policy.types';
+import { KubePolicySummary, PolicyType, SubjectType } from '../services/v1/policy/policy.types';
 import { SsmTargetSummary } from '../services/v1/ssm-target/ssm-target.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
@@ -478,13 +478,13 @@ export function getTableOfKubeTunnelPolicies(
             const environmentNames : string [] = [];
             p.environments.forEach(
                 env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
-            )
+            );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
         } else if (p.clusters) { // Alternatively if this policy gets applied straight on some clusters
             const clusterNames : string [] = [];
             p.clusters.forEach(
                 c => clusterNames.push(getTargetName(c.id, targetMap))
-            )
+            );
             formattedResource = 'Clusters: ' + clusterNames.join( ', \n');
         }
 
@@ -492,7 +492,7 @@ export function getTableOfKubeTunnelPolicies(
             const clusterUsersNames : string [] = [];
             p.clusterUsers.forEach(
                 cu => clusterUsersNames.push(cu.name)
-            )
+            );
             formattedTargetUsers = 'Cluster Users: ' + clusterUsersNames.join(', \n');
         }
 
@@ -500,7 +500,7 @@ export function getTableOfKubeTunnelPolicies(
             const clusterGroupsName: string[] = [];
             p.clusterGroups.forEach(
                 cg => clusterGroupsName.push(cg.name)
-            )
+            );
             formattedTargetGroup = 'Cluster Groups: ' + clusterGroupsName.join(', \n');
         }
 
@@ -562,19 +562,19 @@ export function getTableOfTargetConnectPolicies(
         // Translate the resource ids to human readable resources
         let formattedResource = '';
         let formattedTargetUsers = '';
-        let formattedTargetGroup = '';
+        const formattedTargetGroup = '';
 
         if (p.environments) {
             const environmentNames : string [] = [];
             p.environments.forEach(
                 env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
-            )
+            );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
         } else if (p.targets) { // Alternatively if this policy gets applied straight on some targets
             const targetNames : string [] = [];
             p.targets.forEach(
                 t => targetNames.push(getTargetName(t.id, targetMap))
-            )
+            );
             formattedResource = 'Targets: ' + targetNames.join( ', \n');
         }
 
@@ -582,7 +582,7 @@ export function getTableOfTargetConnectPolicies(
             const targetUsersNames : string [] = [];
             p.targetUsers.forEach(
                 tu => targetUsersNames.push(tu.userName)
-            )
+            );
             formattedTargetUsers = 'Unix Users: ' + targetUsersNames.join(', \n');
         }
 

@@ -1,5 +1,3 @@
-import { PolicyService } from '../../services/v1/policy/policy.service';
-import { PolicyType } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
@@ -50,7 +48,7 @@ export async function deleteGroupFromPolicyHandler(groupName: string, policyName
     if (kubePolicy)
         await policyHttpService.EditKubeTunnelPolicy(policy as KubeTunnelPolicySummary);
     else
-        await policyHttpService.EditTargetConnectPolicy(policy as TargetConnectPolicySummary)
+        await policyHttpService.EditTargetConnectPolicy(policy as TargetConnectPolicySummary);
 
     logger.info(`Deleted ${groupName} from ${policyName} policy!`);
     await cleanExit(0, logger);

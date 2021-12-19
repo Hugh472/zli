@@ -1,7 +1,5 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { cleanExit } from '../clean-exit.handler';
-import _ from 'lodash';
 import { ApiKeyDetails } from '../../services/v1/api-key/api-key.types';
 import { TargetSummary } from '../../services/common.types';
 import { GroupSummary } from '../../services/v1/groups/groups.types';
@@ -30,7 +28,7 @@ export async function listKubeTunnelPoliciesHandler(
     const apiKeyHttpService = new ApiKeyHttpService(configService, logger);
     const organizationHttpService = new OrganizationHttpService(configService, logger);
 
-    let kubeTunnelPolicies = await policyHttpService.ListKubeTunnelPolicies();
+    const kubeTunnelPolicies = await policyHttpService.ListKubeTunnelPolicies();
 
     // Fetch all the users, apiKeys, environments and targets
     // We will use that info to print the policies in a readable way

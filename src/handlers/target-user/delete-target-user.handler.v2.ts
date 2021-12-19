@@ -25,7 +25,7 @@ export async function deleteTargetUserHandler(targetUserName: string, policyName
             logger.error(`No target user ${targetUserName} exists for policy: ${policyName}`);
             await cleanExit(1, logger);
         }
-        
+
         // And finally update the policy
         kubePolicy.clusterUsers = kubePolicy.clusterUsers.filter(u => u.name !== targetUserName);
 
@@ -36,7 +36,7 @@ export async function deleteTargetUserHandler(targetUserName: string, policyName
             logger.error(`No target user ${targetUserName} exists for policy: ${policyName}`);
             await cleanExit(1, logger);
         }
-        
+
         // And finally update the policy
         targetPolicy.targetUsers = targetPolicy.targetUsers.filter(u => u.userName !== targetUserName);
 

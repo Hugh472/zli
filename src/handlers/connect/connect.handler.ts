@@ -7,7 +7,6 @@ import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-
 import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';

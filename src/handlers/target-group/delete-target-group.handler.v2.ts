@@ -22,7 +22,7 @@ export async function deleteTargetGroupHandler(targetGroupName: string, policyNa
         logger.error(`No group ${targetGroupName} exists for policy: ${policyName}`);
         await cleanExit(1, logger);
     }
-    
+
     // And finally update the policy
     kubePolicy.clusterGroups = kubePolicy.clusterGroups.filter(u => u.name !== targetGroupName);
 

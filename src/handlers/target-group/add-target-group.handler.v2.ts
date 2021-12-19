@@ -28,7 +28,7 @@ export async function addTargetGroupHandler(targetGroupName: string, policyName:
     const clusterGroupToAdd: ClusterGroup = {
         name: targetGroupName
     };
-    
+
     // And finally update the policy
     kubePolicy.clusterGroups.push(clusterGroupToAdd);
 

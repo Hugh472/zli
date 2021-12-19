@@ -47,7 +47,7 @@ export async function addUserToPolicyHandler(userEmail: string, policyName: stri
             id: userSummary.id,
             type: SubjectType.User
         };
-        
+
         // And finally update the policy
         kubePolicy.subjects.push(subjectToAdd);
 
@@ -64,7 +64,7 @@ export async function addUserToPolicyHandler(userEmail: string, policyName: stri
             id: userSummary.id,
             type: SubjectType.User
         };
-        
+
         // And finally update the policy
         targetPolicy.subjects.push(subjectToAdd);
 
