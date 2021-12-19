@@ -4,10 +4,8 @@ import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { readFile } from '../../utils/utils';
-import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';
-import { UserSummary } from '../../services/v1/user/user.types';
 import { version } from '../../../package.json';
 
 import prompts, { PromptObject } from 'prompts';
@@ -21,6 +19,8 @@ import { login } from '../login/login.handler';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
+import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
+import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 
 const welcomeMessage = `Welcome to BastionZero and the journey to zero trust access via our multi root zero trust access protocol (MrZAP). We're excited to have you!\n
 Our quickstart installer is a fast and easy method for you to try BastionZero using your existing SSH configuration.

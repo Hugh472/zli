@@ -12,7 +12,6 @@ import prompts, { PromptObject } from 'prompts';
 import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
 import { PolicyService } from '../v1/policy/policy.service';
 import { PolicyEnvironment, PolicySummary, PolicyTargetUser, PolicyType, Subject, SubjectType, TargetConnectContext } from '../v1/policy/policy.types';
-import { SsmTargetSummary } from '../v1/ssm-target/ssm-target.types';
 import { Retrier } from '@jsier/retrier';
 import chalk from 'chalk';
 import { ConsoleWithTranscriptService } from '../consoleWithTranscript/consoleWithTranscript.service';
@@ -26,6 +25,7 @@ import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/tar
 import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.types';
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
+import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 
 export class QuickstartSsmService {
     constructor(

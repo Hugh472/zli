@@ -30,26 +30,15 @@ import { listUsersHandler } from './handlers/user/list-users.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kube/generate-kubeconfig.handler';
-import { addTargetUserHandler } from './handlers/target-user/add-target-user.handler';
-import { deleteTargetUserHandler } from './handlers/target-user/delete-target-user.handler';
-import { addUserToPolicyHandler } from './handlers/user/add-user-policy.handler';
-import { deleteUserFromPolicyHandler } from './handlers/user/delete-user-policy.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect/disconnect.handler';
 import { kubeStatusHandler } from './handlers/tunnel/status.handler';
 import { bctlHandler } from './handlers/bctl.handler';
-import { listPoliciesHandler } from './handlers/policy/list-policies.handler';
-import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler';
 import { fetchGroupsHandler } from './handlers/group/fetch-groups.handler';
 import { generateBashHandler } from './handlers/generate-bash/generate-bash.handler';
 import { quickstartHandler } from './handlers/quickstart/quickstart-handler';
 import { describeClusterPolicyHandler } from './handlers/describe-cluster-policy/describe-cluster-policy.handler';
-import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy.handler';
-import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler';
-import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler';
 import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
-import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler';
-import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler';
 import { defaultTargetGroupHandler } from './handlers/default-target-group/default-target-group.handler';
 
 // 3rd Party Modules
@@ -78,6 +67,18 @@ import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/de
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { addUserToPolicyHandler } from './handlers/user/add-user-policy.handler.v2';
+import { deleteUserFromPolicyHandler } from './handlers/user/delete-user-policy.handler.v2';
+import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler.v2';
+import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy-handler.v2';
+import { addTargetUserHandler } from './handlers/target-user/add-target-user.handler.v2';
+import { deleteTargetUserHandler } from './handlers/target-user/delete-target-user.handler.v2';
+import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler.v2';
+import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler.v2';
+import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler.v2';
+import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler.v2';
+import { listKubeTunnelPoliciesHandler } from './handlers/policy/list-kube-tunnel-policies.handler';
+import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-connect-policies.handler';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -319,12 +320,14 @@ export class CliDriver
             )
             .command(
                 ['policy [type]'],
-                'List the available policies and their',
+                'List the available policies',
                 (yargs) => {
                     return policyCmdBuilder(yargs, this.policyTypeChoices);
                 },
                 async (argv) => {
-                    await listPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                    await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                    await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                    await cleanExit(0, this.logger);
                 }
             )
             .command(

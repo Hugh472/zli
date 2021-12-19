@@ -4,14 +4,14 @@ import { OAuthService } from '../../services/oauth/oauth.service';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import qrcode from 'qrcode';
-import { MfaActionRequired } from '../../services/v1/mfa/mfa.types';
 import yargs from 'yargs';
 import { loginArgs } from './login.command-builder';
-import { UserSummary } from '../../services/v1/user/user.types';
 import { UserRegisterResponse } from '../../services/v1/user/user.messages';
 import prompts, { PromptObject } from 'prompts';
 import { MfaHttpService } from '../../http-services/mfa/mfa.http-services';
 import { UserHttpService } from '../../http-services/user/user.http-services';
+import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
+import { MfaActionRequired } from '../../../webshell-common-ts/http/v2/mfa/types/mfa-action-required.types';
 
 export interface LoginResult {
     userSummary: UserSummary;

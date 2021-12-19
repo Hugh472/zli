@@ -6,27 +6,27 @@ import { OperatingSystem } from './auto-discovery-script.types';
 import { getAutodiscoveryScriptTargetNameScript } from '../../../../webshell-common-ts/autodiscovery-script/autodiscovery-script';
 import { TargetName } from '../../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
 import { AutoDiscoveryScriptHttpService } from '../../../http-services/auto-discovery-script/auto-discovery-script.http-services';
-export class AutoDiscoveryScriptService extends HttpService {
-    constructor(configService: ConfigService, logger: Logger) {
-        super(configService, 'api/v1/AutodiscoveryScript', logger);
-    }
+// export class AutoDiscoveryScriptService extends HttpService {
+//     constructor(configService: ConfigService, logger: Logger) {
+//         super(configService, 'api/v1/AutodiscoveryScript', logger);
+//     }
 
-    public getAutodiscoveryScript(
-        operatingSystem: string,
-        targetNameScript: string,
-        environmentId: string,
-        agentVersion: string
-    ): Promise<GetAutodiscoveryScriptResponse> {
-        const request: GetAutodiscoveryScriptRequest = {
-            apiUrl: `${this.configService.serviceUrl()}api/v1/`,
-            targetNameScript: targetNameScript,
-            envId: environmentId,
-            agentVersion: agentVersion
-        };
+//     public getAutodiscoveryScript(
+//         operatingSystem: string,
+//         targetNameScript: string,
+//         environmentId: string,
+//         agentVersion: string
+//     ): Promise<GetAutodiscoveryScriptResponse> {
+//         const request: GetAutodiscoveryScriptRequest = {
+//             apiUrl: `${this.configService.serviceUrl()}api/v1/`,
+//             targetNameScript: targetNameScript,
+//             envId: environmentId,
+//             agentVersion: agentVersion
+//         };
 
-        return this.Post(`${operatingSystem}`, request);
-    }
-}
+//         return this.Post(`${operatingSystem}`, request);
+//     }
+// }
 
 export async function getAutodiscoveryScript(
     logger: Logger,

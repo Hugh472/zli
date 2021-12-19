@@ -2,17 +2,17 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfGroups } from '../../utils/utils';
-import { GroupsService } from '../../services/v1/groups/groups.service';
 import yargs from 'yargs';
 import { groupArgs } from './group.command-builder';
+import { OrganizationHttpService } from '../../../src/http-services/organization/organization.http-services';
 
 export async function fetchGroupsHandler(
     argv: yargs.Arguments<groupArgs>,
     configService: ConfigService,
     logger: Logger,
 ){
-    const groupsService = new GroupsService(configService, logger);
-    const groups = await groupsService.FetchGroups();
+    const organizationHttpService = new OrganizationHttpService(configService, logger);
+    const groups = await organizationHttpService.FetchGroups();
     if(!! argv.json) {
         // json output
         console.log(JSON.stringify(groups));
