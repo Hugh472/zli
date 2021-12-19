@@ -2,7 +2,7 @@ import util from 'util';
 import fs from 'fs';
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
-import { getAutodiscoveryScript } from '../../services/v1/auto-discovery-script/auto-discovery-script.service';
+import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
 import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
 import { TargetName } from '../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
@@ -42,7 +42,7 @@ export async function generateBashHandler(
     const envs = await environments;
     const environment = await getEnvironmentFromName(argv.environment, envs, logger);
 
-    const script = await getAutodiscoveryScript(logger, configService, environment.id, scriptTargetNameOption, argv.os, argv.agentVersion);
+    const script = await getAutodiscoveryScript(logger, configService, environment.id, scriptTargetNameOption, argv.agentVersion);
 
     if (argv.outputFile) {
         await util.promisify(fs.writeFile)(argv.outputFile, script);
