@@ -1,7 +1,6 @@
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
-import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { getTableOfDescribeCluster } from '../../utils/utils';
 import { KubePolicySummary, KubernetesPolicyContext } from '../../services/v1/policy/policy.types';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';

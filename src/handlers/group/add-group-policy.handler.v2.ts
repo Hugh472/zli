@@ -1,6 +1,5 @@
 import { GroupSummary } from '../../services/v1/groups/groups.types';
-import { PolicyService } from '../../services/v1/policy/policy.service';
-import { PolicyType, Group, KubePolicySummary } from '../../services/v1/policy/policy.types';
+import { Group } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
@@ -58,7 +57,7 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
     if (kubePolicy)
         await policyHttpService.EditKubeTunnelPolicy(policy as KubeTunnelPolicySummary);
     else
-        await policyHttpService.EditTargetConnectPolicy(policy as TargetConnectPolicySummary)
+        await policyHttpService.EditTargetConnectPolicy(policy as TargetConnectPolicySummary);
 
     logger.info(`Added ${groupName} to ${policyName} policy!`);
     await cleanExit(0, logger);

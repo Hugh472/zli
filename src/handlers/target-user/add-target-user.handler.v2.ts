@@ -32,7 +32,7 @@ export async function addTargetUserHandler(targetUserName: string, policyName: s
         const clusterUserToAdd: ClusterUser = {
             name: targetUserName
         };
-        
+
         // And finally update the policy
         kubePolicy.clusterUsers.push(clusterUserToAdd);
 
@@ -48,7 +48,7 @@ export async function addTargetUserHandler(targetUserName: string, policyName: s
         const targetUserToAdd: TargetUser = {
             userName: targetUserName
         };
-        
+
         // And finally update the policy
         targetPolicy.targetUsers.push(targetUserToAdd);
         await policyHttpService.EditTargetConnectPolicy(targetPolicy);

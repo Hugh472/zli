@@ -1,7 +1,5 @@
 import { ConfigService } from '../../config/config.service';
-import { HttpService } from '../../http/http.service';
 import { Logger } from '../../logger/logger.service';
-import { GetAutodiscoveryScriptResponse, GetAutodiscoveryScriptRequest } from './auto-discovery-script.messages';
 import { OperatingSystem } from './auto-discovery-script.types';
 import { getAutodiscoveryScriptTargetNameScript } from '../../../../webshell-common-ts/autodiscovery-script/autodiscovery-script';
 import { TargetName } from '../../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';

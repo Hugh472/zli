@@ -5,7 +5,6 @@ import { SsmTunnelService } from '../../services/ssm-tunnel/ssm-tunnel.service';
 import { cleanExit } from '../clean-exit.handler';
 import { includes } from 'lodash';
 import { targetStringExample } from '../../utils/utils';
-import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { ParsedTargetString } from '../../services/common.types';
 import { EnvMap } from '../../cli-driver';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';

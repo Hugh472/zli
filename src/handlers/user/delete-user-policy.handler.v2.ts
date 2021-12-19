@@ -1,4 +1,3 @@
-import { PolicyType } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
@@ -41,7 +40,7 @@ export async function deleteUserFromPolicyHandler(userEmail: string, policyName:
             logger.error(`User ${userEmail} exists already for policy: ${policyName}`);
             await cleanExit(1, logger);
         }
-        
+
         // And finally update the policy
         kubePolicy.subjects = kubePolicy.subjects.filter(s => s.id !== userSummary.id);
 
@@ -52,7 +51,7 @@ export async function deleteUserFromPolicyHandler(userEmail: string, policyName:
             logger.error(`User ${userEmail} exists already for policy: ${policyName}`);
             await cleanExit(1, logger);
         }
-        
+
         // And finally update the policy
         targetPolicy.subjects = targetPolicy.subjects.filter(s => s.id !== userSummary.id);
 
