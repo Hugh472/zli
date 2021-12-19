@@ -8,9 +8,10 @@ import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
-import { VerbType } from '../../services/v1/policy-query/policy-query.types';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 
 
 export async function connectHandler(
@@ -25,8 +26,8 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    const policyQueryService = new PolicyQueryService(configService, logger);
-    const response = await policyQueryService.ListTargetOSUsers(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+    const response = await policyQueryHttpService.GetTargetPolicy(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
 
     if(! response.allowed)
     {

@@ -14,6 +14,7 @@ import got from 'got/dist/source';
 import { Retrier } from '@jsier/retrier';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 const { spawn } = require('child_process');
 
 
@@ -40,10 +41,10 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     }
 
     // Make our API client
-    const policyService = new PolicyQueryService(configService, logger);
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.CheckKubeProxy(targetUser, clusterTarget.id, targetGroups);
+    const response = await policyQueryHttpService.CheckKubeTunnel(targetUser, clusterTarget.id, targetGroups);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${targetCluster} as ${targetUser} in the group(s): ${targetGroups}`);
         await cleanExit(1, logger);

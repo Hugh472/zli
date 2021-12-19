@@ -75,12 +75,10 @@ export async function listKubeTunnelPoliciesHandler(
     } else {
         if (kubeTunnelPolicies.length === 0){
             logger.info('There are no available Kubernetes Tunnel policies');
-            await cleanExit(0, logger);
+        } else {
+            // regular table output
+            const tableString = getTableOfKubeTunnelPolicies(kubeTunnelPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
+            console.log(tableString);
         }
-        // regular table output
-        const tableString = getTableOfKubeTunnelPolicies(kubeTunnelPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
-        console.log(tableString);
     }
-
-    await cleanExit(0, logger);
 }

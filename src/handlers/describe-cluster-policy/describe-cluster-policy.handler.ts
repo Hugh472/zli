@@ -5,6 +5,7 @@ import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.
 import { getTableOfDescribeCluster } from '../../utils/utils';
 import { KubePolicySummary, KubernetesPolicyContext } from '../../services/v1/policy/policy.types';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 
 
 export async function describeClusterPolicyHandler(
@@ -28,8 +29,8 @@ export async function describeClusterPolicyHandler(
     }
 
     // Now make a query to see all policies associated with this cluster
-    const policyService = new PolicyQueryService(configService, logger);
-    const clusterPolicyInfo = await policyService.GetAllPoliciesForClusterId(clusterSummary.id);
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+    const clusterPolicyInfo = await policyQueryHttpService.GetKubePolicies(clusterSummary.id);
 
     if (clusterPolicyInfo.policies.length === 0){
         logger.info('There are no available policies for this cluster.');
