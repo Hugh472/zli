@@ -148,11 +148,11 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
     const header: string[] = ['Type', 'Name', 'Environment'];
     const columnWidths = [];
     if (!showDetail) {
-        columnWidths.push(9);
+        columnWidths.push(15);
         columnWidths.push(targetNameLength > 44 ? 44 : targetNameLength);
         columnWidths.push(envNameLength > 47 ? 47 : envNameLength);
     } else {
-        columnWidths.push(9);
+        columnWidths.push(15);
         columnWidths.push(targetNameLength > 32 ? 32 : targetNameLength);
         columnWidths.push(envNameLength > 31 ? 31 : envNameLength);
     }
