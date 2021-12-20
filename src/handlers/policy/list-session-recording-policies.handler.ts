@@ -1,15 +1,11 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { ApiKeyDetails } from '../../services/v1/api-key/api-key.types';
-import { TargetSummary } from '../../services/common.types';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 import { UserHttpService } from '../../http-services/user/user.http-services';
-import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
-import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
 import { getTableOfSessionRecordingPolicies } from '../../../src/utils/utils';
 import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';

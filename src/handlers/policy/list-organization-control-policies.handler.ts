@@ -1,16 +1,13 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { TargetSummary } from '../../services/common.types';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 import { UserHttpService } from '../../http-services/user/user.http-services';
-import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
-import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
-import { getTableOfOrganizationControlPolicies, getTableOfTargetConnectPolicies } from '../../../src/utils/utils';
+import { getTableOfOrganizationControlPolicies } from '../../../src/utils/utils';
 import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
 import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
 import { GroupSummary } from '../../../webshell-common-ts/http/v2/organization/types/group-summary.types';

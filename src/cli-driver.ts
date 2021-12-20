@@ -334,24 +334,24 @@ export class CliDriver
                         policyType = parsePolicyType(argv.type);
                     }
                     switch (policyType) {
-                        case PolicyType.TargetConnect:
-                            await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);                            
-                            break;
-                        case PolicyType.KubernetesTunnel:
-                            await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
-                            break;
-                        case PolicyType.SessionRecording:
-                            await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
-                            break;
-                        case PolicyType.OrganizationControls:
-                            await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
-                            break;
-                        default:
-                            await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);                            
-                            await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
-                            await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
-                            await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
-                            break;
+                    case PolicyType.TargetConnect:
+                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                        break;
+                    case PolicyType.KubernetesTunnel:
+                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                        break;
+                    case PolicyType.SessionRecording:
+                        await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                        break;
+                    case PolicyType.OrganizationControls:
+                        await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
+                        break;
+                    default:
+                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                        await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                        await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
+                        break;
                     }
                     await cleanExit(0, this.logger);
                 }
