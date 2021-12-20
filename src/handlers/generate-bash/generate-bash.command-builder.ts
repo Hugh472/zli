@@ -1,4 +1,4 @@
-import yargs, { Arguments } from 'yargs';
+import yargs from 'yargs';
 
 const targetNameSchemes = ['do', 'aws', 'time', 'hostname'] as const;
 export type TargetNameScheme = typeof targetNameSchemes[number];
