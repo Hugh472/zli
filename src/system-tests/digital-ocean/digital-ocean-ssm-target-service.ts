@@ -1,6 +1,6 @@
 import { Retrier } from '@jsier/retrier';
 import { DigitalOcean, Droplet } from 'digitalocean-js';
-import { getAutodiscoveryScript } from '../../services/v1/auto-discovery-script/auto-discovery-script.service';
+import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
 import { TargetStatus } from '../../services/common.types';
 import { ConfigService } from '../../services/config/config.service';
 import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
@@ -11,6 +11,7 @@ import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
 import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
+import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;
@@ -42,7 +43,7 @@ export class DigitalOceanSSMTargetService {
         }
 
         // Create the droplet
-        const autoDiscoveryScript = await getAutodiscoveryScript(this.logger, this.configService, envId, { scheme: 'manual', name: parameters.targetName }, 'universal', 'latest');
+        const autoDiscoveryScript = await getAutodiscoveryScript(this.logger, this.configService, envId, ScriptTargetNameOption.DigitalOceanMetadata, 'latest');
         let droplet = await this.createNewDroplet({ ...parameters.dropletParameters, userDataScript: autoDiscoveryScript });
 
         // Poll until DigitalOcean says the droplet is online / active
