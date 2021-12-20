@@ -1,5 +1,4 @@
 import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, QuickstartSSMTarget, RegistrableSSHHost } from './quickstart-ssm.service.types';
-import { getAutodiscoveryScript } from '../v1/auto-discovery-script/auto-discovery-script.service';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 import { TargetStatus } from '../common.types';
@@ -25,6 +24,8 @@ import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.type
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
 import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
+import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
+import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
 
 export class QuickstartSsmService {
     constructor(
@@ -188,7 +189,7 @@ export class QuickstartSsmService {
             //
             // The registered target's name will match the hostname alias parsed
             // from the SSH config file
-            const script = await getAutodiscoveryScript(this.logger, this.configService, registrableSSHHost.envId, { scheme: 'manual', name: hostName }, 'universal', 'latest');
+            const script = await getAutodiscoveryScript(this.logger, this.configService, registrableSSHHost.envId, ScriptTargetNameOption.BashHostName, 'latest');
 
             // Run script on target
             const execAutodiscoveryScriptCmd = `bash << 'endmsg'\n${script}\nendmsg`;
