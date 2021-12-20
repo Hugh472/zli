@@ -1,6 +1,7 @@
 import {
     disambiguateTarget,
     isGuid,
+    parsePolicyType,
     targetStringExample
 } from './utils/utils';
 import { ConfigService } from './services/config/config.service';
@@ -79,6 +80,8 @@ import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-
 import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler.v2';
 import { listKubeTunnelPoliciesHandler } from './handlers/policy/list-kube-tunnel-policies.handler';
 import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-connect-policies.handler';
+import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
+import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-control-policies.handler';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -325,8 +328,31 @@ export class CliDriver
                     return policyCmdBuilder(yargs, this.policyTypeChoices);
                 },
                 async (argv) => {
-                    await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
-                    await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                    // If provided type filter, apply it
+                    let policyType: PolicyType = undefined;
+                    if(!! argv.type) {
+                        policyType = parsePolicyType(argv.type);
+                    }
+                    switch (policyType) {
+                        case PolicyType.TargetConnect:
+                            await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);                            
+                            break;
+                        case PolicyType.KubernetesTunnel:
+                            await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                            break;
+                        case PolicyType.SessionRecording:
+                            await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                            break;
+                        case PolicyType.OrganizationControls:
+                            await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
+                            break;
+                        default:
+                            await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);                            
+                            await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                            await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                            await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
+                            break;
+                    }
                     await cleanExit(0, this.logger);
                 }
             )

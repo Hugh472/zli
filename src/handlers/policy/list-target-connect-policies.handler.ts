@@ -1,10 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { ApiKeyDetails } from '../../services/v1/api-key/api-key.types';
 import { TargetSummary } from '../../services/common.types';
-import { GroupSummary } from '../../services/v1/groups/groups.types';
-import { UserSummary } from '../../services/v1/user/user.types';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
@@ -14,6 +11,9 @@ import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/k
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
 import { getTableOfTargetConnectPolicies } from '../../../src/utils/utils';
+import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
+import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
+import { GroupSummary } from '../../../webshell-common-ts/http/v2/organization/types/group-summary.types';
 
 export async function listTargetConnectPoliciesHandler(
     argv: yargs.Arguments<policyArgs>,
@@ -40,7 +40,7 @@ export async function listTargetConnectPoliciesHandler(
     });
 
     const apiKeys = await apiKeyHttpService.ListAllApiKeys();
-    const apiKeyMap : { [id: string]: ApiKeyDetails } = {};
+    const apiKeyMap : { [id: string]: ApiKeySummary } = {};
     apiKeys.forEach(apiKeyDetails => {
         apiKeyMap[apiKeyDetails.id] = apiKeyDetails;
     });
@@ -80,6 +80,4 @@ export async function listTargetConnectPoliciesHandler(
         const tableString = getTableOfTargetConnectPolicies(targetConnectPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
         console.log(tableString);
     }
-
-    await cleanExit(0, logger);
 }
