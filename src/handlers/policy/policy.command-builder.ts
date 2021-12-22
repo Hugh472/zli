@@ -1,14 +1,16 @@
 import yargs from 'yargs';
 
-export type policyArgs = {type: string} & {json: boolean}
+const policyTypes = ['targetconnect', 'organizationcontrols', 'sessionrecording', 'kubernetestunnel'] as const;
+export type PolicyType = typeof policyTypes[number];
 
-export function policyCmdBuilder (yargs : yargs.Argv<{}>, policyTypeChoices : string []) : yargs.Argv<policyArgs> {
+export type policyArgs = {type: PolicyType} & {json: boolean}
+
+export function policyCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<policyArgs> {
     return yargs
         .option(
             'type',
             {
-                type: 'string',
-                choices: policyTypeChoices,
+                choices: policyTypes,
                 alias: 't',
                 demandOption: false
             }

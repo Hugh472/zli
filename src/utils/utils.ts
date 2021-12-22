@@ -15,7 +15,6 @@ import { KubeTunnelPolicySummary } from '../../webshell-common-ts/http/v2/policy
 import { TargetConnectPolicySummary } from '../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
 import { OrganizationControlsPolicySummary } from '../../webshell-common-ts/http/v2/policy/organization-controls/types/organization-controls-policy-summary.types';
 import { SessionRecordingPolicySummary } from '../../webshell-common-ts/http/v2/policy/session-recording/types/session-recording-policy-summary.types';
-import { PolicyType } from '../../webshell-common-ts/http/v2/policy/types/policy-type.types';
 import { SubjectType } from '../../webshell-common-ts/http/v2/common.types/subject.types';
 import { GroupSummary } from '../../webshell-common-ts/http/v2/organization/types/group-summary.types';
 import { SsmTargetSummary } from '../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
@@ -39,27 +38,6 @@ export function parseTargetType(connectionType: string) : TargetType
         return undefined;
 
     return <TargetType> connectionType.toUpperCase();
-}
-
-export function parsePolicyType(policyType: string) : PolicyType
-{
-    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetestunnel)$/i; // case insensitive check for policyType
-
-    if(! policyTypePattern.test(policyType))
-        return undefined;
-
-    switch (policyType.toLowerCase()) {
-    case PolicyType.KubernetesTunnel.toLowerCase():
-        return PolicyType.KubernetesTunnel;
-    case PolicyType.OrganizationControls.toLowerCase():
-        return PolicyType.OrganizationControls;
-    case PolicyType.SessionRecording.toLowerCase():
-        return PolicyType.SessionRecording;
-    case PolicyType.TargetConnect.toLowerCase():
-        return PolicyType.TargetConnect;
-    default:
-        return undefined;
-    }
 }
 
 export function parseIdpType(idp: IdentityProvider) : IdentityProvider

@@ -1,7 +1,6 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { parsePolicyType } from '../../utils/utils';
 import _ from 'lodash';
 import { ApiKeyDetails } from '../../services/v1/api-key/api-key.types';
 import { TargetSummary } from '../../services/common.types';
@@ -15,6 +14,25 @@ import { OrganizationHttpService } from '../../http-services/organization/organi
 import { UserHttpService } from '../../http-services/user/user.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { PolicyType } from '../../services/v1/policy/policy.types';
+import { PolicyType as PolicyTypeFlag } from '../../handlers/policy/policy.command-builder' 
+
+function parsePolicyType(policyType: PolicyTypeFlag) : PolicyType
+{
+    switch (policyType) {
+        case 'kubernetestunnel':
+            return PolicyType.KubernetesTunnel;
+        case 'organizationcontrols':
+            return PolicyType.OrganizationControls;
+        case 'sessionrecording':
+            return PolicyType.SessionRecording;
+        case 'targetconnect':
+            return PolicyType.TargetConnect;
+        default:
+            const _exhaustiveCheck: never = policyType;
+            return _exhaustiveCheck;
+    }
+}
 
 export async function listPoliciesHandler(
     argv: yargs.Arguments<policyArgs>,
