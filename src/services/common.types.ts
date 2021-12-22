@@ -39,10 +39,3 @@ export interface ParsedTargetString
     envId: string;
     envName: string;
 }
-
-// export enum TargetType {
-//     SSM = 'SSM',
-//     SSH = 'SSH',
-//     DYNAMIC = 'DYNAMIC',
-//     CLUSTER = 'CLUSTER'
-// }

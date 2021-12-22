@@ -6,8 +6,8 @@ import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 import { UserHttpService } from '../../http-services/user/user.http-services';
-import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
-import { getTableOfOrganizationControlPolicies } from '../../../src/utils/utils';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
+import { getTableOfOrganizationControlPolicies } from '../../utils/utils';
 import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
 import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
 import { GroupSummary } from '../../../webshell-common-ts/http/v2/organization/types/group-summary.types';
@@ -55,6 +55,8 @@ export async function listOrganizationControlsPoliciesHandler(
         }
         // regular table output
         const tableString = getTableOfOrganizationControlPolicies(organizationControlPolicies, userMap, apiKeyMap, groupMap);
+        logger.warn('Organization Controls Policies:\n');
         console.log(tableString);
+        console.log('\n\n');
     }
 }

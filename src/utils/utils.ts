@@ -302,8 +302,8 @@ export function getTableOfDescribeCluster(kubernetesTunnelPolicies: KubeTunnelPo
 
     const table = new Table({ head: header, colWidths: columnWidths });
     kubernetesTunnelPolicies.forEach(p => {
-        const formattedTargetUsers = p.clusterUsers.join(', \n');
-        const formattedTargetGroups = p.clusterGroups.join( ', \n');
+        const formattedTargetUsers = p.clusterUsers.map(u => u.name).join(', \n');
+        const formattedTargetGroups = p.clusterGroups.map(g => g.name).join(', \n');
         const row = [p.name, formattedTargetUsers, formattedTargetGroups];
         table.push(row);
     });

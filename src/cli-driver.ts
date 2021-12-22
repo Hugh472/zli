@@ -27,7 +27,6 @@ import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/tunnel/tunnel.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
-import { listUsersHandler } from './handlers/user/list-users.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kube/generate-kubeconfig.handler';
@@ -41,6 +40,21 @@ import { quickstartHandler } from './handlers/quickstart/quickstart-handler';
 import { describeClusterPolicyHandler } from './handlers/describe-cluster-policy/describe-cluster-policy.handler';
 import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
 import { defaultTargetGroupHandler } from './handlers/default-target-group/default-target-group.handler';
+import { addUserToPolicyHandler } from './handlers/user/add-user-policy.handler.v2';
+import { deleteUserFromPolicyHandler } from './handlers/user/delete-user-policy.handler.v2';
+import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler.v2';
+import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy-handler.v2';
+import { addTargetUserHandler } from './handlers/target-user/add-target-user.handler.v2';
+import { deleteTargetUserHandler } from './handlers/target-user/delete-target-user.handler.v2';
+import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler.v2';
+import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler.v2';
+import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler.v2';
+import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler.v2';
+import { listKubeTunnelPoliciesHandler } from './handlers/policy/list-kube-tunnel-policies.handler';
+import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-connect-policies.handler';
+import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
+import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-controls-policies.handler';
+import { listUsersHandler } from './handlers/user/list-users.handler.v2';
 
 // 3rd Party Modules
 import { includes } from 'lodash';
@@ -68,20 +82,6 @@ import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/de
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
-import { addUserToPolicyHandler } from './handlers/user/add-user-policy.handler.v2';
-import { deleteUserFromPolicyHandler } from './handlers/user/delete-user-policy.handler.v2';
-import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler.v2';
-import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy-handler.v2';
-import { addTargetUserHandler } from './handlers/target-user/add-target-user.handler.v2';
-import { deleteTargetUserHandler } from './handlers/target-user/delete-target-user.handler.v2';
-import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler.v2';
-import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler.v2';
-import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler.v2';
-import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler.v2';
-import { listKubeTunnelPoliciesHandler } from './handlers/policy/list-kube-tunnel-policies.handler';
-import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-connect-policies.handler';
-import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
-import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-control-policies.handler';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -335,10 +335,10 @@ export class CliDriver
                     }
                     switch (policyType) {
                     case PolicyType.TargetConnect:
-                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
                         break;
                     case PolicyType.KubernetesTunnel:
-                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         break;
                     case PolicyType.SessionRecording:
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
@@ -347,8 +347,8 @@ export class CliDriver
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;
                     default:
-                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
-                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
+                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;

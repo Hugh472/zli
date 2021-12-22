@@ -1,6 +1,5 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { TargetSummary } from '../../services/common.types';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
@@ -18,8 +17,6 @@ export async function listKubeTunnelPoliciesHandler(
     argv: yargs.Arguments<policyArgs>,
     configService: ConfigService,
     logger: Logger,
-    ssmTargets: Promise<TargetSummary[]>,
-    dynamicAccessConfigs: Promise<TargetSummary[]>,
     clusterTargets: Promise<KubeClusterSummary[]>,
     environments: Promise<EnvironmentSummary[]>
 ){
@@ -57,12 +54,6 @@ export async function listKubeTunnelPoliciesHandler(
     });
 
     const targetNameMap : { [id: string]: string } = {};
-    (await ssmTargets).forEach(ssmTarget => {
-        targetNameMap[ssmTarget.id] = ssmTarget.name;
-    });
-    (await dynamicAccessConfigs).forEach(dacs => {
-        targetNameMap[dacs.id] = dacs.name;
-    });
     (await clusterTargets).forEach(clusterTarget => {
         targetNameMap[clusterTarget.id] = clusterTarget.clusterName;
     });
@@ -76,7 +67,9 @@ export async function listKubeTunnelPoliciesHandler(
         } else {
             // regular table output
             const tableString = getTableOfKubeTunnelPolicies(kubeTunnelPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
+            logger.warn('Kubernetes Tunnel Policies:\n');
             console.log(tableString);
+            console.log('\n\n');
         }
     }
 }
