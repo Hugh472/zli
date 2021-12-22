@@ -16,6 +16,12 @@ export async function listTargetUsersHandler(configService: ConfigService, logge
     const kubePolicy = kubePolicies.find(p => p.name == policyName);
     const targetPolicy = targetPolicies.find(p => p.name == policyName);
 
+    if (!kubePolicy && !targetPolicy) {
+        // Log an error
+        logger.error(`Unable to find policy with name: ${policyName}`);
+        await cleanExit(1, logger);
+    }
+
     const targetUsers : string[] = [];
     if (kubePolicy) {
         kubePolicy.clusterUsers.forEach(

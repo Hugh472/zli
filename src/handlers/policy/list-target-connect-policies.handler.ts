@@ -7,7 +7,6 @@ import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 import { UserHttpService } from '../../http-services/user/user.http-services';
-import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
 import { getTableOfTargetConnectPolicies } from '../../../src/utils/utils';
@@ -21,7 +20,6 @@ export async function listTargetConnectPoliciesHandler(
     logger: Logger,
     ssmTargets: Promise<TargetSummary[]>,
     dynamicAccessConfigs: Promise<TargetSummary[]>,
-    clusterTargets: Promise<KubeClusterSummary[]>,
     environments: Promise<EnvironmentSummary[]>
 ){
     const policyHttpService = new PolicyHttpService(configService, logger);
@@ -64,9 +62,6 @@ export async function listTargetConnectPoliciesHandler(
     (await dynamicAccessConfigs).forEach(dacs => {
         targetNameMap[dacs.id] = dacs.name;
     });
-    (await clusterTargets).forEach(clusterTarget => {
-        targetNameMap[clusterTarget.id] = clusterTarget.clusterName;
-    });
 
     if(!! argv.json) {
         // json output
@@ -78,6 +73,8 @@ export async function listTargetConnectPoliciesHandler(
         }
         // regular table output
         const tableString = getTableOfTargetConnectPolicies(targetConnectPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
+        logger.warn('Target Connect Policies:\n');
         console.log(tableString);
+        console.log('\n\n');
     }
 }

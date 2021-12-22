@@ -55,6 +55,8 @@ export async function listSessionRecordingPoliciesHandler(
         }
         // regular table output
         const tableString = getTableOfSessionRecordingPolicies(sessionRecordingPolicies, userMap, apiKeyMap, groupMap);
+        logger.warn('Session Recording Policies:\n');
         console.log(tableString);
+        console.log('\n\n');
     }
 }
