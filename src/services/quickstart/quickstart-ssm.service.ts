@@ -1,4 +1,4 @@
-import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, QuickstartSSMTarget, RegistrableSSHHost } from './quickstart-ssm.service.types';
+import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, RegistrableSSHHost, RegisteredSSHHost } from './quickstart-ssm.service.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 import { TargetStatus } from '../common.types';
@@ -102,10 +102,11 @@ export class QuickstartSsmService {
      * @param registrableHost The SSH host to register
      * @param spinner The global progress bar object that is displayed to the
      * user
-     * @returns Target summary of the newly registered host
+     * @returns Target summary of the newly registered host and the
+     * corresponding SSH host config block
      */
-    public async addSSHHostToBastionZero(registrableHost: RegistrableSSHHost, spinner: ora.Ora): Promise<SsmTargetSummary> {
-        return new Promise<SsmTargetSummary>(async (resolve, reject) => {
+    public async addSSHHostToBastionZero(registrableHost: RegistrableSSHHost, spinner: ora.Ora): Promise<RegisteredSSHHost> {
+        return new Promise<RegisteredSSHHost>(async (resolve, reject) => {
             try {
                 const ssmTargetId = await this.runAutodiscoveryOnSSHHost(registrableHost);
                 this.logger.debug(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
@@ -118,7 +119,7 @@ export class QuickstartSsmService {
                 this.consoleAndTranscript.pushToTranscript(successMsg);
                 spinner.prefixText = spinner.prefixText + successMsg + '\n';
 
-                resolve(ssmTarget);
+                resolve({ targetSummary: ssmTarget, sshHost: registrableHost.host.sshHost});
             } catch (error) {
                 // Add fail message to current prefixText of the spinner and push to transcript
                 const errMsg = chalk.red(`✖ Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
@@ -531,9 +532,9 @@ export class QuickstartSsmService {
     /**
      * Creates a policy for each unique SSH username in the parsed SSH hosts. If
      * the policy already exists, no new policy will be created.
-     * @param quickstartTargets A list of SSM targets that were successfully
+     * @param registeredSSHHosts A list of SSH hosts that were successfully
      * registered
-     * @returns A list of SSM targets which are most likely connectable. The
+     * @returns A list of targets which are most likely connectable. The
      * list will be smaller than the input list if the request to create the
      * policy fails.
      *
@@ -546,13 +547,13 @@ export class QuickstartSsmService {
      * - The created policy (in the case that no expected policy exists) is
      *   changed or removed before quickstart actually makes the connection.
      */
-    public async createPolicyForUniqueUsernames(quickstartTargets: QuickstartSSMTarget[]): Promise<QuickstartSSMTarget[]> {
-        const connectableTargets: QuickstartSSMTarget[] = [];
-        const usernameMap: Map<string, QuickstartSSMTarget[]> = new Map();
+    public async createPolicyForUniqueUsernames(registeredSSHHosts: RegisteredSSHHost[]): Promise<RegisteredSSHHost[]> {
+        const connectableTargets: RegisteredSSHHost[] = [];
+        const usernameMap: Map<string, RegisteredSSHHost[]> = new Map();
 
         // Build map of common SSH usernames among the targets that were
         // successfully added to BastionZero
-        for (const target of quickstartTargets) {
+        for (const target of registeredSSHHosts) {
             // Normalize to lowercase
             const usernameMatch = target.sshHost.username.toLowerCase();
             if (usernameMap.has(usernameMatch)) {
@@ -576,7 +577,7 @@ export class QuickstartSsmService {
 
                     // All targets with the same SSH username were registered in
                     // the same environment
-                    const envId = targets[0].ssmTarget.environmentId;
+                    const envId = targets[0].targetSummary.environmentId;
 
                     // Create new policy
                     await this.createQuickstartTargetConnectPolicy(username, envId, quickstartPolicyName);

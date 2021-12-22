@@ -13,15 +13,6 @@ export interface SSHConfigHostBlock {
 }
 
 /**
- * QuickstartSSMTarget represents an SSH host that has successfully been added
- * to BastionZero as an SSM target
- */
-export interface QuickstartSSMTarget {
-    ssmTarget: SsmTargetSummary;
-    sshHost: ValidSSHHost;
-}
-
-/**
  * ValidSSHHost encapsulates the information needed to start an SSH connection
  */
 export interface ValidSSHHost {
@@ -48,6 +39,15 @@ export interface ValidSSHHostAndConfig {
 export interface RegistrableSSHHost {
     host: ValidSSHHostAndConfig;
     envId: string;
+}
+
+/**
+ * RegisteredSSHHost represents an SSH host that was successfully added to
+ * BastionZero.
+ */
+export interface RegisteredSSHHost {
+    targetSummary: SsmTargetSummary;
+    sshHost: ValidSSHHost;
 }
 
 /**
