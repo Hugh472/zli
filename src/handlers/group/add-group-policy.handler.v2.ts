@@ -43,8 +43,8 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
     matchingPolicyToEdit.groups.push({id: groupSummary.idPGroupId, name: groupSummary.name});
 
     // And finally update the policy
-    if (matchingPolicyToEdit.type === 'KubernetesTunnel') 
-        await policyHttpService.EditKubeTunnelPolicy(matchingPolicyToEdit)
+    if (matchingPolicyToEdit.type === 'KubernetesTunnel')
+        await policyHttpService.EditKubeTunnelPolicy(matchingPolicyToEdit);
     else
         await policyHttpService.EditTargetConnectPolicy(matchingPolicyToEdit);
 

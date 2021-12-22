@@ -39,7 +39,7 @@ export async function deleteGroupFromPolicyHandler(groupName: string, policyName
 
     // And finally update the policy
     if (matchingPolicyToEdit.type === 'KubernetesTunnel')
-        await policyHttpService.EditKubeTunnelPolicy(matchingPolicyToEdit)
+        await policyHttpService.EditKubeTunnelPolicy(matchingPolicyToEdit);
     else
         await policyHttpService.EditTargetConnectPolicy(matchingPolicyToEdit);
 

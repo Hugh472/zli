@@ -15,22 +15,22 @@ import { UserHttpService } from '../../http-services/user/user.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { PolicyType } from '../../services/v1/policy/policy.types';
-import { PolicyType as PolicyTypeFlag } from '../../handlers/policy/policy.command-builder' 
+import { PolicyType as PolicyTypeFlag } from '../../handlers/policy/policy.command-builder';
 
 function parsePolicyType(policyType: PolicyTypeFlag) : PolicyType
 {
     switch (policyType) {
-        case 'kubernetestunnel':
-            return PolicyType.KubernetesTunnel;
-        case 'organizationcontrols':
-            return PolicyType.OrganizationControls;
-        case 'sessionrecording':
-            return PolicyType.SessionRecording;
-        case 'targetconnect':
-            return PolicyType.TargetConnect;
-        default:
-            const _exhaustiveCheck: never = policyType;
-            return _exhaustiveCheck;
+    case 'kubernetestunnel':
+        return PolicyType.KubernetesTunnel;
+    case 'organizationcontrols':
+        return PolicyType.OrganizationControls;
+    case 'sessionrecording':
+        return PolicyType.SessionRecording;
+    case 'targetconnect':
+        return PolicyType.TargetConnect;
+    default:
+        const _exhaustiveCheck: never = policyType;
+        return _exhaustiveCheck;
     }
 }
 

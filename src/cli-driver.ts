@@ -62,7 +62,7 @@ import yargs from 'yargs';
 import { loginCmdBuilder } from './handlers/login/login.command-builder';
 import { connectCmdBuilder } from './handlers/connect/connect.command-builder';
 import { tunnelCmdBuilder } from './handlers/tunnel/tunnel.command-builder';
-import { policyCmdBuilder, PolicyType } from './handlers/policy/policy.command-builder';
+import { policyCmdBuilder } from './handlers/policy/policy.command-builder';
 import { describeClusterPolicyCmdBuilder } from './handlers/describe-cluster-policy/describe-cluster-policy.command-builder';
 import { disconnectCmdBuilder } from './handlers/disconnect/disconnect.command-builder';
 import { attachCmdBuilder } from './handlers/attach/attach.command-builder';
@@ -332,22 +332,22 @@ export class CliDriver
                     } else {
                         // If provided type filter, apply it
                         switch (argv.type) {
-                            case 'targetconnect':
-                                await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
-                                break;
-                            case 'kubernetestunnel':
-                                await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
-                                break;
-                                break;
-                            case 'sessionrecording':
-                                await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
-                                break;
-                            case 'organizationcontrols':
-                                await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
-                                break;
-                            default:
-                                const _exhaustiveCheck: never = argv.type;
-                                return _exhaustiveCheck;
+                        case 'targetconnect':
+                            await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
+                            break;
+                        case 'kubernetestunnel':
+                            await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
+                            break;
+                            break;
+                        case 'sessionrecording':
+                            await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                            break;
+                        case 'organizationcontrols':
+                            await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
+                            break;
+                        default:
+                            const _exhaustiveCheck: never = argv.type;
+                            return _exhaustiveCheck;
                         }
                     }
                     await cleanExit(0, this.logger);
