@@ -189,7 +189,7 @@ function pollDaemonReady(daemonPort: number) : Promise<void> {
     });
 
     return retrier.resolve(async () => {
-        const isDaemonReadyResp = await got.get(`https://localhost:${daemonPort}/bzero-is-ready`, { throwHttpErrors: false, https: { rejectUnauthorized: false } });
+        const isDaemonReadyResp = await got.get(`https://localhost:${daemonPort}/bastionzero-ready`, { throwHttpErrors: false, https: { rejectUnauthorized: false } });
 
         if (isDaemonReadyResp.statusCode === 200) {
             return;
