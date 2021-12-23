@@ -3,8 +3,6 @@ import yargs from 'yargs';
 const targetNameSchemes = ['do', 'aws', 'time', 'hostname'] as const;
 export type TargetNameScheme = typeof targetNameSchemes[number];
 
-const operatingSystems = ['centos', 'ubuntu', 'universal'] as const;
-
 export type generateBashArgs = { environment: string } &
 { targetNameScheme: TargetNameScheme } &
 { agentVersion: string } &
