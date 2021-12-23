@@ -187,8 +187,7 @@ export class QuickstartSsmService {
 
             // Get autodiscovery script
             //
-            // The registered target's name will match the hostname alias parsed
-            // from the SSH config file
+            // The registered target's name will match the Bash hostname of the target machine
             const script = await getAutodiscoveryScript(this.logger, this.configService, registrableSSHHost.envId, ScriptTargetNameOption.BashHostName, 'latest');
 
             // Run script on target

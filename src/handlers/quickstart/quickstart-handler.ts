@@ -342,8 +342,8 @@ export async function quickstartHandler(
     // New step so clear again
     clearScreen();
 
-    const ssmTargetsSuccessfullyAddedPretty = ssmTargetsSuccessfullyAdded.map(target => target.name).join(', ');
-    const successMessage = `Congratulations! You've secured access to your target(s): ${ssmTargetsSuccessfullyAddedPretty} with MrZAP using BastionZero.\n
+    const sshHostsSuccessfullyAddedPretty = ssmTargetsSuccessfullyAdded.map(target => target.name).join(', ');
+    const successMessage = `Congratulations! You've secured access to your SSH host(s): ${sshHostsSuccessfullyAddedPretty} with MrZAP using BastionZero.\n
 Log into ${configService.getBastionUrl()} to see your environments, policies, and detailed logs.`;
     consoleWithTranscript.log(successMessage);
 
