@@ -5,18 +5,51 @@ import { LoggerConfigService } from '../../services/logger/logger-config.service
 import yargs from 'yargs';
 import { dbConnectArgs } from './db-connect.command-builder';
 import { exit } from 'process';
+import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
+
 const { spawn } = require('child_process');
+const findPort = require('find-open-port');
 
 
 export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
-   
+    // Build the refresh command so it works in the case of the pkg'd app which
+    // is expecting a second argument set to internal main script
+    // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
+    // https://github.com/vercel/pkg/issues/897#issuecomment-679200552
+    const execPath = getAppExecPath();
+    const entryPoint = getAppEntrypoint();
+
+    // Open up our zli dbConfig
+    const dbConfig = configService.getDbConfig();
+
+    // Make sure we have set our local daemon port
+    if (dbConfig['localPort'] == null) {
+        logger.info('First time running db connect, setting local daemon port');
+        
+        // Generate and set a localport + localhost
+        const localPort = await findPort();
+        dbConfig['localPort'] = localPort;
+        dbConfig['localHost'] = 'localhost'
+
+        // Save these values so they don't need to be recreated
+        configService.setDbConfig(dbConfig);
+    }
+
+    const localPort = dbConfig['localPort'];
+
+    logger.info(`Started db daemon at ${dbConfig['localHost']}:${dbConfig['localPort']} for ${argv.target}`);
 
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
+        `-daemonPort=${localPort}`,
+        `-targetId=1234`,  // TODO: this needs to become a real targetId
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
+        `-configPath=${configService.configPath()}`,
         `-logPath="${loggerConfigService.daemonLogPath()}"`,
+        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
+        `-plugin="db"`
     ];
     let cwd = process.cwd();
 
@@ -26,7 +59,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, con
         // If we set a custom path, we will try to start the daemon from the source code
         cwd = process.env.ZLI_CUSTOM_DAEMON_PATH;
         finalDaemonPath = 'go';
-        args = ['run', 'main.go'].concat(args);
+        args = ['run', 'daemon.go'].concat(args);
     } else {
         exit(1);
     }
@@ -35,39 +68,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, con
         if (!argv.debug) {
            exit(1);
         } else {
-            // Start our daemon process, but stream our stdio to the user (pipe)
-            const daemonProcess = await spawn(finalDaemonPath, args,
-                {
-                    cwd: cwd,
-                    shell: true,
-                    detached: true,
-                    stdio: 'inherit'
-                }
-            );
-
-            process.on('SIGINT', () => {
-                // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
-                if (process.platform === 'linux') {
-                    spawn('pkill', ['-s', daemonProcess.pid], {
-                        cwd: process.cwd(),
-                        shell: true,
-                        detached: true,
-                        stdio: 'inherit'
-                    });
-                } else {
-                    spawn('pkill', ['-P', daemonProcess.pid], {
-                        cwd: process.cwd(),
-                        shell: true,
-                        detached: true,
-                        stdio: 'inherit'
-                    });
-                }
-            });
-
-            daemonProcess.on('exit', function () {
-                // Whenever the daemon exits, exit
-                process.exit();
-            });
+            await startDaemonInDebugMode(finalDaemonPath, cwd, args);
         }
     } catch (error) {
         logger.error(`Something went wrong starting the Db Daemon: ${error}`);

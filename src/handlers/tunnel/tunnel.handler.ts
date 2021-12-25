@@ -13,6 +13,7 @@ import { tunnelArgs } from './tunnel.command-builder';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
 import got from 'got/dist/source';
 import { Retrier } from '@jsier/retrier';
+import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
 const { spawn } = require('child_process');
 
 
@@ -61,7 +62,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
 
     // Build the refresh command so it works in the case of the pkg'd app which
     // is expecting a second argument set to internal main script
-    // This is a work-around for pkg recusrive binary issue see https://github.com/vercel/pkg/issues/897
+    // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
     // https://github.com/vercel/pkg/issues/897#issuecomment-679200552
     const execPath = getAppExecPath();
     const entryPoint = getAppEntrypoint();
@@ -71,25 +72,25 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
         `-sessionId=${configService.sessionId()}`,
         `-targetUser=${targetUser}`,
         `-targetGroups=${targetGroups}`,
-        `-targetClusterId=${clusterTarget.id}`,
+        `-targetId=${clusterTarget.id}`,
         `-daemonPort=${daemonPort}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-localhostToken="${kubeConfig['token']}"`,
-        `-environmentId="${clusterTarget.environmentId}"`,
         `-certPath="${kubeConfig['certPath']}"`,
         `-keyPath="${kubeConfig['keyPath']}"`,
         `-configPath=${configService.configPath()}`,
         `-logPath="${loggerConfigService.daemonLogPath()}"`,
-        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`
+        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
+        `-plugin="kube"`
     ];
     let cwd = process.cwd();
 
     // Copy over our executable to a temp file
     let finalDaemonPath = '';
-    if (process.env.ZLI_CUSTOM_BCTL_PATH) {
+    if (process.env.ZLI_CUSTOM_DAEMON_PATH) {
         // If we set a custom path, we will try to start the daemon from the source code
-        cwd = process.env.ZLI_CUSTOM_BCTL_PATH;
+        cwd = process.env.ZLI_CUSTOM_DAEMON_PATH;
         finalDaemonPath = 'go';
         args = ['run', 'daemon.go'].concat(args);
     } else {
@@ -126,39 +127,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
             logger.info(`Started kube daemon at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
             await cleanExit(0, logger);
         } else {
-            // Start our daemon process, but stream our stdio to the user (pipe)
-            const daemonProcess = await spawn(finalDaemonPath, args,
-                {
-                    cwd: cwd,
-                    shell: true,
-                    detached: true,
-                    stdio: 'inherit'
-                }
-            );
-
-            process.on('SIGINT', () => {
-                // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
-                if (process.platform === 'linux') {
-                    spawn('pkill', ['-s', daemonProcess.pid], {
-                        cwd: process.cwd(),
-                        shell: true,
-                        detached: true,
-                        stdio: 'inherit'
-                    });
-                } else {
-                    spawn('pkill', ['-P', daemonProcess.pid], {
-                        cwd: process.cwd(),
-                        shell: true,
-                        detached: true,
-                        stdio: 'inherit'
-                    });
-                }
-            });
-
-            daemonProcess.on('exit', function () {
-                // Whenever the daemon exits, exit
-                process.exit();
-            });
+            await startDaemonInDebugMode(finalDaemonPath, cwd, args);
         }
     } catch (error) {
         logger.error(`Something went wrong starting the Kube Daemon: ${error}`);
@@ -174,11 +143,6 @@ async function getClusterInfoFromName(clusterTargets: ClusterDetails[], clusterN
     }
     logger.error('Unable to find cluster!');
     await cleanExit(1, logger);
-}
-
-function isPkgProcess() {
-    const process1 = <any>process;
-    return process1.pkg;
 }
 
 function pollDaemonReady(daemonPort: number) : Promise<void> {
@@ -276,23 +240,5 @@ async function deleteIfExists(pathToFile: string) {
     if (fs.existsSync(pathToFile)) {
         // Delete the file
         fs.unlinkSync(pathToFile);
-    }
-}
-
-function getAppEntrypoint() {
-    const pkgProcess = isPkgProcess();
-
-    if(pkgProcess) {
-        return pkgProcess.entrypoint;
-    } else {
-        return `${process.cwd()}/src/index.ts`;
-    }
-}
-
-function getAppExecPath() {
-    if(isPkgProcess()) {
-        return process.execPath;
-    } else {
-        return 'npx ts-node';
     }
 }

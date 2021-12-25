@@ -7,6 +7,7 @@ import { Observable, Subject } from 'rxjs';
 import { TokenService } from '../token/token.service';
 import { UserSummary } from '../user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../kube/kube.service';
+import { DbConfig, getDefaultDbConfig } from '../db/db.service';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 
 
@@ -25,6 +26,7 @@ type BastionZeroConfigSchema = {
     sshKeyPath: string
     keySplitting: KeySplittingConfigSchema,
     kubeConfig: KubeConfig
+    dbConfig: DbConfig
 }
 
 export class ConfigService implements ConfigInterface {
@@ -67,7 +69,8 @@ export class ConfigService implements ConfigInterface {
                 whoami: undefined,
                 sshKeyPath: undefined,
                 keySplitting: getDefaultKeysplittingConfig(),
-                kubeConfig: getDefaultKubeConfig()
+                kubeConfig: getDefaultKubeConfig(),
+                dbConfig: getDefaultDbConfig()
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete
@@ -246,12 +249,20 @@ export class ConfigService implements ConfigInterface {
         return this.config.get('kubeConfig');
     }
 
+    public getDbConfig() {
+        return this.config.get('dbConfig');
+    }
+
     public getBastionUrl() {
         return this.config.get('serviceUrl');
     }
 
     public setKubeConfig(kubeConfig: KubeConfig) {
         this.config.set('kubeConfig', kubeConfig);
+    }
+
+    public setDbConfig(dbConfig: DbConfig) {
+        this.config.set('dbConfig', dbConfig);
     }
 
     private getAppName(configName: string) {
