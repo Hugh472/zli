@@ -146,6 +146,25 @@ users:
 async function flattenKubeConfig(config: string, logger: Logger) {
     // Helper function to flatten existing kubeConfig and new config
 
+    // Define our kubeConfigPath
+    // define our kube config dir (i.e. ~/.kube/config)
+    const kubeConfigDir = path.join(process.env.HOME, '/.kube/');
+
+    // Get the kube config path that the user is using, or use default
+    const kubeConfigPath = process.env.KUBECONFIG || path.join(kubeConfigDir, 'config');
+
+    // First ensure we have an existing config file
+    try {
+        if (!fs.existsSync(kubeConfigPath)) {
+            // Existing kubeConfig does not exist, just copy the config to the kubeConfigPath
+            fs.writeFileSync(kubeConfigPath, config);
+            return;
+        }
+    } catch(err) {
+        logger.error(`Error checking if existing KubeConfig file exists. Failed to check path: ${kubeConfigPath}`);
+        await cleanExit(1, logger);
+    }
+
     // Wrap this code into a promise so we can await it
     const flattenKubeConfigPromise = new Promise<void>(async (resolve, reject) => {
         // First lets create a temp file to write to
@@ -158,12 +177,6 @@ async function flattenKubeConfig(config: string, logger: Logger) {
 
             // Write out kube config to that file
             fs.writeFileSync(tempFilePath, config);
-
-            // define our kube config dir (i.e. ~/.kube/config)
-            const kubeConfigDir = path.join(process.env.HOME, '/.kube/');
-
-            // Get the kube config path that the user is using, or use default
-            const kubeConfigPath = process.env.KUBECONFIG || path.join(kubeConfigDir, 'config');
 
             // Create backup of kubeconfig
             const backupFilePath = path.join(kubeConfigDir, 'config.bzero.bak');
