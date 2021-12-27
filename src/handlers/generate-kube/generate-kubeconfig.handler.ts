@@ -187,7 +187,8 @@ async function flattenKubeConfig(config: string, logger: Logger) {
             // Ref: https://stackoverflow.com/questions/46184125/how-to-merge-kubectl-config-file-with-kube-config
             // Order here also matters, we want the current context to come from our config, not the existing config
             const execEnv = {
-                'KUBECONFIG': `${tempFilePath}:${backupFilePath}`
+                'KUBECONFIG': `${tempFilePath}:${backupFilePath}`,
+                'PATH': process.env.PATH // Incase the user installs kubectl not in `/usr/local/bin`
             };
 
             // Not attempt to merge the two
