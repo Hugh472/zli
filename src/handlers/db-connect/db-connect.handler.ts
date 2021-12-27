@@ -37,13 +37,13 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, con
 
     const localPort = dbConfig['localPort'];
 
-    logger.info(`Started db daemon at ${dbConfig['localHost']}:${dbConfig['localPort']} for ${argv.target}`);
+    logger.info(`Started db daemon at ${dbConfig['localHost']}:${dbConfig['localPort']} for ${argv.target}`);  // Not working no idea why
 
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
         `-daemonPort=${localPort}`,
-        `-targetId=1234`,  // TODO: this needs to become a real targetId
+        `-targetId=00000000-0000-0000-0000-000000000000`,  // TODO: this needs to become a real targetId
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,

@@ -1,12 +1,13 @@
 import yargs from 'yargs';
 
-export type dbConnectArgs = {target: string} 
+export type dbConnectArgs = {targetString: string} 
 
 export function dbConnectCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<dbConnectArgs>
 {
     return yargs
-        .positional('target', {
+        .positional('targetString', {
             type: 'string',
+            default: null,
         })
-        .example('$0 db-connect test', 'SSM connect example, uniquely named ssm target');
+        .example('$0 db-connect test', 'Db connect example, uniquely named db target');
 }
