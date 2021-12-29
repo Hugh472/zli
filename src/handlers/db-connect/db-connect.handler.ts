@@ -43,12 +43,14 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, con
     let args = [
         `-sessionId=${configService.sessionId()}`,
         `-daemonPort=${localPort}`,
-        `-targetId=00000000-0000-0000-0000-000000000000`,  // TODO: this needs to become a real targetId
+        `-targetId=c5b249a6-f134-45a6-a4b9-16ef8c30a828`,  // TODO: this needs to become a real targetId
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,
         `-logPath="${loggerConfigService.daemonLogPath()}"`,
         `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
+        `-targetPort=5432`,
+        `-targetHost=localhost`,
         `-plugin="db"`
     ];
     let cwd = process.cwd();
