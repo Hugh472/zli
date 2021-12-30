@@ -28,6 +28,7 @@ import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/tunnel/tunnel.handler';
 import { dbConnectHandler } from './handlers/db-connect/db-connect.handler';
+import { webConnectHandler } from './handlers/web-connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { listUsersHandler } from './handlers/user/list-users.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
@@ -64,6 +65,7 @@ import { loginCmdBuilder } from './handlers/login/login.command-builder';
 import { connectCmdBuilder } from './handlers/connect/connect.command-builder';
 import { tunnelCmdBuilder } from './handlers/tunnel/tunnel.command-builder';
 import { dbConnectCmdBuilder } from './handlers/db-connect/db-connect.command-builder';
+import { webConnectCmdBuilder } from './handlers/web-connect/web-connect.command-builder';
 import { policyCmdBuilder } from './handlers/policy/policy.command-builder';
 import { describeClusterPolicyCmdBuilder } from './handlers/describe-cluster-policy/describe-cluster-policy.command-builder';
 import { disconnectCmdBuilder } from './handlers/disconnect/disconnect.command-builder';
@@ -319,6 +321,16 @@ export class CliDriver
                 },
                 async (argv) => {
                     await dbConnectHandler(argv, this.configService, this.logger, this.loggerConfigService);
+                }
+            )
+            .command(
+                'web-connect [webConnectString]',
+                'Connect to a database',
+                (yargs) => {
+                    return webConnectCmdBuilder(yargs);
+                },
+                async (argv) => {
+                    await webConnectHandler(argv, this.configService, this.logger, this.loggerConfigService);
                 }
             )
             .command(

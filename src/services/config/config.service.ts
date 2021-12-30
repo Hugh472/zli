@@ -8,6 +8,7 @@ import { TokenService } from '../token/token.service';
 import { UserSummary } from '../user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../kube/kube.service';
 import { DbConfig, getDefaultDbConfig } from '../db/db.service';
+import { WebConfig, getDefaultWebConfig } from '../web/web.service';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 
 
@@ -26,7 +27,8 @@ type BastionZeroConfigSchema = {
     sshKeyPath: string
     keySplitting: KeySplittingConfigSchema,
     kubeConfig: KubeConfig
-    dbConfig: DbConfig
+    dbConfig: DbConfig,
+    webConfig: WebConfig
 }
 
 export class ConfigService implements ConfigInterface {
@@ -70,7 +72,8 @@ export class ConfigService implements ConfigInterface {
                 sshKeyPath: undefined,
                 keySplitting: getDefaultKeysplittingConfig(),
                 kubeConfig: getDefaultKubeConfig(),
-                dbConfig: getDefaultDbConfig()
+                dbConfig: getDefaultDbConfig(),
+                webConfig: getDefaultWebConfig()
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete
@@ -253,6 +256,10 @@ export class ConfigService implements ConfigInterface {
         return this.config.get('dbConfig');
     }
 
+    public getWebConfig() {
+        return this.config.get('webConfig');
+    }
+
     public getBastionUrl() {
         return this.config.get('serviceUrl');
     }
@@ -263,6 +270,10 @@ export class ConfigService implements ConfigInterface {
 
     public setDbConfig(dbConfig: DbConfig) {
         this.config.set('dbConfig', dbConfig);
+    }
+
+    public setWebConfig(webConfig: WebConfig) {
+        this.config.set('dbConfig', webConfig);
     }
 
     private getAppName(configName: string) {
