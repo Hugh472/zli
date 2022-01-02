@@ -3,7 +3,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import yargs from 'yargs';
-import { dbConnectArgs } from './web-connect.command-builder';
+import { webConnectArgs } from './web-connect.command-builder';
 import { exit } from 'process';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
 
@@ -11,7 +11,7 @@ const { spawn } = require('child_process');
 const findPort = require('find-open-port');
 
 
-export async function webConnectHandler(argv: yargs.Arguments<dbConnectArgs>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // Build the refresh command so it works in the case of the pkg'd app which
     // is expecting a second argument set to internal main script
     // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897

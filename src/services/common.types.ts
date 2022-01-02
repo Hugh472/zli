@@ -7,7 +7,11 @@ export enum TargetType {
     SSM = 'SSM',
     SSH = 'SSH',
     DYNAMIC = 'DYNAMIC',
-    CLUSTER = 'CLUSTER'
+    CLUSTER = 'CLUSTER',
+    BZERO_AGENT = 'BZERO',
+    WEB = 'WEB',
+    DB = 'DB'
+
 }
 
 export enum IdP {

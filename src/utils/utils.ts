@@ -141,15 +141,16 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
     const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16; // || 16 here means that when there are no targets default the length to 16
     const envNameLength = max(envs.map(e => e.name.length)) + 2 < 16 ? 16 : max(envs.map(e => e.name.length));
+    const targetTypeLength = max(targets.map(t => t.type.length)) + 2;
 
     const header: string[] = ['Type', 'Name', 'Environment'];
     const columnWidths = [];
     if (!showDetail) {
-        columnWidths.push(9);
+        columnWidths.push(targetTypeLength);
         columnWidths.push(targetNameLength > 44 ? 44 : targetNameLength);
         columnWidths.push(envNameLength > 47 ? 47 : envNameLength);
     } else {
-        columnWidths.push(9);
+        columnWidths.push(targetTypeLength);
         columnWidths.push(targetNameLength > 32 ? 32 : targetNameLength);
         columnWidths.push(envNameLength > 31 ? 31 : envNameLength);
     }
@@ -170,7 +171,12 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     const table = new Table({ head: header, colWidths: columnWidths });
 
     targets.forEach(target => {
-        const row = [target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name];
+        let env = target.environmentId;
+        if (env != 'N/A') {
+            env = envs.filter(e => e.id == target.environmentId).pop().name
+        }
+        
+        const row = [target.type, target.name, env];
 
         if(showGuid) {
             row.push(target.id);

@@ -2,7 +2,7 @@ import path from 'path';
 import utils from 'util';
 import fs from 'fs';
 import { killDaemon } from '../../services/kube/kube.service';
-import { ClusterDetails, KubeClusterStatus } from '../../services/kube/kube.types';
+import { ClusterDetails } from '../../services/kube/kube.types';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
@@ -14,13 +14,14 @@ import { waitUntilUsedOnHost } from 'tcp-port-used';
 import got from 'got/dist/source';
 import { Retrier } from '@jsier/retrier';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
+import { TargetStatus } from '../../services/common.types';
 const { spawn } = require('child_process');
 
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, targetCluster, logger);
-    if (clusterTarget.status != KubeClusterStatus.Online) {
+    if (clusterTarget.status != TargetStatus.Online) {
         logger.error('Target cluster is offline!');
         await cleanExit(1, logger);
     }

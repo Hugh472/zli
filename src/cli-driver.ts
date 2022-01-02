@@ -81,6 +81,8 @@ import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-build
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
+import { BzeroAgentSummary } from './services/bzero-agent/bzero-agent.types';
+import { DbTargetSummary, WebTargetSummary } from './services/virtual-target/virtual-target.types';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -107,6 +109,9 @@ export class CliDriver
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
     private clusterTargets: Promise<ClusterDetails[]>;
+    private bzeroAgentTargets: Promise<BzeroAgentSummary[]>;
+    private dbTargets: Promise<DbTargetSummary[]>;
+    private webTargets: Promise<WebTargetSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
 
     // use the following to shortcut middleware according to command
@@ -262,6 +267,9 @@ export class CliDriver
                 const fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
                 this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
                 this.clusterTargets = fetchDataResponse.clusterTargets;
+                this.bzeroAgentTargets = fetchDataResponse.bzeroAgentTargets;
+                this.dbTargets = fetchDataResponse.dbTargets;
+                this.webTargets = fetchDataResponse.webTargets;
                 this.ssmTargets = fetchDataResponse.ssmTargets;
                 this.envs = fetchDataResponse.envs;
             })

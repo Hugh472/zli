@@ -1,13 +1,13 @@
 import yargs from 'yargs';
 
-export type dbConnectArgs = {targetString: string} 
+export type webConnectArgs = {targetString: string} 
 
-export function webConnectCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<dbConnectArgs>
+export function webConnectCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<webConnectArgs>
 {
     return yargs
         .positional('targetString', {
             type: 'string',
             default: null,
         })
-        .example('$0 db-connect test', 'Db connect example, uniquely named web target');
+        .example('$0 web-connect grafana', 'Db connect example, uniquely named web grafana');
 }

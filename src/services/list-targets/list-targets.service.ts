@@ -7,6 +7,8 @@ import { PolicyQueryService } from '../policy-query/policy-query.service';
 import { SsmTargetService } from '../ssm-target/ssm-target.service';
 import { KubeService } from '../kube/kube.service';
 import { DynamicAccessConfigService } from '../dynamic-access-config/dynamic-access-config.service';
+import { BzeroAgentService } from '../bzero-agent/bzero-agent.service';
+import { VirtualTargetService } from '../virtual-target/virtual-target.service';
 
 export async function listTargets(
     configService: ConfigService,
@@ -16,12 +18,17 @@ export async function listTargets(
     const ssmTargetService = new SsmTargetService(configService, logger);
     const kubeService = new KubeService(configService, logger);
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
+    const bzeroAgentService = new BzeroAgentService(configService, logger);
+    const virtualTargetService = new VirtualTargetService(configService, logger);
 
-    const [clusters, ssmTargets, dynamicConfigs] = await Promise.all([
+    const [clusters, ssmTargets, dynamicConfigs, bzeroAgents, webTargetsRaw, dbTargetsRaw] = await Promise.all([
         kubeService.ListKubeClusters(),
         ssmTargetService.ListSsmTargets(true),
-        dynamicConfigService.ListDynamicAccessConfigs()]
-    );
+        dynamicConfigService.ListDynamicAccessConfigs(),
+        bzeroAgentService.ListBzeroAgents(),
+        virtualTargetService.ListWebTargets(),
+        virtualTargetService.ListDbTargets()
+    ]);
 
     const clusterTargets = clusters.map<TargetSummary>((cluster) => {
         return {
@@ -35,6 +42,42 @@ export async function listTargets(
         };
     });
 
+    const bzeroAgentTargets = bzeroAgents.map<TargetSummary>((bzeroAgent) => {
+        return {
+            type: TargetType.BZERO_AGENT,
+            id: bzeroAgent.id,
+            name: bzeroAgent.targetName,
+            status: parseTargetStatus(bzeroAgent.status.toString()),
+            environmentId: bzeroAgent.environmentId,
+            targetUsers: [],
+            agentVersion: bzeroAgent.agentVersion
+        }
+    })
+
+    const webTargets = webTargetsRaw.map<TargetSummary>((webTargets) => {
+        return {
+            type: TargetType.WEB,
+            id: webTargets.id,
+            name: webTargets.targetName,
+            status: parseTargetStatus(webTargets.status.toString()),
+            environmentId: 'N/A',
+            targetUsers: [],
+            agentVersion: webTargets.agentVersion
+        }
+    })
+
+    const dbTargets = dbTargetsRaw.map<TargetSummary>((dbTarget) => {
+        return {
+            type: TargetType.DB,
+            id: dbTarget.id,
+            name: dbTarget.targetName,
+            status: parseTargetStatus(dbTarget.status.toString()),
+            environmentId: 'N/A',
+            targetUsers: [],
+            agentVersion: dbTarget.agentVersion
+        }
+    })
+
     let allTargets = [...ssmTargets.map(ssmTargetToTargetSummary), ...dynamicConfigs.map(dynamicConfigToTargetSummary)];
     const policyQueryService = new PolicyQueryService(configService, logger);
 
@@ -42,7 +85,12 @@ export async function listTargets(
         const users = (await policyQueryService.ListTargetOSUsers(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
         t.targetUsers = users.map(u => u.userName);
     }
+
+    // Concat all the different types of targets we have
     allTargets = allTargets.concat(clusterTargets);
+    allTargets = allTargets.concat(bzeroAgentTargets);
+    allTargets = allTargets.concat(webTargets);
+    allTargets = allTargets.concat(dbTargets);
 
     return allTargets;
 }

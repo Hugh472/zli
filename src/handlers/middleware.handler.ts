@@ -12,12 +12,19 @@ import { ClusterDetails } from '../services/kube/kube.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
 import { EnvironmentDetails } from '../services/environment/environment.types';
+import { BzeroAgentSummary } from '../../src/services/bzero-agent/bzero-agent.types';
+import { BzeroAgentService } from '../../src/services/bzero-agent/bzero-agent.service';
+import { VirtualTargetService } from '../../src/services/virtual-target/virtual-target.service';
+import { DbTargetSummary } from '../../src/services/virtual-target/virtual-target.types';
+import { WebTargetSummary } from '../../src/services/virtual-target/virtual-target.types';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
     const ssmTargetService = new SsmTargetService(configService, logger);
     const kubeService = new KubeService(configService, logger);
+    const bzeroAgentService = new BzeroAgentService(configService, logger);
+    const virtualTargetService = new VirtualTargetService(configService, logger);
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
 
@@ -69,6 +76,49 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         }
     });
 
+    const bzeroAgentTargets = new Promise<BzeroAgentSummary[]>( async (res) => {
+        try {
+            const response = await bzeroAgentService.ListBzeroAgents();
+            const results = response.map<BzeroAgentSummary>((target, _index, _array) => {
+                return { id: target.id, targetName: target.targetName, status: target.status, environmentId: target.environmentId, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate };
+            });
+
+            res(results);
+        } catch (e: any) {
+            logger.error(`Failed to fetch bzero agent targets: ${e}`);
+            res([]);
+        }
+    });
+
+    const dbAgentTargets = new Promise<DbTargetSummary[]>( async (res) => {
+        try {
+            const response = await virtualTargetService.ListDbTargets();
+            const results = response.map<DbTargetSummary>((target, _index, _array) => {
+                return { id: target.id, targetName: target.targetName, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine };
+            });
+
+            res(results);
+        } catch (e: any) {
+            logger.error(`Failed to fetch db targets: ${e}`);
+            res([]);
+        }
+    });
+
+    const webAgentTargets = new Promise<WebTargetSummary[]>( async (res) => {
+        try {
+            const response = await virtualTargetService.ListDbTargets();
+            const results = response.map<WebTargetSummary>((target, _index, _array) => {
+                return { id: target.id, targetName: target.targetName, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate };
+            });
+
+            res(results);
+        } catch (e: any) {
+            logger.error(`Failed to fetch db targets: ${e}`);
+            res([]);
+        }
+    });
+    
+
 
     const envs = new Promise<EnvironmentDetails[]>( async (res) => {
         try {
@@ -84,7 +134,10 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
         clusterTargets: clusterTargets,
-        envs: envs
+        envs: envs,
+        bzeroAgentTargets: bzeroAgentTargets,
+        dbTargets: dbAgentTargets,
+        webTargets: webAgentTargets
     };
 }
 
