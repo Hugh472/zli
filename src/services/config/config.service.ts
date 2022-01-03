@@ -273,7 +273,7 @@ export class ConfigService implements ConfigInterface {
     }
 
     public setWebConfig(webConfig: WebConfig) {
-        this.config.set('dbConfig', webConfig);
+        this.config.set('webConfig', webConfig);
     }
 
     private getAppName(configName: string) {

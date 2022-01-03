@@ -8,6 +8,9 @@ export interface DbTargetSummary {
     agentVersion: string;
     lastAgentUpdate: Date;
     localPort: number;
+    targetPort: number;
+    targetHost: string;
+    targetHostName: string;
 }
 
 export interface WebTargetSummary {
@@ -16,4 +19,7 @@ export interface WebTargetSummary {
     status: TargetStatus;
     agentVersion: string;
     lastAgentUpdate: Date;
+    targetPort: number;
+    targetHost: string;
+    targetHostName: string;
 }

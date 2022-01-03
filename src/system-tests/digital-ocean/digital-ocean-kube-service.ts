@@ -5,10 +5,11 @@ import { Logger } from '../../services/logger/logger.service';
 import { KubeService } from '../../services/kube/kube.service';
 import { KubernetesCluster, KubernetesWorkerNodePool } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
 import { ClusterTargetStatusPollError, CreateNewKubeClusterParameters, RegisteredDigitalOceanKubernetesCluster } from './digital-ocean-kube.service.types';
-import { ClusterSummary, KubeClusterStatus } from '../../services/kube/kube.types';
+import { ClusterSummary } from '../../services/kube/kube.types';
 import { checkAllSettledPromise } from '../tests/utils/utils';
 import { PolicyService } from '../../services/policy/policy.service';
 import { EnvironmentService } from '../../services/environment/environment.service';
+import { TargetStatus } from '../../services/common.types';
 
 export class DigitalOceanKubeService {
     private doClient: DigitalOcean;
@@ -154,14 +155,14 @@ export class DigitalOceanKubeService {
         const retrier = new Retrier({
             limit: 30,
             delay: 1000 * 10,
-            stopRetryingIf: (reason: any) => reason instanceof ClusterTargetStatusPollError && reason.clusterSummary.status === KubeClusterStatus.Error
+            stopRetryingIf: (reason: any) => reason instanceof ClusterTargetStatusPollError && reason.clusterSummary.status === TargetStatus.Error
         });
 
         // We don't know Cluster target ID initially
         let clusterTargetId: string = '';
         return retrier.resolve(() => new Promise<ClusterSummary>(async (resolve, reject) => {
             const checkIsClusterTargetOnline = (clusterSummary: ClusterSummary) => {
-                if (clusterSummary.status === KubeClusterStatus.Online) {
+                if (clusterSummary.status === TargetStatus.Online) {
                     resolve(clusterSummary);
                 } else {
                     throw new ClusterTargetStatusPollError(clusterSummary, `Cluster target ${clusterSummary.clusterName} is not online. Has status: ${clusterSummary.status}`);

@@ -6,12 +6,21 @@ import yargs from 'yargs';
 import { dbConnectArgs } from './db-connect.command-builder';
 import { exit } from 'process';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
+import { DbTargetSummary } from '../../services/virtual-target/virtual-target.types';
+import { TargetStatus } from '../../services/common.types';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
 
 
-export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, targetName: string, dbTargets: Promise<DbTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+    // First ensure the target is online
+    const dbTarget = await getDbTargetInfoFromName(await dbTargets, targetName, logger);
+    if (dbTarget.status != TargetStatus.Online) {
+        logger.error('Target is offline!');
+        await cleanExit(1, logger);
+    }
+
     // Build the refresh command so it works in the case of the pkg'd app which
     // is expecting a second argument set to internal main script
     // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
@@ -22,35 +31,57 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, con
     // Open up our zli dbConfig
     const dbConfig = configService.getDbConfig();
 
-    // Make sure we have set our local daemon port
-    if (dbConfig['localPort'] == null) {
-        logger.info('First time running db connect, setting local daemon port');
-        
-        // Generate and set a localport + localhost
-        const localPort = await findPort();
-        dbConfig['localPort'] = localPort;
-        dbConfig['localHost'] = 'localhost'
+    // If the config has a localport set use that, else generate our own
+    let localPort = dbTarget.localPort;
+    if (localPort == null) {
 
-        // Save these values so they don't need to be recreated
-        configService.setDbConfig(dbConfig);
+
+        // Make sure we have set our local daemon port
+        if (dbConfig['localPort'] == null) {
+            logger.info('First time running db connect, setting local daemon port');
+            
+            // Generate and set a localport + localhost
+            const localPort = await findPort();
+            dbConfig['localPort'] = localPort;
+            dbConfig['localHost'] = 'localhost'
+
+            // Save these values so they don't need to be recreated
+            configService.setDbConfig(dbConfig);
+        }
+
+        localPort = dbConfig['localPort'];
     }
+    
 
-    const localPort = dbConfig['localPort'];
+    logger.info(`Started db daemon at ${dbConfig['localHost']}:${localPort} for ${targetName}`); 
 
-    logger.info(`Started db daemon at ${dbConfig['localHost']}:${dbConfig['localPort']} for ${argv.target}`);  // Not working no idea why
+    // Golang does not accept "null" as params, so convert them to empty strings or -1
+    let port = -1
+    let host = ""
+    let hostName = ""
+    if (dbTarget.targetPort != null) {
+        port = dbTarget.targetPort;
+    }
+    if (dbTarget.targetHost != null) {
+        host = dbTarget.targetHost;
+    }
+    if (dbTarget.targetHostName != null) {
+        hostName = dbTarget.targetHostName;
+    }
 
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
         `-daemonPort=${localPort}`,
-        `-targetId=c5b249a6-f134-45a6-a4b9-16ef8c30a828`,  // TODO: this needs to become a real targetId
+        `-targetId=${dbTarget.id}`, 
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,
         `-logPath="${loggerConfigService.daemonLogPath()}"`,
         `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
-        `-targetPort=5432`,
-        `-targetHost=localhost`,
+        `-targetPort=${port}`,
+        `-targetHost=${host}`,
+        `-targetHostName=${hostName}`,
         `-plugin="db"`
     ];
     let cwd = process.cwd();
@@ -76,4 +107,14 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, con
         logger.error(`Something went wrong starting the Db Daemon: ${error}`);
         await cleanExit(1, logger);
     }
+}
+
+async function getDbTargetInfoFromName(dbTargets: DbTargetSummary[], targetName: string, logger: Logger): Promise<DbTargetSummary> {
+    for (const dbTarget of dbTargets) {
+        if (dbTarget.targetName == targetName) {
+            return dbTarget;
+        }
+    }
+    logger.error('Unable to find db target!');
+    await cleanExit(1, logger);
 }

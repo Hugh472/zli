@@ -94,7 +94,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await virtualTargetService.ListDbTargets();
             const results = response.map<DbTargetSummary>((target, _index, _array) => {
-                return { id: target.id, targetName: target.targetName, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine };
+                return { id: target.id, targetName: target.targetName, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, targetPort: target.targetPort, targetHost: target.targetHost, targetHostName: target.targetHostName };
             });
 
             res(results);
@@ -106,9 +106,9 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
     const webAgentTargets = new Promise<WebTargetSummary[]>( async (res) => {
         try {
-            const response = await virtualTargetService.ListDbTargets();
+            const response = await virtualTargetService.ListWebTargets();
             const results = response.map<WebTargetSummary>((target, _index, _array) => {
-                return { id: target.id, targetName: target.targetName, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate };
+                return { id: target.id, targetName: target.targetName, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, targetPort: target.targetPort, targetHost: target.targetHost, targetHostName: target.targetHostName };
             });
 
             res(results);
@@ -118,8 +118,6 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         }
     });
     
-
-
     const envs = new Promise<EnvironmentDetails[]>( async (res) => {
         try {
             const response = await envService.ListEnvironments();
@@ -129,7 +127,6 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             res([]);
         }
     });
-
     return {
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,

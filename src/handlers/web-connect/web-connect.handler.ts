@@ -6,12 +6,21 @@ import yargs from 'yargs';
 import { webConnectArgs } from './web-connect.command-builder';
 import { exit } from 'process';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
+import { WebTargetSummary } from '../../services/virtual-target/virtual-target.types';
+import { TargetStatus } from '../../services/common.types';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
 
 
-export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, targetName: string, webTargets: Promise<WebTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+    // First ensure the target is online
+    const webTarget = await getWebTargetInfoFromName(await webTargets, targetName, logger);
+    if (webTarget.status != TargetStatus.Online) {
+        logger.error('Target is offline!');
+        await cleanExit(1, logger);
+    }
+
     // Build the refresh command so it works in the case of the pkg'd app which
     // is expecting a second argument set to internal main script
     // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
@@ -20,11 +29,11 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, c
     const entryPoint = getAppEntrypoint();
 
     // Open up our zli dbConfig
-    const webConfig = configService.getDbConfig();
+    const webConfig = configService.getWebConfig();
 
     // Make sure we have set our local daemon port
     if (webConfig['localPort'] == null) {
-        logger.info('First time running db connect, setting local daemon port');
+        logger.info('First time running web connect, setting local daemon port');
         
         // Generate and set a localport + localhost
         const localPort = await findPort();
@@ -32,25 +41,40 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, c
         webConfig['localHost'] = 'localhost'
 
         // Save these values so they don't need to be recreated
-        configService.setDbConfig(webConfig);
+        configService.setWebConfig(webConfig);
     }
 
     const localPort = webConfig['localPort'];
 
-    logger.info(`Started web daemon at ${webConfig['localHost']}:${webConfig['localPort']} for ${argv.target}`);  // Not working no idea why
+    // Golang does not accept "null" as params, so convert them to empty strings or -1
+    let port = -1
+    let host = ""
+    let hostName = ""
+    if (webTarget.targetPort != null) {
+        port = webTarget.targetPort;
+    }
+    if (webTarget.targetHost != null) {
+        host = webTarget.targetHost;
+    }
+    if (webTarget.targetHostName != null) {
+        hostName = webTarget.targetHostName;
+    }
+
+    logger.info(`Started web daemon at ${webConfig['localHost']}:${webConfig['localPort']} for ${targetName}`); 
 
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
         `-daemonPort=${localPort}`,
-        `-targetId=c5b249a6-f134-45a6-a4b9-16ef8c30a828`,  // TODO: this needs to become a real targetId
+        `-targetId=${webTarget.id}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,
         `-logPath="${loggerConfigService.daemonLogPath()}"`,
         `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
-        `-targetPort=5432`,
-        `-targetHost=localhost`,
+        `-targetPort=${port}`,
+        `-targetHost=${host}`,
+        `-targetHostName=${hostName}`,
         `-plugin="web"`
     ];
     let cwd = process.cwd();
@@ -73,7 +97,17 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, c
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
         }
     } catch (error) {
-        logger.error(`Something went wrong starting the Db Daemon: ${error}`);
+        logger.error(`Something went wrong starting the Web Daemon: ${error}`);
         await cleanExit(1, logger);
     }
+}
+
+async function getWebTargetInfoFromName(webTargets: WebTargetSummary[], targetName: string, logger: Logger): Promise<WebTargetSummary> {
+    for (const webTarget of webTargets) {
+        if (webTarget.targetName == targetName) {
+            return webTarget;
+        }
+    }
+    logger.error('Unable to find web target!');
+    await cleanExit(1, logger);
 }

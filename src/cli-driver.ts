@@ -121,6 +121,7 @@ export class CliDriver
         'connect',
         'tunnel',
         'db-connect',
+        'web-connect',
         'user',
         'targetUser',
         'targetGroup',
@@ -148,6 +149,7 @@ export class CliDriver
         'connect',
         'tunnel',
         'db-connect',
+        'web-connect',
         'user',
         'targetUser',
         'targetGroup',
@@ -173,6 +175,7 @@ export class CliDriver
         'connect',
         'tunnel',
         'db-connect',
+        'web-connect',
         'user',
         'targetUser',
         'targetGroup',
@@ -263,7 +266,6 @@ export class CliDriver
             .middleware((argv) => {
                 if(!includes(this.fetchCommands, argv._[0]))
                     return;
-
                 const fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
                 this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
                 this.clusterTargets = fetchDataResponse.clusterTargets;
@@ -322,23 +324,23 @@ export class CliDriver
                 }
             )
             .command(
-                'db-connect [dbConnectString]',
+                'db-connect [targetName]',
                 'Connect to a database',
                 (yargs) => {
                     return dbConnectCmdBuilder(yargs);
                 },
                 async (argv) => {
-                    await dbConnectHandler(argv, this.configService, this.logger, this.loggerConfigService);
+                    await dbConnectHandler(argv, argv.targetName, this.dbTargets, this.configService, this.logger, this.loggerConfigService);
                 }
             )
             .command(
-                'web-connect [webConnectString]',
+                'web-connect [targetName]',
                 'Connect to a database',
                 (yargs) => {
                     return webConnectCmdBuilder(yargs);
                 },
                 async (argv) => {
-                    await webConnectHandler(argv, this.configService, this.logger, this.loggerConfigService);
+                    await webConnectHandler(argv, argv.targetName, this.webTargets, this.configService, this.logger, this.loggerConfigService);
                 }
             )
             .command(
