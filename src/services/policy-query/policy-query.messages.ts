@@ -21,10 +21,31 @@ export interface KubeProxyResponse {
     allowed: boolean;
 }
 
+export interface DbConnectResponse {
+    allowed: boolean;
+}
+export interface WebConnectResponse {
+    allowed: boolean;
+}
+
 export interface KubeProxyRequest {
     clusterId: string;
     targetUser: string;
     targetGroups: string[];
+}
+
+export interface DbConnectRequest {
+    targetId: string;
+    targetHost: string;
+    targetPort: number;
+    targetHostName: string;
+}
+
+export interface WebConnectRequest {
+    targetId: string;
+    targetHost: string;
+    targetPort: number;
+    targetHostName: string;
 }
 
 export interface GetAllPoliciesForClusterIdResponse {

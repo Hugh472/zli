@@ -8,6 +8,7 @@ import { exit } from 'process';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../services/virtual-target/virtual-target.types';
 import { TargetStatus } from '../../services/common.types';
+import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
@@ -20,6 +21,16 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, t
         logger.error('Target is offline!');
         await cleanExit(1, logger);
     }
+
+     // Make our API client
+     const policyService = new PolicyQueryService(configService, logger);
+
+     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
+     const response = await policyService.CheckWebConnect(webTarget.id, webTarget.targetHost, webTarget.targetPort, webTarget.targetHostName);
+     if (response.allowed != true) {
+         logger.error(`You do not have the correct policy setup to access ${webTarget.targetName}!`);
+         await cleanExit(1, logger);
+     }
 
     // Build the refresh command so it works in the case of the pkg'd app which
     // is expecting a second argument set to internal main script

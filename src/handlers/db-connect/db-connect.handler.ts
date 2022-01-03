@@ -8,6 +8,7 @@ import { exit } from 'process';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
 import { DbTargetSummary } from '../../services/virtual-target/virtual-target.types';
 import { TargetStatus } from '../../services/common.types';
+import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
@@ -18,6 +19,16 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, tar
     const dbTarget = await getDbTargetInfoFromName(await dbTargets, targetName, logger);
     if (dbTarget.status != TargetStatus.Online) {
         logger.error('Target is offline!');
+        await cleanExit(1, logger);
+    }
+
+    // Make our API client
+    const policyService = new PolicyQueryService(configService, logger);
+
+    // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
+    const response = await policyService.CheckDbConnect(dbTarget.id, dbTarget.targetHost, dbTarget.targetPort, dbTarget.targetHostName);
+    if (response.allowed != true) {
+        logger.error(`You do not have the correct policy setup to access ${dbTarget.targetName}!`);
         await cleanExit(1, logger);
     }
 
