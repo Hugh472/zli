@@ -164,6 +164,7 @@ function pollDaemonReady(daemonPort: number) : Promise<void> {
     });
 }
 
+// TODO: Remove this and pull from common daemon utils
 async function copyExecutableToLocalDir(logger: Logger, configPath: string): Promise<string> {
     // Helper function to copy the Daemon executable to a local dir on the file system
     // Ref: https://github.com/vercel/pkg/issues/342

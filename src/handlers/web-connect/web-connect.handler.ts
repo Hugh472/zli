@@ -3,12 +3,14 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import yargs from 'yargs';
+import open from 'open';
 import { webConnectArgs } from './web-connect.command-builder';
 import { exit } from 'process';
-import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
+import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../services/virtual-target/virtual-target.types';
 import { TargetStatus } from '../../services/common.types';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { waitUntilUsedOnHost } from 'tcp-port-used';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
@@ -71,8 +73,6 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, t
         hostName = webTarget.targetHostName;
     }
 
-    logger.info(`Started web daemon at ${webConfig['localHost']}:${webConfig['localPort']} for ${targetName}`); 
-
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
@@ -98,12 +98,36 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, t
         finalDaemonPath = 'go';
         args = ['run', 'daemon.go'].concat(args);
     } else {
-        exit(1);
+        finalDaemonPath = await copyExecutableToLocalDir(logger, configService.configPath());
     }
 
     try {
         if (!argv.debug) {
-           exit(1);
+            // If we are not debugging, start the go subprocess in the background
+            const options = {
+                cwd: cwd,
+                detached: true,
+                shell: true,
+                stdio: ['ignore', 'ignore', 'ignore']
+            };
+
+            const daemonProcess = await spawn(finalDaemonPath, args, options);
+
+            // Now save the Pid so we can kill the process next time we start it
+            // TODO: This needs to change so people can have kube + db + web all online 
+            const kubeConfig = configService.getKubeConfig();
+            kubeConfig['localPid'] = daemonProcess.pid;
+
+            // Wait for daemon HTTP server to be bound and running
+            await waitUntilUsedOnHost(localPort, 'localhost', 100, 1000 * 20);
+
+            configService.setKubeConfig(kubeConfig);
+            logger.info(`Started web daemon at localhost:${localPort} for ${targetName}`);
+
+            // Open our browser window 
+            await open(`http://localhost:${localPort}`);
+
+            await cleanExit(0, logger);
         } else {
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
         }
