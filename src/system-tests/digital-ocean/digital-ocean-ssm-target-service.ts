@@ -1,22 +1,17 @@
 import { Retrier } from '@jsier/retrier';
 import { DigitalOcean, Droplet } from 'digitalocean-js';
-import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
 import { TargetStatus } from '../../services/common.types';
 import { ConfigService } from '../../services/config/config.service';
 import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { Logger } from '../../services/logger/logger.service';
 import { CreateNewDropletParameters, DigitalOceanSSMTarget, DigitalOceanSsmTargetParameters, SsmTargetStatusPollError } from './digital-ocean-ssm-target.service.types';
-import { getEnvironmentFromName } from '../../utils/utils';
 import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';
-import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
 import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
-import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;
     private ssmTargetHttpService: SsmTargetHttpService;
-    private environmentHttpService: EnvironmentHttpService
 
     constructor(
         apiToken: string,
@@ -25,25 +20,16 @@ export class DigitalOceanSSMTargetService {
     ) {
         this.doClient = new DigitalOcean(apiToken);
         this.ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
-        this.environmentHttpService = new EnvironmentHttpService(this.configService, this.logger);
     }
 
     /**
      * Create a DigitalOcean droplet to host a new SSM target
+     * @param autoDiscoveryScript The autodiscovery script which is passed in as
+     * a User-Data script during droplet creation
      * @returns Information about the created droplet
      */
-    public async createDigitalOceanSSMTarget(parameters: DigitalOceanSsmTargetParameters): Promise<Droplet> {
-        let envId = parameters.envId;
-
-        // Use default environment if no environment ID is passed
-        if (!envId) {
-            const environments = await this.environmentHttpService.ListEnvironments();
-            const defaultEnvironment = await getEnvironmentFromName('Default', environments, this.logger);
-            envId = defaultEnvironment.id;
-        }
-
+    public async createDigitalOceanSSMTarget(parameters: DigitalOceanSsmTargetParameters, autoDiscoveryScript: string): Promise<Droplet> {
         // Create the droplet
-        const autoDiscoveryScript = await getAutodiscoveryScript(this.logger, this.configService, envId, ScriptTargetNameOption.DigitalOceanMetadata, 'latest');
         let droplet = await this.createNewDroplet({ ...parameters.dropletParameters, userDataScript: autoDiscoveryScript });
 
         // Poll until DigitalOcean says the droplet is online / active

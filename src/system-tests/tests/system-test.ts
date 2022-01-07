@@ -1,11 +1,11 @@
 import { envMap } from '../../cli-driver';
-import { DigitalOceanDistroImage, DigitalOceanSSMTarget, getDOImageName, SsmTargetStatusPollError } from '../digital-ocean/digital-ocean-ssm-target.service.types';
+import { DigitalOceanDistroImage, DigitalOceanSSMTarget, getDOImageName, getPackageManagerType, SsmTargetStatusPollError } from '../digital-ocean/digital-ocean-ssm-target.service.types';
 import { DigitalOceanSSMTargetService } from '../digital-ocean/digital-ocean-ssm-target-service';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { OAuthService } from '../../services/oauth/oauth.service';
-import { randomAlphaNumericString } from '../../utils/utils';
+import { getEnvironmentFromName, randomAlphaNumericString } from '../../utils/utils';
 import { connectSuite } from './suites/connect';
 import { listTargetsSuite } from './suites/list-targets';
 import { versionSuite } from './suites/version';
@@ -19,6 +19,10 @@ import { addRepo, install, MultiStringValue, SingleStringValue } from './utils/h
 import { checkAllSettledPromise, stripTrailingSlash } from './utils/utils';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 import { NewApiKeyResponse } from '../../../webshell-common-ts/http/v2/api-key/responses/new-api-key.responses';
+import { SSMTestTarget, SSMTestTargetSelfRegistrationAutoDiscovery } from './system-test.types';
+import { getAutodiscoveryScript } from '../../http-services/auto-discovery-script/auto-discovery-script.http-services';
+import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
 
 // Uses config name from ZLI_CONFIG_NAME environment variable (defaults to prod
 // if unset) This can be run against dev/stage/prod when running system tests
@@ -44,19 +48,29 @@ if(! agentVersion) {
     throw new Error('Must set the KUBE_AGENT_VERSION environment variable');
 }
 
+const KUBE_ENABLED = process.env.KUBE_ENABLED ? (process.env.KUBE_ENABLED === 'true') : true;
+const SSM_ENABLED =  process.env.SSM_ENABLED ? (process.env.SSM_ENABLED === 'true') : true;
+
 // Create a new API Key to be used for cluster registration
-const apiKeyHttpService = new ApiKeyHttpService(configService, logger);
-let systemTestApiKey: NewApiKeyResponse;
+const apiKeyService = new ApiKeyHttpService(configService, logger);
+let systemTestRESTApiKey: NewApiKeyResponse;
+// Create a new API key to be used for self-registration SSM test targets
+let systemTestRegistrationApiKey: NewApiKeyResponse;
 
 // Global mapping of system test targets
-export const testTargets = new Map<DigitalOceanDistroImage, DigitalOceanSSMTarget>();
+export const testTargets = new Map<SSMTestTarget, DigitalOceanSSMTarget>();
 
-// Images to use during system tests. Each image corresponds to a new droplet
-export const imagesToRun: DigitalOceanDistroImage[] = [
-    DigitalOceanDistroImage.AmazonLinux2,
-    // DigitalOceanDistroImage.CentOS8,
-    DigitalOceanDistroImage.Debian11,
-    DigitalOceanDistroImage.Ubuntu20
+// Different types of SSM test targets to create. Each object corresponds to a
+// new droplet.
+export const ssmTestTargetsToRun: SSMTestTarget[] = [
+    // old autodiscovery script (all-in-bash)
+    { installType: 'autodiscovery', dropletImage: DigitalOceanDistroImage.AmazonLinux2 },
+    // { type: 'autodiscovery', dropletImage: DigitalOceanDistroImage.CentOS8 },
+    { installType: 'autodiscovery', dropletImage: DigitalOceanDistroImage.Debian11 },
+    { installType: 'autodiscovery', dropletImage: DigitalOceanDistroImage.Ubuntu20 },
+    // new autodiscovery script (self-registration)
+    { installType: 'package-manager', dropletImage: DigitalOceanDistroImage.Debian11 },
+    { installType: 'package-manager', dropletImage: DigitalOceanDistroImage.AmazonLinux2 },
 ];
 
 // Global mapping of Kubernetes cluster targets
@@ -75,7 +89,7 @@ beforeAll(async () => {
     await oauthService.getIdTokenAndExitOnError();
 
     // Create a new api key that can be used for system tests
-    await setupSystemTestApiKey();
+    await setupSystemTestApiKeys();
 
     await checkAllSettledPromise(Promise.allSettled([
         createDOTestTargets(),
@@ -86,7 +100,7 @@ beforeAll(async () => {
 // Cleanup droplets after running all tests
 afterAll(async () => {
     // Delete the API key created for system tests
-    await cleanupSystemTestApiKey();
+    await cleanupSystemTestApiKeys();
 
     await checkAllSettledPromise(Promise.allSettled([
         cleanupDOTestTargets(),
@@ -96,6 +110,12 @@ afterAll(async () => {
 
 
 async function createDOTestClusters() {
+    // Skip kube cluster setup
+    if(! KUBE_ENABLED) {
+        logger.info(`Skipping kube cluster creation because KUBE_ENABLED is false`);
+        return;
+    }
+
     // Create a cluster for various versions
     const createCluster = async (version: DigitalOceanKubernetesClusterVersion) => {
         const clusterName = `system-test-${systemTestUniqueId}`;
@@ -146,7 +166,7 @@ async function createDOTestClusters() {
             // trailing slash and our config service includes the slash
             'serviceUrl': { value: stripTrailingSlash(configService.serviceUrl()), type: 'single' },
             'image.agentTag': { value: agentVersion, type: 'single'},
-            'apiKey': { value: systemTestApiKey.secret, type: 'single' },
+            'apiKey': { value: systemTestRESTApiKey.secret, type: 'single' },
             'clusterName': { value: cluster.name, type: 'single' },
             'users': { value: [configService.me().email], type: 'multi' },
             'targetUsers': { value: ['foo'], type: 'multi' },
@@ -201,24 +221,85 @@ async function createDOTestClusters() {
     await checkAllSettledPromise(allClusterCreationResults);
 }
 
+function getPackageManagerRegistrationScript(testTarget: SSMTestTargetSelfRegistrationAutoDiscovery, envId: string, registrationApiKeySecret: string): string {
+    let installBlock : string;
+    const packageManager = getPackageManagerType(testTarget.dropletImage);
+    // Install agent using the beta repo
+    switch (packageManager) {
+    case 'apt':
+        installBlock = String.raw`sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E5C358E613982017
+sudo apt update -y
+sudo apt install -y software-properties-common
+sudo add-apt-repository 'deb https://download-apt.bastionzero.com/beta/apt-repo stable main'
+sudo apt update -y
+sudo apt install bzero-ssm-agent -y
+`;
+        break;
+    case 'yum':
+        installBlock = String.raw`sudo yum-config-manager --add-repo https://download-yum.bastionzero.com/bastionzero-beta.repo
+sudo yum update -y
+sudo yum install bzero-ssm-agent -y 
+`;
+        break;
+    default:
+        // Compile-time exhaustive check
+        const _exhaustiveCheck: never = packageManager;
+        return _exhaustiveCheck;
+    }
+
+    return String.raw`#!/bin/bash
+set -Ee
+${installBlock}
+bzero-ssm-agent --serviceUrl ${configService.serviceUrl()} -registrationKey "${registrationApiKeySecret}" -envID "${envId}"
+`;
+}
+
 async function createDOTestTargets() {
-    // Create a droplet for various images
-    const createDroplet = async (image: DigitalOceanDistroImage) => {
-        const targetName = `system-test-${systemTestUniqueId}-${getDOImageName(image)}`;
+    // Skip creating ssm do targets
+    if(! SSM_ENABLED) {
+        logger.info(`Skipping ssm targets creation because SSM_ENABLED is false`);
+        return;
+    }
+
+    // Create a droplet for various types of SSM test targets
+    const createDroplet = async (testTarget: SSMTestTarget) => {
+        const targetName = `system-test-${systemTestUniqueId}-${getDOImageName(testTarget.dropletImage)}-${testTarget.installType}`;
+
+        // Get default env
+        const environmentService = new EnvironmentHttpService(configService, logger);
+        const environments = await environmentService.ListEnvironments();
+        const defaultEnvironment = await getEnvironmentFromName('Default', environments, logger);
+        const envId = defaultEnvironment.id;
+
+        let autoDiscoveryScript : string;
+        switch (testTarget.installType) {
+        case 'autodiscovery':
+            // Get the beta agent
+            autoDiscoveryScript = await getAutodiscoveryScript(logger, configService, envId, ScriptTargetNameOption.DigitalOceanMetadata, 'staging');
+            break;
+        case 'package-manager':
+            autoDiscoveryScript = getPackageManagerRegistrationScript(testTarget, envId, systemTestRegistrationApiKey.secret);
+            break;
+        default:
+            // Compile-time exhaustive check
+            const _exhaustiveCheck: never = testTarget;
+            return _exhaustiveCheck;
+        }
+
         const droplet = await doService.createDigitalOceanSSMTarget({
             targetName: targetName,
             dropletParameters: {
                 dropletName: targetName,
                 dropletSize: 's-1vcpu-1gb',
-                dropletImage: image,
+                dropletImage: testTarget.dropletImage,
                 dropletRegion: DigitalOceanRegion.NewYork1,
                 dropletTags: ['system-tests'],
             }
-        });
+        }, autoDiscoveryScript);
 
         // Add the digital ocean droplet to test targets mapping so that we can clean it up in afterAll
         const digitalOceanSsmTarget: DigitalOceanSSMTarget = { droplet: droplet, ssmTarget: undefined };
-        testTargets.set(image, digitalOceanSsmTarget);
+        testTargets.set(testTarget, digitalOceanSsmTarget);
 
         try {
             const ssmTarget = await doService.pollSsmTargetOnline(targetName);
@@ -242,14 +323,15 @@ async function createDOTestTargets() {
 
         console.log(
             `Successfully created DigitalOceanSSMTarget:
+            \tInstall Type: ${testTarget.installType}
             \tDroplet ID: ${digitalOceanSsmTarget.droplet.id}
-            \tDroplet Image: ${getDOImageName(image)}
+            \tDroplet Image: ${getDOImageName(testTarget.dropletImage)}
             \tTarget ID: ${digitalOceanSsmTarget.ssmTarget.id}`
         );
     };
 
     // Issue create droplet requests concurrently
-    const allDropletCreationResults = Promise.allSettled(imagesToRun.map(img => createDroplet(img)));
+    const allDropletCreationResults = Promise.allSettled(ssmTestTargetsToRun.map(img => createDroplet(img)));
     await checkAllSettledPromise(allDropletCreationResults);
 }
 
@@ -269,18 +351,28 @@ async function cleanupDOTestTargets() {
     await checkAllSettledPromise(allTargetsCleanup);
 }
 
-async function setupSystemTestApiKey() {
-    const apiKeyName = `system-test-${systemTestUniqueId}-api-key`;
-    systemTestApiKey = await apiKeyHttpService.CreateNewApiKey({ name: apiKeyName, isRegistrationKey: false });
-    console.log('created api key ' + systemTestApiKey.apiKeyDetails.id);
+async function setupSystemTestApiKeys() {
+    const restApiKeyName = `system-test-${systemTestUniqueId}-api-key`;
+    systemTestRESTApiKey = await apiKeyService.CreateNewApiKey({ name: restApiKeyName, isRegistrationKey: false });
+    logger.info('Created REST api key ' + systemTestRESTApiKey.apiKeyDetails.id);
+
+    const registrationKeyName = `system-test-${systemTestUniqueId}-registration-key`;
+    systemTestRegistrationApiKey = await apiKeyService.CreateNewApiKey({ name: registrationKeyName, isRegistrationKey: true });
+    logger.info('Created registration api key ' + systemTestRegistrationApiKey.apiKeyDetails.id);
 }
 
-async function cleanupSystemTestApiKey() {
-    await apiKeyHttpService.DeleteApiKey(systemTestApiKey.apiKeyDetails.id);
+async function cleanupSystemTestApiKeys() {
+    await apiKeyService.DeleteApiKey(systemTestRESTApiKey.apiKeyDetails.id);
+    await apiKeyService.DeleteApiKey(systemTestRegistrationApiKey.apiKeyDetails.id);
 }
 
 // Call various test suites
-versionSuite();
-listTargetsSuite();
-connectSuite();
-kubeSuite();
+if(SSM_ENABLED) {
+    versionSuite();
+    listTargetsSuite();
+    connectSuite();
+}
+
+if(KUBE_ENABLED) {
+    kubeSuite();
+}
