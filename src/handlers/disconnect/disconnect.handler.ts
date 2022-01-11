@@ -22,6 +22,7 @@ export async function disconnectHandler(
             // Update the localPid
             kubeConfig['localPid'] = null;
             configService.setKubeConfig(kubeConfig);
+            logger.info('Killed local kube daemon!');
         } else {
             logger.warn('No kube daemon running');
         }
@@ -36,6 +37,7 @@ export async function disconnectHandler(
             // Update the localPid
             webConfig['localPid'] = null;
             configService.setWebConfig(webConfig);
+            logger.info('Killed local web daemon!');
         } else {
             logger.warn('No web daemon running');
         }
@@ -50,6 +52,7 @@ export async function disconnectHandler(
             // Update the localPid
             dbConfig['localPid'] = null;
             configService.setDbConfig(dbConfig);
+            logger.info('Killed local db daemon!');
         } else {
             logger.warn('No db daemon running');
         }

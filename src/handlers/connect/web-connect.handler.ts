@@ -106,9 +106,11 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
 
             // Now save the Pid so we can kill the process next time we start it
             webConfig['localPid'] = daemonProcess.pid;
+            webConfig['localPort'] = localPort;
+            webConfig['localHost'] = 'localhost'
 
             // Also save the name of the target to display
-            webConfig['name'] = webConfig.name;
+            webConfig['name'] = webTarget.name;
 
             // Wait for daemon HTTP server to be bound and running
             await waitUntilUsedOnHost(localPort, 'localhost', 100, 1000 * 20);

@@ -49,7 +49,6 @@ async function webStatusHandler(
             await killPortProcess(webConfig['localPort']);
 
             configService.setWebConfig(webConfig);
-            await cleanExit(0, logger);
             return;
         }
 
@@ -81,7 +80,6 @@ async function dbStatusHandler(
             await killPortProcess(dbConfig['localPort']);
 
             configService.setDbConfig(dbConfig);
-            await cleanExit(0, logger);
             return;
         }
 
@@ -113,7 +111,6 @@ async function kubeStatusHandler(
             await killPortProcess(kubeConfig['localPort']);
 
             configService.setKubeConfig(kubeConfig);
-            await cleanExit(0, logger);
             return;
         }
 

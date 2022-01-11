@@ -56,6 +56,9 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
             dbConfig['localPort'] = localPort;
             dbConfig['localHost'] = 'localhost'
 
+            // Save the name as well
+            dbConfig['name'] = dbTarget.name;
+
             // Save these values so they don't need to be recreated
             configService.setDbConfig(dbConfig);
         }
