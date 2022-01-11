@@ -6,11 +6,11 @@ import { targetStringExample } from '../../utils/utils';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
-import { ConnectionService } from '../../services/connection/connection.service';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
-import { VerbType } from '../../services/policy-query/policy-query.types';
-import { SessionService } from '../../services/session/session.service';
+import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
+import { SpaceHttpService } from '../../http-services/space/space.http-services';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 
 
 export async function connectHandler(
@@ -25,8 +25,8 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    const policyQueryService = new PolicyQueryService(configService, logger);
-    const response = await policyQueryService.ListTargetOSUsers(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+    const response = await policyQueryHttpService.GetTargetPolicy(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
 
     if(! response.allowed)
     {
@@ -42,12 +42,12 @@ export async function connectHandler(
     }
 
     // Get the existing if any or create a new cli space id
-    const sessionService = new SessionService(configService, logger);
-    const cliSpace = await getCliSpace(sessionService, logger);
+    const spaceHttpService = new SpaceHttpService(configService, logger);
+    const cliSpace = await getCliSpace(spaceHttpService, logger);
     let cliSpaceId: string;
     if (cliSpace === undefined)
     {
-        cliSpaceId = await sessionService.CreateSession('cli-space');
+        cliSpaceId = await spaceHttpService.CreateSpace('cli-space');
     } else {
         cliSpaceId = cliSpace.id;
     }
@@ -55,11 +55,11 @@ export async function connectHandler(
     const targetUser = parsedTarget.user;
 
     // make a new connection
-    const connectionService = new ConnectionService(configService, logger);
+    const connectionHttpService = new ConnectionHttpService(configService, logger);
     // if SSM user does not exist then resp.connectionId will throw a
     // 'TypeError: Cannot read property 'connectionId' of undefined'
     // so we need to catch and return undefined
-    const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSpaceId, targetUser).catch(() => undefined);
+    const connectionId = await connectionHttpService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSpaceId, targetUser).catch(() => undefined);
 
     if(! connectionId)
     {
@@ -77,7 +77,7 @@ export async function connectHandler(
     // returned in the connectionSummary.targetId for this newly created
     // connection
 
-    const connectionSummary = await connectionService.GetConnection(connectionId);
+    const connectionSummary = await connectionHttpService.GetConnection(connectionId);
 
     const runShellPromise = createAndRunShell(configService, logger, connectionSummary, pushToStdOut);
     mixpanelService.TrackNewConnection(parsedTarget.type);

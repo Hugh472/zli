@@ -15,7 +15,7 @@ import { ConfigService } from '../config/config.service';
 import { SsmTunnelWebsocketService } from '../../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.service';
 import { ZliAuthConfigService } from '../config/zli-auth-config.service';
 import { ParsedTargetString } from '../common.types';
-import { SsmTargetService } from '../ssm-target/ssm-target.service';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 
 export class SsmTunnelService
 {
@@ -51,8 +51,8 @@ export class SsmTunnelService
     ) : Promise<boolean> {
         try {
             // target is ssmtargetsummary
-            const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-            const target = await ssmTargetService.GetSsmTarget(parsedTarget.id);
+            const ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
+            const target = await ssmTargetHttpService.GetSsmTarget(parsedTarget.id);
 
             this.ssmTunnelWebsocketService = new SsmTunnelWebsocketService(
                 this.logger,

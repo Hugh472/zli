@@ -4,14 +4,14 @@ import { OAuthService } from '../../services/oauth/oauth.service';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import qrcode from 'qrcode';
-import { MfaService } from '../../services/mfa/mfa.service';
-import { MfaActionRequired } from '../../services/mfa/mfa.types';
-import { UserService } from '../../services/user/user.service';
 import yargs from 'yargs';
 import { loginArgs } from './login.command-builder';
-import { UserSummary } from '../../services/user/user.types';
-import { UserRegisterResponse } from '../../../src/services/user/user.messages';
+import { UserRegisterResponse } from '../../services/v1/user/user.messages';
 import prompts, { PromptObject } from 'prompts';
+import { MfaHttpService } from '../../http-services/mfa/mfa.http-services';
+import { UserHttpService } from '../../http-services/user/user.http-services';
+import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
+import { MfaActionRequired } from '../../../webshell-common-ts/http/v2/mfa/types/mfa-action-required.types';
 
 export interface LoginResult {
     userSummary: UserSummary;
@@ -63,23 +63,23 @@ export async function login(keySplittingService: KeySplittingService, configServ
     }
 
     // Register user log in and get User Session Id
-    const userService = new UserService(configService, logger);
-    const registerResponse = await userService.Register();
+    const userHttpService = new UserHttpService(configService, logger);
+    const registerResponse = await userHttpService.Register();
     configService.setSessionId(registerResponse.userSessionId);
 
     // Check if we must MFA and act upon it
-    const mfaService = new MfaService(configService, logger);
+    const mfaHttpService = new MfaHttpService(configService, logger);
     switch (registerResponse.mfaActionRequired) {
     case MfaActionRequired.NONE:
         break;
     case MfaActionRequired.TOTP:
         if (mfaToken) {
-            await mfaService.SendTotp(mfaToken);
+            await mfaHttpService.VerifyMfaTotp(mfaToken);
         } else {
             logger.info('MFA token required for this account');
             const token = await interactiveTOTPMFA();
             if (token) {
-                await mfaService.SendTotp(token);
+                await mfaHttpService.VerifyMfaTotp(token);
             } else {
                 return undefined;
             }
@@ -89,13 +89,13 @@ export async function login(keySplittingService: KeySplittingService, configServ
         logger.info('MFA reset detected, requesting new MFA token');
         logger.info('Please scan the following QR code with your device (Google Authenticator recommended) and enter code below.');
 
-        const resp = await mfaService.ResetSecret(true);
+        const resp = await mfaHttpService.ResetSecret(true);
         const data = await qrcode.toString(resp.mfaSecretUrl, { type: 'terminal', scale: 2 });
         console.log(data);
 
         const code = await interactiveResetMfa();
         if (code) {
-            await mfaService.SendTotp(code);
+            await mfaHttpService.VerifyMfaTotp(code);
         } else {
             return undefined;
         }
@@ -106,7 +106,7 @@ export async function login(keySplittingService: KeySplittingService, configServ
         break;
     }
 
-    const me = await userService.Me();
+    const me = await userHttpService.Me();
     configService.setMe(me);
 
     return {

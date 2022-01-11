@@ -1,9 +1,9 @@
 import { testTargets } from '../system-test';
 import * as ListTargetsService from '../../../services/list-targets/list-targets.service';
 import { getMockResultValue } from '../utils/jest-utils';
-import { TargetType } from '../../../services/common.types';
 import { TargetSummary } from '../../../services/common.types';
 import { callZli } from '../utils/zli-utils';
+import { TargetType } from '../../../../webshell-common-ts/http/v2/target/types/target.types';
 
 export const listTargetsSuite = () => {
     describe('list targets suite', () => {
@@ -20,7 +20,7 @@ export const listTargetsSuite = () => {
             const returnedTargetSummaries = (await getMockResultValue(listTargetsSpy.mock.results[0]));
 
             const expectedSSMTargetSummaries = Array.from(testTargets.values()).map<TargetSummary>(t => ({
-                type: TargetType.SSM,
+                type: TargetType.SsmTarget,
                 id: t.ssmTarget.id,
                 name: t.ssmTarget.name,
                 environmentId: t.ssmTarget.environmentId,

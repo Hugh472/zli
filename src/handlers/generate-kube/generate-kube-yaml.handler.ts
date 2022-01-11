@@ -1,19 +1,19 @@
 import { ConfigService } from '../../services/config/config.service';
-import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
 import { cleanExit } from '../clean-exit.handler';
-import { KubeService } from '../../services/kube/kube.service';
 import yargs from 'yargs';
 import { generateKubeArgs } from './generate-kube.command-builder';
 import { getEnvironmentFromName } from '../../../src/utils/utils';
+import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 
 const fs = require('fs');
 
 
 export async function generateKubeYamlHandler(
     argv: yargs.Arguments<generateKubeArgs>,
-    envs: Promise<EnvironmentDetails[]>,
+    envs: Promise<EnvironmentSummary[]>,
     configService: ConfigService,
     logger: Logger
 ) {
@@ -26,7 +26,7 @@ export async function generateKubeYamlHandler(
     const outputFileArg = argv.outputFile;
 
     // Make our API client
-    const kubeService = new KubeService(configService, logger);
+    const kubeHttpService = new KubeHttpService(configService, logger);
 
     // Format our labels if they exist
     const labels: { [index: string ]: string } = {};
@@ -46,7 +46,7 @@ export async function generateKubeYamlHandler(
     }
 
     // Get our kubeYaml
-    const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labels, argv.namespace, environmentId);
+    const kubeYaml = await kubeHttpService.CreateNewAgentToken(argv.clusterName, labels, argv.namespace, environmentId);
 
     // Show it to the user or write to file
     if (outputFileArg) {

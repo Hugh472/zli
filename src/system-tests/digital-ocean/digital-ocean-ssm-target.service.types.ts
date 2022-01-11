@@ -1,5 +1,5 @@
 import { Droplet } from 'digitalocean-js';
-import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
+import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.types';
 
 /**
@@ -19,6 +19,24 @@ export const DigitalOceanDistroImage = {
     AmazonLinux2: 95598425
 } as const;
 export type DigitalOceanDistroImage = typeof DigitalOceanDistroImage[keyof typeof DigitalOceanDistroImage];
+
+export function getPackageManagerType(image: DigitalOceanDistroImage) : 'yum' | 'apt' {
+    switch (image) {
+    case DigitalOceanDistroImage.CentOS7:
+    case DigitalOceanDistroImage.CentOS8:
+    case DigitalOceanDistroImage.AmazonLinux2:
+        return 'yum';
+    case DigitalOceanDistroImage.Debian10:
+    case DigitalOceanDistroImage.Debian11:
+    case DigitalOceanDistroImage.Ubuntu18:
+    case DigitalOceanDistroImage.Ubuntu20:
+        return 'apt';
+    default:
+        // Compile-time exhaustive check
+        const _exhaustiveCheck: never = image;
+        return _exhaustiveCheck;
+    }
+}
 
 export function getDOImageName(image: DigitalOceanDistroImage) {
     switch (image) {
@@ -56,7 +74,6 @@ export type DigitalOceanSSMTarget = {
  */
 export type DigitalOceanSsmTargetParameters = {
     targetName: string;
-    envId?: string;
     dropletParameters: CreateNewDropletParameters;
 }
 

@@ -3,13 +3,9 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
-import { EnvironmentService } from '../../services/environment/environment.service';
-import { PolicyService } from '../../services/policy/policy.service';
 import { readFile } from '../../utils/utils';
-import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';
-import { UserSummary } from '../../services/user/user.types';
 import { version } from '../../../package.json';
 
 import prompts, { PromptObject } from 'prompts';
@@ -21,6 +17,10 @@ import { TranscriptMessage } from '../../services/consoleWithTranscript/consoleW
 import ora from 'ora';
 import { login } from '../login/login.handler';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
+import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
+import { RegisteredSSHHost } from '../../../src/services/quickstart/quickstart-ssm.service.types';
 
 const welcomeMessage = `Welcome to BastionZero and the journey to zero trust access via our multi root zero trust access protocol (MrZAP). We're excited to have you!\n
 Our quickstart installer is a fast and easy method for you to try BastionZero using your existing SSH configuration.
@@ -138,8 +138,8 @@ export async function quickstartHandler(
 ) {
     await validateQuickstartArgs(argv);
 
-    const policyService = new PolicyService(configService, logger);
-    const envService = new EnvironmentService(configService, logger);
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const envHttpService = new EnvironmentHttpService(configService, logger);
     const consoleWithTranscript = new ConsoleWithTranscriptService(chalk.magenta);
 
     // Callback on cancel prompt
@@ -154,7 +154,7 @@ export async function quickstartHandler(
         consoleWithTranscript.pushToTranscript(`${prompt.message} ${answer}`);
     };
 
-    const quickstartService = new QuickstartSsmService(logger, consoleWithTranscript, configService, policyService, envService);
+    const quickstartService = new QuickstartSsmService(logger, consoleWithTranscript, configService, policyHttpService, envHttpService);
 
     // Clear console before we begin
     clearScreen();
@@ -326,7 +326,7 @@ export async function quickstartHandler(
     spinner.text = '';
     spinner.stopAndPersist();
 
-    const ssmTargetsSuccessfullyAdded = autodiscoveryResults.reduce<SsmTargetSummary[]>((acc, result) => result.status === 'fulfilled' ? [...acc, result.value] : acc, []);
+    const ssmTargetsSuccessfullyAdded = autodiscoveryResults.reduce<RegisteredSSHHost[]>((acc, result) => result.status === 'fulfilled' ? [...acc, result.value] : acc, []);
 
     // Exit early if all hosts failed
     if (ssmTargetsSuccessfullyAdded.length == 0) {
@@ -335,22 +335,19 @@ export async function quickstartHandler(
     }
 
     // Create policy for each unique username parsed from the SSH config
-    await quickstartService.createPolicyForUniqueUsernames(
-        ssmTargetsSuccessfullyAdded.map(target => ({ ssmTarget: target, sshHost: validSSHHosts.get(target.name) }))
-    );
+    await quickstartService.createPolicyForUniqueUsernames(ssmTargetsSuccessfullyAdded);
 
     // New step so clear again
     clearScreen();
 
-    const ssmTargetsSuccessfullyAddedPretty = ssmTargetsSuccessfullyAdded.map(target => target.name).join(', ');
-    const successMessage = `Congratulations! You've secured access to your target(s): ${ssmTargetsSuccessfullyAddedPretty} with MrZAP using BastionZero.\n
+    const sshHostsSuccessfullyAddedPretty = ssmTargetsSuccessfullyAdded.map(target => target.sshHost.name).join(', ');
+    const successMessage = `Congratulations! You've secured access to your SSH host(s): ${sshHostsSuccessfullyAddedPretty} with MrZAP using BastionZero.\n
 Log into ${configService.getBastionUrl()} to see your environments, policies, and detailed logs.`;
     consoleWithTranscript.log(successMessage);
 
     consoleWithTranscript.log('Use `zli connect` to connect to your newly registered targets.');
     for (const target of ssmTargetsSuccessfullyAdded) {
-        const sshHost = validSSHHosts.get(target.name);
-        consoleWithTranscript.log(`\tzli connect ${sshHost.username}@${target.name}`);
+        consoleWithTranscript.log(`\tzli connect ${target.sshHost.username}@${target.targetSummary.name}`);
     }
 
     await exitAndSaveTranscript(0, logger, consoleWithTranscript.getTranscript());

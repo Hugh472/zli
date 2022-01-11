@@ -2,26 +2,26 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
-import { ConnectionService } from '../../services/connection/connection.service';
-import { ConnectionState } from '../../services/connection/connection.types';
-import { SessionService } from '../../services/session/session.service';
+import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
+import { SpaceHttpService } from '../../http-services/space/space.http-services';
+import { ConnectionState } from '../../../webshell-common-ts/http/v2/connection/types/connection-state.types';
 
 export async function attachHandler(
     configService: ConfigService,
     logger: Logger,
     connectionId: string
 ){
-    const connectionService = new ConnectionService(configService, logger);
-    const connectionSummary = await connectionService.GetConnection(connectionId);
+    const connectionHttpService = new ConnectionHttpService(configService, logger);
+    const connectionSummary = await connectionHttpService.GetConnection(connectionId);
 
-    const sessionService = new SessionService(configService, logger);
-    const cliSpace = await getCliSpace(sessionService, logger);
+    const spaceHttpService = new SpaceHttpService(configService, logger);
+    const cliSpace = await getCliSpace(spaceHttpService, logger);
 
     if ( ! cliSpace){
         logger.error(`There is no cli session. Try creating a new connection to a target using the zli`);
         await cleanExit(1, logger);
     }
-    if (connectionSummary.sessionId !== cliSpace.id){
+    if (connectionSummary.spaceId !== cliSpace.id){
         logger.error(`Connection ${connectionId} does not belong to the cli space`);
         await cleanExit(1, logger);
     }

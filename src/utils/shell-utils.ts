@@ -3,9 +3,10 @@ import readline from 'readline';
 import { ConfigService } from '../services/config/config.service';
 import { Logger } from '../services/logger/logger.service';
 import { ShellTerminal } from '../terminal/terminal';
-import { ConnectionSummary } from '../services/connection/connection.types';
-import { SessionService } from '../services/session/session.service';
-import { SessionDetails, SessionState } from '../services/session/session.types';
+import { SessionState } from '../services/v1/session/session.types';
+import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
+import { SpaceHttpService } from '../http-services/space/space.http-services';
+import { SpaceSummary } from '../../webshell-common-ts/http/v2/space/types/space-summary.types';
 
 export async function createAndRunShell(
     configService: ConfigService,
@@ -134,13 +135,13 @@ export function pushToStdOut(output: Uint8Array) {
 }
 
 export async function getCliSpace(
-    sessionService: SessionService,
+    spaceHttpService: SpaceHttpService,
     logger: Logger
-): Promise<SessionDetails> {
-    const listSessions = await sessionService.ListSessions();
+): Promise<SpaceSummary> {
+    const listSpaces = await spaceHttpService.ListSpaces();
 
     // space names are not unique, make sure to find the latest active one
-    const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
+    const cliSpace = listSpaces.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
 
     if (cliSpace.length === 0) {
         return undefined;

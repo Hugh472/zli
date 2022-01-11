@@ -1,30 +1,31 @@
 import { dynamicConfigToTargetSummary, parseTargetStatus, ssmTargetToTargetSummary } from '../../utils/utils';
-import { TargetSummary, TargetType } from '../common.types';
+import { TargetSummary } from '../common.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
-import { VerbType } from '../policy-query/policy-query.types';
-import { PolicyQueryService } from '../policy-query/policy-query.service';
-import { SsmTargetService } from '../ssm-target/ssm-target.service';
-import { KubeService } from '../kube/kube.service';
-import { DynamicAccessConfigService } from '../dynamic-access-config/dynamic-access-config.service';
 import { BzeroAgentService } from '../bzero-agent/bzero-agent.service';
 import { VirtualTargetService } from '../virtual-target/virtual-target.service';
+import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
+import { DynamicAccessConfigHttpService } from '../../http-services/targets/dynamic-access/dynamic-access-config.http-services';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
+import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 
 export async function listTargets(
     configService: ConfigService,
     logger: Logger
 ) : Promise<TargetSummary[]>
 {
-    const ssmTargetService = new SsmTargetService(configService, logger);
-    const kubeService = new KubeService(configService, logger);
-    const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
+    const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
+    const kubeHttpService = new KubeHttpService(configService, logger);
+    const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
     const bzeroAgentService = new BzeroAgentService(configService, logger);
     const virtualTargetService = new VirtualTargetService(configService, logger);
 
     const [clusters, ssmTargets, dynamicConfigs, bzeroAgents, webTargetsRaw, dbTargetsRaw] = await Promise.all([
-        kubeService.ListKubeClusters(),
-        ssmTargetService.ListSsmTargets(true),
-        dynamicConfigService.ListDynamicAccessConfigs(),
+        kubeHttpService.ListKubeClusters(),
+        ssmTargetHttpService.ListSsmTargets(true),
+        dynamicConfigHttpService.ListDynamicAccessConfigs(),
         bzeroAgentService.ListBzeroAgents(),
         virtualTargetService.ListWebTargets(),
         virtualTargetService.ListDbTargets()
@@ -32,7 +33,7 @@ export async function listTargets(
 
     const clusterTargets = clusters.map<TargetSummary>((cluster) => {
         return {
-            type: TargetType.CLUSTER,
+            type: TargetType.Cluster,
             id: cluster.id,
             name: cluster.clusterName,
             status: parseTargetStatus(cluster.status.toString()),
@@ -44,7 +45,7 @@ export async function listTargets(
 
     const bzeroAgentTargets = bzeroAgents.map<TargetSummary>((bzeroAgent) => {
         return {
-            type: TargetType.BZERO_AGENT,
+            type: TargetType.Bzero,
             id: bzeroAgent.id,
             name: bzeroAgent.targetName,
             status: parseTargetStatus(bzeroAgent.status.toString()),
@@ -56,7 +57,7 @@ export async function listTargets(
 
     const webTargets = webTargetsRaw.map<TargetSummary>((webTargets) => {
         return {
-            type: TargetType.WEB,
+            type: TargetType.Web,
             id: webTargets.id,
             name: webTargets.targetName,
             status: parseTargetStatus(webTargets.status.toString()),
@@ -68,7 +69,7 @@ export async function listTargets(
 
     const dbTargets = dbTargetsRaw.map<TargetSummary>((dbTarget) => {
         return {
-            type: TargetType.DB,
+            type: TargetType.Db,
             id: dbTarget.id,
             name: dbTarget.targetName,
             status: parseTargetStatus(dbTarget.status.toString()),
@@ -79,10 +80,10 @@ export async function listTargets(
     })
 
     let allTargets = [...ssmTargets.map(ssmTargetToTargetSummary), ...dynamicConfigs.map(dynamicConfigToTargetSummary)];
-    const policyQueryService = new PolicyQueryService(configService, logger);
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
 
     for (const t of allTargets) {
-        const users = (await policyQueryService.ListTargetOSUsers(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
+        const users = (await policyQueryHttpService.GetTargetPolicy(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
         t.targetUsers = users.map(u => u.userName);
     }
 

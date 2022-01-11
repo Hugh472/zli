@@ -4,36 +4,37 @@ import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
-import { TargetSummary, TargetType } from '../services/common.types';
-import { DynamicAccessConfigService } from '../services/dynamic-access-config/dynamic-access-config.service';
-import { EnvironmentService } from '../services/environment/environment.service';
-import { KubeService } from '../services/kube/kube.service';
-import { ClusterDetails } from '../services/kube/kube.types';
+import { TargetSummary } from '../services/common.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
-import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
-import { EnvironmentDetails } from '../services/environment/environment.types';
 import { BzeroAgentSummary } from '../../src/services/bzero-agent/bzero-agent.types';
 import { BzeroAgentService } from '../../src/services/bzero-agent/bzero-agent.service';
 import { VirtualTargetService } from '../../src/services/virtual-target/virtual-target.service';
 import { DbTargetSummary } from '../../src/services/virtual-target/virtual-target.types';
 import { WebTargetSummary } from '../../src/services/virtual-target/virtual-target.types';
+import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
+import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
+import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
+import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
-    const ssmTargetService = new SsmTargetService(configService, logger);
-    const kubeService = new KubeService(configService, logger);
     const bzeroAgentService = new BzeroAgentService(configService, logger);
     const virtualTargetService = new VirtualTargetService(configService, logger);
-    const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
-    const envService = new EnvironmentService(configService, logger);
+    const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
+    const kubeHttpService = new KubeHttpService(configService, logger);
+    const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
+    const envHttpService = new EnvironmentHttpService(configService, logger);
 
     const dynamicConfigs = new Promise<TargetSummary[]>( async (res) => {
         try
         {
-            const response = await dynamicConfigService.ListDynamicAccessConfigs();
+            const response = await dynamicConfigHttpService.ListDynamicAccessConfigs();
             const results = response.map<TargetSummary>((config, _index, _array) => {
-                return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
+                return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
             });
 
             res(results);
@@ -49,9 +50,9 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const ssmTargets = new Promise<TargetSummary[]>( async (res) => {
         try
         {
-            const response = await ssmTargetService.ListSsmTargets(true);
+            const response = await ssmTargetHttpService.ListSsmTargets(true);
             const results = response.map<TargetSummary>((ssm, _index, _array) => {
-                return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
+                return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
             });
 
             res(results);
@@ -62,11 +63,11 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     });
 
 
-    const clusterTargets = new Promise<ClusterDetails[]>( async (res) => {
+    const clusterTargets = new Promise<KubeClusterSummary[]>( async (res) => {
         try {
-            const response = await kubeService.ListKubeClusters();
-            const results = response.map<ClusterDetails>((cluster, _index, _array) => {
-                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, targetUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate };
+            const response = await kubeHttpService.ListKubeClusters();
+            const results = response.map<KubeClusterSummary>((cluster, _index, _array) => {
+                return { id: cluster.id, clusterName: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate };
             });
 
             res(results);
@@ -118,9 +119,9 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         }
     });
     
-    const envs = new Promise<EnvironmentDetails[]>( async (res) => {
+    const envs = new Promise<EnvironmentSummary[]>( async (res) => {
         try {
-            const response = await envService.ListEnvironments();
+            const response = await envHttpService.ListEnvironments();
             res(response);
         } catch (e: any) {
             logger.error(`Failed to fetch environments: ${e}`);

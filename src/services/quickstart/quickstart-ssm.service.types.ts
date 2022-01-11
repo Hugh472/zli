@@ -1,5 +1,5 @@
 import SSHConfig from 'ssh2-promise/lib/sshConfig';
-import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
+import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 
 // Interface types for SSHConfig parsing package
 export interface SSHHostConfig {
@@ -10,15 +10,6 @@ export interface SSHConfigHostBlock {
     param: string;
     value: string;
     config: SSHHostConfig[]
-}
-
-/**
- * QuickstartSSMTarget represents an SSH host that has successfully been added
- * to BastionZero as an SSM target
- */
-export interface QuickstartSSMTarget {
-    ssmTarget: SsmTargetSummary;
-    sshHost: ValidSSHHost;
 }
 
 /**
@@ -48,6 +39,15 @@ export interface ValidSSHHostAndConfig {
 export interface RegistrableSSHHost {
     host: ValidSSHHostAndConfig;
     envId: string;
+}
+
+/**
+ * RegisteredSSHHost represents an SSH host that was successfully added to
+ * BastionZero.
+ */
+export interface RegisteredSSHHost {
+    targetSummary: SsmTargetSummary;
+    sshHost: ValidSSHHost;
 }
 
 /**

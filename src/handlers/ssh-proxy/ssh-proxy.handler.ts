@@ -5,10 +5,10 @@ import { SsmTunnelService } from '../../services/ssm-tunnel/ssm-tunnel.service';
 import { cleanExit } from '../clean-exit.handler';
 import { includes } from 'lodash';
 import { targetStringExample } from '../../utils/utils';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { ParsedTargetString } from '../../services/common.types';
-import { VerbType } from '../../services/policy-query/policy-query.types';
 import { EnvMap } from '../../cli-driver';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 
 
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: EnvMap) {
@@ -18,8 +18,8 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
         logger.error(targetStringExample);
         await cleanExit(1, logger);
     }
-    const policyQueryService = new PolicyQueryService(configService, logger);
-    const response = await policyQueryService.ListTargetOSUsers(sshTunnelParameters.parsedTarget.id, sshTunnelParameters.parsedTarget.type, {type: VerbType.Tunnel}, undefined);
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+    const response = await policyQueryHttpService.GetTargetPolicy(sshTunnelParameters.parsedTarget.id, sshTunnelParameters.parsedTarget.type, {type: VerbType.Tunnel}, undefined);
 
     if(! response.allowed)
     {

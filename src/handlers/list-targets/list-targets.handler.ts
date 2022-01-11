@@ -1,19 +1,19 @@
 import {
     findSubstring,
-    parseTargetType,
     getTableOfTargets,
+    parseTargetType,
     parseTargetStatus
 } from '../../utils/utils';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { includes, map, uniq } from 'lodash';
 import { ConfigService } from '../../services/config/config.service';
-import { TargetType, TargetStatus } from '../../services/common.types';
+import { TargetStatus } from '../../services/common.types';
 import yargs from 'yargs';
 import { listTargetsArgs } from './list-targets.command-builder';
-
 import { listTargets } from '../../services/list-targets/list-targets.service';
-import { EnvironmentService } from '../../services/environment/environment.service';
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 export async function listTargetsHandler(
     configService: ConfigService,
@@ -22,8 +22,8 @@ export async function listTargetsHandler(
 ) {
     let allTargets = await listTargets(configService, logger);
 
-    const envService = new EnvironmentService(configService, logger);
-    const envs = await envService.ListEnvironments();
+    const envHttpService = new EnvironmentHttpService(configService, logger);
+    const envs = await envHttpService.ListEnvironments();
 
     // find all envIds with substring search
     // filter targets down by endIds
@@ -50,7 +50,7 @@ export async function listTargetsHandler(
         let targetStatusFilter: TargetStatus[] = map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
         targetStatusFilter = uniq(targetStatusFilter);
 
-        allTargets = allTargets.filter(t => (t.type != TargetType.SSM && t.type != TargetType.CLUSTER) || includes(targetStatusFilter, t.status));
+        allTargets = allTargets.filter(t => (t.type != TargetType.SsmTarget && t.type != TargetType.Cluster) || includes(targetStatusFilter, t.status));
     }
 
     if(!! argv.json) {

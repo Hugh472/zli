@@ -1,17 +1,8 @@
+import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+
 export interface TargetUser
 {
     userName: string;
-}
-
-export enum TargetType {
-    SSM = 'SSM',
-    SSH = 'SSH',
-    DYNAMIC = 'DYNAMIC',
-    CLUSTER = 'CLUSTER',
-    BZERO_AGENT = 'BZERO',
-    WEB = 'WEB',
-    DB = 'DB'
-
 }
 
 export enum IdP {

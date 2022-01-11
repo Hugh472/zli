@@ -2,20 +2,19 @@ import { Retrier } from '@jsier/retrier';
 import { DigitalOcean } from 'digitalocean-js';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { KubeService } from '../../services/kube/kube.service';
 import { KubernetesCluster, KubernetesWorkerNodePool } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
 import { ClusterTargetStatusPollError, CreateNewKubeClusterParameters, RegisteredDigitalOceanKubernetesCluster } from './digital-ocean-kube.service.types';
-import { ClusterSummary } from '../../services/kube/kube.types';
 import { checkAllSettledPromise } from '../tests/utils/utils';
-import { PolicyService } from '../../services/policy/policy.service';
-import { EnvironmentService } from '../../services/environment/environment.service';
-import { TargetStatus } from '../../services/common.types';
-
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
+import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
+import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
 export class DigitalOceanKubeService {
     private doClient: DigitalOcean;
-    private kubeService: KubeService;
-    private policyService: PolicyService;
-    private envService: EnvironmentService;
+    private kubeHttpService: KubeHttpService;
+    private policyHttpService: PolicyHttpService;
+    private envHttpService: EnvironmentHttpService;
 
     constructor(
         apiToken: string,
@@ -23,9 +22,9 @@ export class DigitalOceanKubeService {
         private logger: Logger
     ) {
         this.doClient = new DigitalOcean(apiToken);
-        this.kubeService = new KubeService(this.configService, this.logger);
-        this.policyService = new PolicyService(this.configService, this.logger);
-        this.envService = new EnvironmentService(this.configService, this.logger);
+        this.kubeHttpService = new KubeHttpService(this.configService, this.logger);
+        this.policyHttpService = new PolicyHttpService(this.configService, this.logger);
+        this.envHttpService = new EnvironmentHttpService(this.configService, this.logger);
     }
 
     /**
@@ -113,7 +112,7 @@ export class DigitalOceanKubeService {
         // Only delete cluster target on BastionZero if it is set.
         // Delete env as well but only after deleting cluster
         if (registeredCluster.bzeroClusterTargetSummary) {
-            await this.kubeService.DeleteKubeCluster({ id: registeredCluster.bzeroClusterTargetSummary.id });
+            await this.kubeHttpService.DeleteKubeCluster(registeredCluster.bzeroClusterTargetSummary.id);
         }
 
         // We cannot delete the env until the target has been deleted as this is
@@ -124,10 +123,10 @@ export class DigitalOceanKubeService {
     private async deleteClusterPolicy(registeredCluster: RegisteredDigitalOceanKubernetesCluster): Promise<void> {
         // Find the policy that Helm creates and delete it
         const policyName = this.getHelmClusterPolicyName(registeredCluster.doClusterSummary.name);
-        const policies = await this.policyService.ListAllPolicies();
-        const kubePolicy = policies.find(p => p.name === policyName);
-        if (kubePolicy) {
-            await this.policyService.DeletePolicy(kubePolicy.id);
+        const kubeTunnelPolicies = await this.policyHttpService.ListKubeTunnelPolicies();
+        const kubeTunnelPolicy = kubeTunnelPolicies.find(p => p.name === policyName);
+        if (kubeTunnelPolicy) {
+            await this.policyHttpService.DeleteKubeTunnelPolicy(kubeTunnelPolicy.id);
         } else {
             throw new Error(`Unexpected error! Expected to find at least one policy with name: ${policyName}`);
         }
@@ -136,10 +135,10 @@ export class DigitalOceanKubeService {
     private async deleteClusterEnv(registeredCluster: RegisteredDigitalOceanKubernetesCluster): Promise<void> {
         // Find the env that Helm creates and delete it
         const envName = this.getHelmClusterEnvName(registeredCluster.doClusterSummary.name);
-        const envs = await this.envService.ListEnvironments();
+        const envs = await this.envHttpService.ListEnvironments();
         const kubeEnv = envs.find(e => e.name === envName);
         if (kubeEnv) {
-            await this.envService.DeleteEnvironment(kubeEnv.id);
+            await this.envHttpService.DeleteEnvironment(kubeEnv.id);
         } else {
             throw new Error(`Unexpected error! Expected to find at least one env with name: ${envName}`);
         }
@@ -150,19 +149,19 @@ export class DigitalOceanKubeService {
      * @param clusterTargetName The name of the cluster target to poll
      * @returns Information about the cluster
      */
-    public async pollClusterTargetOnline(clusterTargetName: string): Promise<ClusterSummary> {
+    public async pollClusterTargetOnline(clusterTargetName: string): Promise<KubeClusterSummary> {
         // Try 30 times with a delay of 10 seconds between each attempt.
         const retrier = new Retrier({
             limit: 30,
             delay: 1000 * 10,
-            stopRetryingIf: (reason: any) => reason instanceof ClusterTargetStatusPollError && reason.clusterSummary.status === TargetStatus.Error
+            stopRetryingIf: (reason: any) => reason instanceof ClusterTargetStatusPollError && reason.clusterSummary.status === AgentStatus.Error
         });
 
         // We don't know Cluster target ID initially
         let clusterTargetId: string = '';
-        return retrier.resolve(() => new Promise<ClusterSummary>(async (resolve, reject) => {
-            const checkIsClusterTargetOnline = (clusterSummary: ClusterSummary) => {
-                if (clusterSummary.status === TargetStatus.Online) {
+        return retrier.resolve(() => new Promise<KubeClusterSummary>(async (resolve, reject) => {
+            const checkIsClusterTargetOnline = (clusterSummary: KubeClusterSummary) => {
+                if (clusterSummary.status === AgentStatus.Online) {
                     resolve(clusterSummary);
                 } else {
                     throw new ClusterTargetStatusPollError(clusterSummary, `Cluster target ${clusterSummary.clusterName} is not online. Has status: ${clusterSummary.status}`);
@@ -172,7 +171,7 @@ export class DigitalOceanKubeService {
                 if (clusterTargetId === '') {
                     // We don't know the cluster target ID yet, so we have to
                     // use the less efficient list API to learn about the ID
-                    const clusters = await this.kubeService.ListKubeClusters();
+                    const clusters = await this.kubeHttpService.ListKubeClusters();
                     const foundTarget = clusters.find(target => target.clusterName === clusterTargetName);
                     if (foundTarget) {
                         clusterTargetId = foundTarget.id;
@@ -182,7 +181,7 @@ export class DigitalOceanKubeService {
                     }
                 } else {
                     // Cluster target ID is known
-                    const target = await this.kubeService.GetKubeCluster(clusterTargetId);
+                    const target = await this.kubeHttpService.GetKubeCluster(clusterTargetId);
                     checkIsClusterTargetOnline(target);
                 }
             } catch (error) {

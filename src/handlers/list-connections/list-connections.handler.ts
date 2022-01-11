@@ -4,10 +4,11 @@ import { getTableOfConnections } from '../../utils/utils';
 import { cleanExit } from '../clean-exit.handler';
 import { getCliSpace } from '../../utils/shell-utils';
 import { TargetSummary } from '../../services/common.types';
-import { ConnectionState, ConnectionDetails } from '../../services/connection/connection.types';
-import { SessionService } from '../../services/session/session.service';
 import yargs from 'yargs';
 import { listConnectionsArgs } from './list-connections.command-builder';
+import { SpaceHttpService } from '../../http-services/space/space.http-services';
+import { ConnectionSummary } from '../../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
+import { ConnectionState } from '../../../webshell-common-ts/http/v2/connection/types/connection-state.types';
 
 export async function listConnectionsHandler(
     argv: yargs.Arguments<listConnectionsArgs>,
@@ -15,22 +16,26 @@ export async function listConnectionsHandler(
     logger: Logger,
     ssmTargets: Promise<TargetSummary[]>,
 ){
-    const sessionService = new SessionService(configService, logger);
-    const cliSpace = await getCliSpace(sessionService, logger);
+    const spaceHttpService = new SpaceHttpService(configService, logger);
+    const cliSpace = await getCliSpace(spaceHttpService, logger);
 
     const openConnections = cliSpace.connections.filter(c => c.state === ConnectionState.Open);
 
     // await and concatenate
     const allTargets = [...await ssmTargets];
-    const formattedConnections = openConnections.map<ConnectionDetails>((conn, _index, _array) => {
+    const formattedConnections = openConnections.map<ConnectionSummary>((conn, _index, _array) => {
         return {
             id: conn.id,
             timeCreated: conn.timeCreated,
-            targetId: conn.serverId,
-            sessionId: conn.sessionId,
+            targetId: conn.targetId,
+            spaceId: conn.spaceId,
             state: conn.state,
-            serverType: conn.serverType,
-            userName: conn.userName
+            targetType: conn.targetType,
+            targetUser: conn.targetUser,
+            sessionRecordingAvailable: conn.sessionRecordingAvailable,
+            sessionRecording: conn.sessionRecording,
+            inputRecording: conn.inputRecording,
+            subjectId: conn.subjectId
         };
     });
 

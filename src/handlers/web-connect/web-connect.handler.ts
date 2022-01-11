@@ -9,7 +9,7 @@ import { exit } from 'process';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../services/virtual-target/virtual-target.types';
 import { TargetStatus } from '../../services/common.types';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
 
 const { spawn } = require('child_process');

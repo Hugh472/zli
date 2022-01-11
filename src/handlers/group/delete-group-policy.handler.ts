@@ -1,14 +1,14 @@
-import { GroupsService } from '../../services/groups/groups.service';
-import { PolicyService } from '../../services/policy/policy.service';
-import { PolicyType } from '../../services/policy/policy.types';
+import { PolicyService } from '../../services/v1/policy/policy.service';
+import { PolicyType } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
+import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 
 export async function deleteGroupFromPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the group
-    const groupsService = new GroupsService(configService, logger);
-    const groups = await groupsService.ListGroups();
+    const organizationHttpService = new OrganizationHttpService(configService, logger);
+    const groups = await organizationHttpService.ListGroups();
     const groupSummary = groups.find(g => g.name == groupName);
     if (groupSummary == undefined) {
         logger.error(`Unable to find group with name: ${groupName}`);

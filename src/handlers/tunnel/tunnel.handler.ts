@@ -1,9 +1,7 @@
 import path from 'path';
 import utils from 'util';
 import fs from 'fs';
-import { killDaemon } from '../../services/kube/kube.service';
-import { ClusterDetails } from '../../services/kube/kube.types';
-import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { killDaemon } from '../../services/v1/kube/kube.service';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
@@ -15,13 +13,16 @@ import got from 'got/dist/source';
 import { Retrier } from '@jsier/retrier';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
 import { TargetStatus } from '../../services/common.types';
+import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 const { spawn } = require('child_process');
 
 
-export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, targetCluster, logger);
-    if (clusterTarget.status != TargetStatus.Online) {
+    if (clusterTarget.status != AgentStatus.Online) {
         logger.error('Target cluster is offline!');
         await cleanExit(1, logger);
     }
@@ -41,10 +42,10 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     }
 
     // Make our API client
-    const policyService = new PolicyQueryService(configService, logger);
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.CheckKubeProxy(targetUser, clusterTarget.id, targetGroups);
+    const response = await policyQueryHttpService.CheckKubeTunnel(targetUser, clusterTarget.id, targetGroups);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${targetCluster} as ${targetUser} in the group(s): ${targetGroups}`);
         await cleanExit(1, logger);
@@ -136,9 +137,9 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     }
 }
 
-async function getClusterInfoFromName(clusterTargets: ClusterDetails[], clusterName: string, logger: Logger): Promise<ClusterDetails> {
+async function getClusterInfoFromName(clusterTargets: KubeClusterSummary[], clusterName: string, logger: Logger): Promise<KubeClusterSummary> {
     for (const clusterTarget of clusterTargets) {
-        if (clusterTarget.name == clusterName) {
+        if (clusterTarget.clusterName == clusterName) {
             return clusterTarget;
         }
     }
@@ -154,7 +155,7 @@ function pollDaemonReady(daemonPort: number) : Promise<void> {
     });
 
     return retrier.resolve(async () => {
-        const isDaemonReadyResp = await got.get(`https://localhost:${daemonPort}/bzero-is-ready`, { throwHttpErrors: false, https: { rejectUnauthorized: false } });
+        const isDaemonReadyResp = await got.get(`https://localhost:${daemonPort}/bastionzero-ready`, { throwHttpErrors: false, https: { rejectUnauthorized: false } });
 
         if (isDaemonReadyResp.statusCode === 200) {
             return;

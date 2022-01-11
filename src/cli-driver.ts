@@ -1,6 +1,7 @@
 import {
     disambiguateTarget,
     isGuid,
+    parsePolicyType,
     targetStringExample
 } from './utils/utils';
 import { ConfigService } from './services/config/config.service';
@@ -10,11 +11,9 @@ import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
-import { EnvironmentDetails } from './services/environment/environment.types';
+import { TargetSummary, TargetStatus } from './services/common.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
-import { PolicyType } from './services/policy/policy.types';
-import { ClusterDetails } from './services/kube/kube.types';
+import { PolicyType } from './services/v1/policy/policy.types';
 
 
 // Handlers
@@ -30,31 +29,34 @@ import { startKubeDaemonHandler } from './handlers/tunnel/tunnel.handler';
 import { dbConnectHandler } from './handlers/db-connect/db-connect.handler';
 import { webConnectHandler } from './handlers/web-connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
-import { listUsersHandler } from './handlers/user/list-users.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kube/generate-kubeconfig.handler';
-import { addTargetUserHandler } from './handlers/target-user/add-target-user.handler';
-import { deleteTargetUserHandler } from './handlers/target-user/delete-target-user.handler';
-import { addUserToPolicyHandler } from './handlers/user/add-user-policy.handler';
-import { deleteUserFromPolicyHandler } from './handlers/user/delete-user-policy.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect/disconnect.handler';
 import { kubeStatusHandler } from './handlers/tunnel/status.handler';
 import { bctlHandler } from './handlers/bctl.handler';
-import { listPoliciesHandler } from './handlers/policy/list-policies.handler';
-import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler';
 import { fetchGroupsHandler } from './handlers/group/fetch-groups.handler';
 import { generateBashHandler } from './handlers/generate-bash/generate-bash.handler';
 import { quickstartHandler } from './handlers/quickstart/quickstart-handler';
 import { describeClusterPolicyHandler } from './handlers/describe-cluster-policy/describe-cluster-policy.handler';
-import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy.handler';
-import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler';
-import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler';
 import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
-import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler';
-import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler';
 import { defaultTargetGroupHandler } from './handlers/default-target-group/default-target-group.handler';
+import { addUserToPolicyHandler } from './handlers/user/add-user-policy.handler.v2';
+import { deleteUserFromPolicyHandler } from './handlers/user/delete-user-policy.handler.v2';
+import { addGroupToPolicyHandler } from './handlers/group/add-group-policy.handler.v2';
+import { deleteGroupFromPolicyHandler } from './handlers/group/delete-group-policy-handler.v2';
+import { addTargetUserHandler } from './handlers/target-user/add-target-user.handler.v2';
+import { deleteTargetUserHandler } from './handlers/target-user/delete-target-user.handler.v2';
+import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler.v2';
+import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler.v2';
+import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler.v2';
+import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler.v2';
+import { listKubeTunnelPoliciesHandler } from './handlers/policy/list-kube-tunnel-policies.handler';
+import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-connect-policies.handler';
+import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
+import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-controls-policies.handler';
+import { listUsersHandler } from './handlers/user/list-users.handler.v2';
 
 // 3rd Party Modules
 import { includes } from 'lodash';
@@ -83,6 +85,9 @@ import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.c
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 import { BzeroAgentSummary } from './services/bzero-agent/bzero-agent.types';
 import { DbTargetSummary, WebTargetSummary } from './services/virtual-target/virtual-target.types';
+import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -108,11 +113,11 @@ export class CliDriver
 
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
-    private clusterTargets: Promise<ClusterDetails[]>;
+    private clusterTargets: Promise<KubeClusterSummary[]>;
     private bzeroAgentTargets: Promise<BzeroAgentSummary[]>;
     private dbTargets: Promise<DbTargetSummary[]>;
     private webTargets: Promise<WebTargetSummary[]>;
-    private envs: Promise<EnvironmentDetails[]>;
+    private envs: Promise<EnvironmentSummary[]>;
 
     // use the following to shortcut middleware according to command
     private oauthCommands: string[] = [
@@ -355,12 +360,37 @@ export class CliDriver
             )
             .command(
                 ['policy [type]'],
-                'List the available policies and their',
+                'List the available policies',
                 (yargs) => {
                     return policyCmdBuilder(yargs, this.policyTypeChoices);
                 },
                 async (argv) => {
-                    await listPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
+                    // If provided type filter, apply it
+                    let policyType: PolicyType = undefined;
+                    if(!! argv.type) {
+                        policyType = parsePolicyType(argv.type);
+                    }
+                    switch (policyType) {
+                    case PolicyType.TargetConnect:
+                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
+                        break;
+                    case PolicyType.KubernetesTunnel:
+                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
+                        break;
+                    case PolicyType.SessionRecording:
+                        await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                        break;
+                    case PolicyType.OrganizationControls:
+                        await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
+                        break;
+                    default:
+                        await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
+                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
+                        await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                        await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
+                        break;
+                    }
+                    await cleanExit(0, this.logger);
                 }
             )
             .command(

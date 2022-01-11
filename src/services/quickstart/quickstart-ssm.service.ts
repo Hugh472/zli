@@ -1,8 +1,6 @@
-import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, QuickstartSSMTarget, RegistrableSSHHost } from './quickstart-ssm.service.types';
-import { getAutodiscoveryScript } from '../auto-discovery-script/auto-discovery-script.service';
+import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, RegistrableSSHHost, RegisteredSSHHost } from './quickstart-ssm.service.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
-import { SsmTargetService } from '../ssm-target/ssm-target.service';
 import { TargetStatus } from '../common.types';
 import { readFile } from '../../utils/utils';
 
@@ -11,24 +9,31 @@ import path from 'path';
 import os from 'os';
 import prompts, { PromptObject } from 'prompts';
 import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
-import { PolicyService } from '../policy/policy.service';
-import { PolicyEnvironment, PolicySummary, PolicyTargetUser, PolicyType, Subject, SubjectType, TargetConnectContext } from '../policy/policy.types';
-import { Verb, VerbType } from '../policy-query/policy-query.types';
-import { EnvironmentService } from '../environment/environment.service';
-import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
+import { Subject, SubjectType } from '../v1/policy/policy.types';
 import { Retrier } from '@jsier/retrier';
 import chalk from 'chalk';
 import { ConsoleWithTranscriptService } from '../consoleWithTranscript/consoleWithTranscript.service';
 import { TranscriptMessage } from '../consoleWithTranscript/consoleWithTranscript.types';
 import ora from 'ora';
+import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
+import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
+import { Environment } from '../../../webshell-common-ts/http/v2/policy/types/environment.types';
+import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
+import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.types';
+import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
+import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
+import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
+import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
+import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
 
 export class QuickstartSsmService {
     constructor(
         private logger: Logger,
         private consoleAndTranscript: ConsoleWithTranscriptService,
         private configService: ConfigService,
-        private policyService: PolicyService,
-        private environmentService: EnvironmentService
+        private policyHttpService: PolicyHttpService,
+        private environmentHttpService: EnvironmentHttpService
     ) { }
 
     /**
@@ -38,16 +43,16 @@ export class QuickstartSsmService {
      * @returns Information about the target
      */
     private async pollSsmTargetOnline(ssmTargetId: string): Promise<SsmTargetSummary> {
-        // Try 30 times with a delay of 10 seconds between each attempt.
+        // Try 60 times with a delay of 10 seconds between each attempt (10 min).
         const retrier = new Retrier({
-            limit: 30,
+            limit: 60,
             delay: 1000 * 10
         });
         return retrier.resolve(() => new Promise<SsmTargetSummary>(async (resolve, reject) => {
             try {
-                const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+                const ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
 
-                const target = await ssmTargetService.GetSsmTarget(ssmTargetId);
+                const target = await ssmTargetHttpService.GetSsmTarget(ssmTargetId);
                 if (target.status === TargetStatus.Online && target.agentVersion !== '') {
                     resolve(target);
                 } else {
@@ -97,10 +102,11 @@ export class QuickstartSsmService {
      * @param registrableHost The SSH host to register
      * @param spinner The global progress bar object that is displayed to the
      * user
-     * @returns Target summary of the newly registered host
+     * @returns Target summary of the newly registered host and the
+     * corresponding SSH host config block
      */
-    public async addSSHHostToBastionZero(registrableHost: RegistrableSSHHost, spinner: ora.Ora): Promise<SsmTargetSummary> {
-        return new Promise<SsmTargetSummary>(async (resolve, reject) => {
+    public async addSSHHostToBastionZero(registrableHost: RegistrableSSHHost, spinner: ora.Ora): Promise<RegisteredSSHHost> {
+        return new Promise<RegisteredSSHHost>(async (resolve, reject) => {
             try {
                 const ssmTargetId = await this.runAutodiscoveryOnSSHHost(registrableHost);
                 this.logger.debug(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
@@ -113,7 +119,7 @@ export class QuickstartSsmService {
                 this.consoleAndTranscript.pushToTranscript(successMsg);
                 spinner.prefixText = spinner.prefixText + successMsg + '\n';
 
-                resolve(ssmTarget);
+                resolve({ targetSummary: ssmTarget, sshHost: registrableHost.host.sshHost});
             } catch (error) {
                 // Add fail message to current prefixText of the spinner and push to transcript
                 const errMsg = chalk.red(`✖ Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
@@ -182,9 +188,8 @@ export class QuickstartSsmService {
 
             // Get autodiscovery script
             //
-            // The registered target's name will match the hostname alias parsed
-            // from the SSH config file
-            const script = await getAutodiscoveryScript(this.logger, this.configService, registrableSSHHost.envId, { scheme: 'manual', name: hostName }, 'universal', 'latest');
+            // The registered target's name will match the Bash hostname of the target machine
+            const script = await getAutodiscoveryScript(this.logger, this.configService, registrableSSHHost.envId, ScriptTargetNameOption.BashHostName, 'latest');
 
             // Run script on target
             const execAutodiscoveryScriptCmd = `bash << 'endmsg'\n${script}\nendmsg`;
@@ -420,7 +425,7 @@ export class QuickstartSsmService {
      * @returns Returns the ID of the newly created environment
      */
     private async createQuickstartEnvironment(sshUsername: string, envName: string): Promise<string> {
-        const createEnvResp = await this.environmentService.CreateEnvironment({
+        const createEnvResp = await this.environmentHttpService.CreateEnvironment({
             name: envName,
             description: `Quickstart autogenerated environment for ${sshUsername} users`,
             offlineCleanupTimeoutHours: 1
@@ -440,32 +445,29 @@ export class QuickstartSsmService {
      * @param policyName Name of the policy
      * @returns Summary of the newly created policy
      */
-    private async createQuickstartTargetConnectPolicy(sshUsername: string, envId: string, policyName: string): Promise<PolicySummary> {
-        const environmentContext: { [key: string]: PolicyEnvironment } = { [envId]: { id: envId } };
-        const targetUserContext: { [key: string]: PolicyTargetUser } = { [sshUsername]: { userName: sshUsername } };
-        const verbContext: { [key: string]: Verb } = {
-            [VerbType.Shell]: { type: VerbType.Shell },
-            [VerbType.Tunnel]: { type: VerbType.Tunnel },
-            [VerbType.FileTransfer]: { type: VerbType.FileTransfer }
-        };
-        const connectContext: TargetConnectContext = {
-            targets: undefined,
-            environments: environmentContext,
-            targetUsers: targetUserContext,
-            verbs: verbContext
-        };
+    private async createQuickstartTargetConnectPolicy(sshUsername: string, envId: string, policyName: string): Promise<TargetConnectPolicySummary> {
+        const environment: Environment = { id: envId };
+        const targetUser: TargetUser = { userName: sshUsername };
+        const verbs: Verb[] = [
+            { type: VerbType.Shell },
+            { type: VerbType.Tunnel },
+            { type: VerbType.FileTransfer },
+        ];
+
         const userAsSubject: Subject = {
             id: this.configService.me().id,
             type: SubjectType.User
         };
 
-        return await this.policyService.AddPolicy({
+        return await this.policyHttpService.AddTargetConnectPolicy({
             name: policyName,
-            type: PolicyType.TargetConnect.toString(),
             subjects: [userAsSubject],
             groups: [],
-            context: JSON.stringify(connectContext),
-            policyMetadata: { description: `Quickstart autogenerated policy for ${sshUsername} users` }
+            description: `Quickstart autogenerated policy for ${sshUsername} users`,
+            environments: [environment],
+            targets: [],
+            targetUsers: [targetUser],
+            verbs: verbs
         });
     }
 
@@ -503,7 +505,7 @@ export class QuickstartSsmService {
             const quickstartEnvName = `${username}-users_quickstart`;
             let quickstartEnvId: string;
             try {
-                const envs = await this.environmentService.ListEnvironments();
+                const envs = await this.environmentHttpService.ListEnvironments();
                 const quickstartEnv = envs.find(env => env.name === quickstartEnvName);
                 if (quickstartEnv === undefined) {
                     // Quickstart env for this ssh username does not exist
@@ -530,9 +532,9 @@ export class QuickstartSsmService {
     /**
      * Creates a policy for each unique SSH username in the parsed SSH hosts. If
      * the policy already exists, no new policy will be created.
-     * @param quickstartTargets A list of SSM targets that were successfully
+     * @param registeredSSHHosts A list of SSH hosts that were successfully
      * registered
-     * @returns A list of SSM targets which are most likely connectable. The
+     * @returns A list of targets which are most likely connectable. The
      * list will be smaller than the input list if the request to create the
      * policy fails.
      *
@@ -545,13 +547,13 @@ export class QuickstartSsmService {
      * - The created policy (in the case that no expected policy exists) is
      *   changed or removed before quickstart actually makes the connection.
      */
-    public async createPolicyForUniqueUsernames(quickstartTargets: QuickstartSSMTarget[]): Promise<QuickstartSSMTarget[]> {
-        const connectableTargets: QuickstartSSMTarget[] = [];
-        const usernameMap: Map<string, QuickstartSSMTarget[]> = new Map();
+    public async createPolicyForUniqueUsernames(registeredSSHHosts: RegisteredSSHHost[]): Promise<RegisteredSSHHost[]> {
+        const connectableTargets: RegisteredSSHHost[] = [];
+        const usernameMap: Map<string, RegisteredSSHHost[]> = new Map();
 
         // Build map of common SSH usernames among the targets that were
         // successfully added to BastionZero
-        for (const target of quickstartTargets) {
+        for (const target of registeredSSHHosts) {
             // Normalize to lowercase
             const usernameMatch = target.sshHost.username.toLowerCase();
             if (usernameMap.has(usernameMatch)) {
@@ -569,13 +571,13 @@ export class QuickstartSsmService {
             const quickstartPolicyName = `${username}-users-policy_quickstart`;
             try {
                 // Ensure that quickstart policy exists for this SSH username.
-                const policies = await this.policyService.ListAllPolicies();
-                if (policies.find(policy => policy.name === quickstartPolicyName) === undefined) {
+                const targetConnectPolicies = await this.policyHttpService.ListTargetConnectPolicies();
+                if (targetConnectPolicies.find(policy => policy.name === quickstartPolicyName) === undefined) {
                     // Quickstart policy for this ssh username does not exist
 
                     // All targets with the same SSH username were registered in
                     // the same environment
-                    const envId = targets[0].ssmTarget.environmentId;
+                    const envId = targets[0].targetSummary.environmentId;
 
                     // Create new policy
                     await this.createQuickstartTargetConnectPolicy(username, envId, quickstartPolicyName);

@@ -1,21 +1,17 @@
 import { Retrier } from '@jsier/retrier';
 import { DigitalOcean, Droplet } from 'digitalocean-js';
-import { getAutodiscoveryScript } from '../../services/auto-discovery-script/auto-discovery-script.service';
 import { TargetStatus } from '../../services/common.types';
 import { ConfigService } from '../../services/config/config.service';
-import { SsmTargetService } from '../../services/ssm-target/ssm-target.service';
-import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
+import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { Logger } from '../../services/logger/logger.service';
 import { CreateNewDropletParameters, DigitalOceanSSMTarget, DigitalOceanSsmTargetParameters, SsmTargetStatusPollError } from './digital-ocean-ssm-target.service.types';
-import { EnvironmentService } from '../../services/environment/environment.service';
-import { getEnvironmentFromName } from '../../utils/utils';
 import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;
-    private ssmTargetService: SsmTargetService;
-    private environmentService: EnvironmentService
+    private ssmTargetHttpService: SsmTargetHttpService;
 
     constructor(
         apiToken: string,
@@ -23,26 +19,17 @@ export class DigitalOceanSSMTargetService {
         private logger: Logger
     ) {
         this.doClient = new DigitalOcean(apiToken);
-        this.ssmTargetService = new SsmTargetService(this.configService, this.logger);
-        this.environmentService = new EnvironmentService(this.configService, this.logger);
+        this.ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
     }
 
     /**
      * Create a DigitalOcean droplet to host a new SSM target
+     * @param autoDiscoveryScript The autodiscovery script which is passed in as
+     * a User-Data script during droplet creation
      * @returns Information about the created droplet
      */
-    public async createDigitalOceanSSMTarget(parameters: DigitalOceanSsmTargetParameters): Promise<Droplet> {
-        let envId = parameters.envId;
-
-        // Use default environment if no environment ID is passed
-        if (!envId) {
-            const environments = await this.environmentService.ListEnvironments();
-            const defaultEnvironment = await getEnvironmentFromName('Default', environments, this.logger);
-            envId = defaultEnvironment.id;
-        }
-
+    public async createDigitalOceanSSMTarget(parameters: DigitalOceanSsmTargetParameters, autoDiscoveryScript: string): Promise<Droplet> {
         // Create the droplet
-        const autoDiscoveryScript = await getAutodiscoveryScript(this.logger, this.configService, envId, { scheme: 'manual', name: parameters.targetName }, 'universal', 'latest');
         let droplet = await this.createNewDroplet({ ...parameters.dropletParameters, userDataScript: autoDiscoveryScript });
 
         // Poll until DigitalOcean says the droplet is online / active
@@ -70,7 +57,7 @@ export class DigitalOceanSSMTargetService {
 
         // Only delete SSM target if it is set
         if (doSSMTarget.ssmTarget) {
-            cleanupPromises.push(this.ssmTargetService.DeleteSsmTarget(doSSMTarget.ssmTarget.id));
+            cleanupPromises.push(this.ssmTargetHttpService.DeleteSsmTarget(doSSMTarget.ssmTarget.id));
         }
 
         await checkAllSettledPromise(Promise.allSettled(cleanupPromises));
@@ -83,9 +70,9 @@ export class DigitalOceanSSMTargetService {
      * @returns Information about the target
      */
     public async pollSsmTargetOnline(ssmTargetName: string): Promise<SsmTargetSummary> {
-        // Try 30 times with a delay of 10 seconds between each attempt.
+        // Try 60 times with a delay of 10 seconds between each attempt (10 min).
         const retrier = new Retrier({
-            limit: 30,
+            limit: 60,
             delay: 1000 * 10,
             stopRetryingIf: (reason: any) => reason instanceof SsmTargetStatusPollError && reason.ssmTarget.status === TargetStatus.Error
         });
@@ -104,7 +91,7 @@ export class DigitalOceanSSMTargetService {
                 if (ssmTargetId === '') {
                     // We don't know the SSM target ID yet, so we have to use
                     // the less efficient list API to learn about the ID
-                    const targets = await this.ssmTargetService.ListSsmTargets(false);
+                    const targets = await this.ssmTargetHttpService.ListSsmTargets(false);
                     const foundTarget = targets.find(target => target.name === ssmTargetName);
                     if (foundTarget) {
                         ssmTargetId = foundTarget.id;
@@ -114,7 +101,7 @@ export class DigitalOceanSSMTargetService {
                     }
                 } else {
                     // SSM target ID is known
-                    const target = await this.ssmTargetService.GetSsmTarget(ssmTargetId);
+                    const target = await this.ssmTargetHttpService.GetSsmTarget(ssmTargetId);
                     checkIsTargetOnline(target);
                 }
             } catch (error) {
@@ -130,9 +117,9 @@ export class DigitalOceanSSMTargetService {
      * @returns Droplet information after its status == "active"
      */
     private async pollDropletUntilActive(dropletId: number): Promise<Droplet> {
-        // Try 30 times with a delay of 10 seconds between each attempt.
+        // Try 60 times with a delay of 10 seconds between each attempt (10 min).
         const retrier = new Retrier({
-            limit: 30,
+            limit: 60,
             delay: 1000 * 10,
             stopRetryingIf: (reason: any) => axios.isAxiosError(reason)
         });

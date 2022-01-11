@@ -4,7 +4,7 @@ import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
 import { Subscription } from 'rxjs';
-import { imagesToRun, testTargets } from '../system-test';
+import { ssmTestTargetsToRun, testTargets } from '../system-test';
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
 
@@ -30,8 +30,8 @@ export const connectSuite = () => {
             }
         });
 
-        test.each(imagesToRun)('zli connect %p', async (image) => {
-            const doTarget = testTargets.get(image);
+        test.each(ssmTestTargetsToRun)('zli connect %p', async (testTarget) => {
+            const doTarget = testTargets.get(testTarget);
 
             // Spy on terminal running getter so this test can spy+subscribe
             // on the terminal running observable used by ShellTerminal to
