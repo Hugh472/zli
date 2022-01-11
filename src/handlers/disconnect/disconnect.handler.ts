@@ -15,29 +15,44 @@ export async function disconnectHandler(
     if (targetType == 'all' || targetType == 'kube') {
         // Ensure nothing is using that localpid
         const kubeConfig = configService.getKubeConfig();
-        await killDaemon(kubeConfig['localPid'], logger)
 
-        // Update the localPid
-        kubeConfig['localPid'] = null;
-        configService.setKubeConfig(kubeConfig);
+        if (kubeConfig['localPid'] != null) {
+            await killDaemon(kubeConfig['localPid'], logger)
+
+            // Update the localPid
+            kubeConfig['localPid'] = null;
+            configService.setKubeConfig(kubeConfig);
+        } else {
+            logger.warn('No kube daemon running');
+        }
     }
     if (targetType == 'all' || targetType == 'web') {
         // Ensure nothing is using that localpid
         const webConfig = configService.getWebConfig();
-        await killDaemon(webConfig['localPid'], logger)
 
-        // Update the localPid
-        webConfig['localPid'] = null;
-        configService.setWebConfig(webConfig);
+        if (webConfig['localPid'] != null) {
+            await killDaemon(webConfig['localPid'], logger)
+
+            // Update the localPid
+            webConfig['localPid'] = null;
+            configService.setWebConfig(webConfig);
+        } else {
+            logger.warn('No web daemon running');
+        }
     }
     if (targetType == 'all' || targetType == 'db') {
         // Ensure nothing is using that localpid
         const dbConfig = configService.getDbConfig();
-        await killDaemon(dbConfig['localPid'], logger)
 
-        // Update the localPid
-        dbConfig['localPid'] = null;
-        configService.setDbConfig(dbConfig);
+        if (dbConfig['localPid'] != null) {
+            await killDaemon(dbConfig['localPid'], logger)
+
+            // Update the localPid
+            dbConfig['localPid'] = null;
+            configService.setDbConfig(dbConfig);
+        } else {
+            logger.warn('No db daemon running');
+        }
     }
     await cleanExit(0, logger);
 }

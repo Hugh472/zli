@@ -306,6 +306,10 @@ export class CliDriver
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.dbTargets, this.webTargets, this.clusterTargets, this.envs);
                     
+                    if (parsedTarget == undefined) {
+                        this.logger.warn(`No target was able to be parsed from the name ${argv.targetString}`)
+                        await cleanExit(1, this.logger);
+                    }
                     let exitCode = 1;
                     if (parsedTarget.type == TargetType.SsmTarget || parsedTarget.type == TargetType.DynamicAccessConfig) {
                         exitCode = await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
@@ -331,7 +335,7 @@ export class CliDriver
                 }
             )
             .command(
-                'disconnect',
+                'disconnect [targetType]',
                 'Disconnect a Zli Daemon',
                 (yargs) => {
                     return disconnectCmdBuilder(yargs);
