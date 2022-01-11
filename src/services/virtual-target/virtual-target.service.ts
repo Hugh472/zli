@@ -16,12 +16,4 @@ export class VirtualTargetService extends HttpService
     public ListWebTargets(): Promise<WebTargetSummary[]> {
         return this.Get('web', {});
     }
-
-    // public GetKubeCluster(clusterTargetId: string): Promise<ClusterSummary> {
-    //     return this.Get('', { id: clusterTargetId });
-    // }
-
-    // public DeleteKubeCluster(req: DeleteClusterRequest): Promise<void> {
-    //     return this.Post('delete', req);
-    // }
 }

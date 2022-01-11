@@ -4,34 +4,34 @@ import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import yargs from 'yargs';
 import open from 'open';
-import { webConnectArgs } from './web-connect.command-builder';
-import { exit } from 'process';
-import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir } from '../../utils/daemon-utils';
+import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../services/virtual-target/virtual-target.types';
 import { TargetStatus } from '../../services/common.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
+import { connectArgs } from './connect.command-builder';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
 
 
-export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, targetName: string, webTargets: Promise<WebTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string, webTargets: Promise<WebTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number>{
     // First ensure the target is online
     const webTarget = await getWebTargetInfoFromName(await webTargets, targetName, logger);
     if (webTarget.status != TargetStatus.Online) {
         logger.error('Target is offline!');
-        await cleanExit(1, logger);
+        return 1;
     }
 
      // Make our API client
      const policyService = new PolicyQueryService(configService, logger);
 
      // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-     const response = await policyService.CheckWebConnect(webTarget.id, webTarget.targetHost, webTarget.targetPort, webTarget.targetHostName);
+     const response = await policyService.Proxy(webTarget.id, webTarget.remoteHost, webTarget.remotePort, TargetType.Web);
      if (response.allowed != true) {
-         logger.error(`You do not have the correct policy setup to access ${webTarget.targetName}!`);
-         await cleanExit(1, logger);
+        logger.error(`You do not have the correct policy setup to access ${webTarget.name}!`);
+        return 1;
      }
 
     // Build the refresh command so it works in the case of the pkg'd app which
@@ -57,21 +57,13 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, t
         configService.setWebConfig(webConfig);
     }
 
-    const localPort = webConfig['localPort'];
+    // Check if we've already started a process
+    if (webConfig['localPid'] != null) {
+        killDaemon(webConfig['localPid'], logger);
+    }
 
-    // Golang does not accept "null" as params, so convert them to empty strings or -1
-    let port = -1
-    let host = ""
-    let hostName = ""
-    if (webTarget.targetPort != null) {
-        port = webTarget.targetPort;
-    }
-    if (webTarget.targetHost != null) {
-        host = webTarget.targetHost;
-    }
-    if (webTarget.targetHostName != null) {
-        hostName = webTarget.targetHostName;
-    }
+
+    let localPort = webConfig['localPort'];
 
     // Build our args and cwd
     let args = [
@@ -83,9 +75,8 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, t
         `-configPath=${configService.configPath()}`,
         `-logPath="${loggerConfigService.daemonLogPath()}"`,
         `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
-        `-targetPort=${port}`,
-        `-targetHost=${host}`,
-        `-targetHostName=${hostName}`,
+        `-remotePort=${webTarget.remotePort}`,
+        `-remoteHost=${webTarget.remoteHost}`,
         `-plugin="web"`
     ];
     let cwd = process.cwd();
@@ -114,32 +105,35 @@ export async function webConnectHandler(argv: yargs.Arguments<webConnectArgs>, t
             const daemonProcess = await spawn(finalDaemonPath, args, options);
 
             // Now save the Pid so we can kill the process next time we start it
-            // TODO: This needs to change so people can have kube + db + web all online 
-            const kubeConfig = configService.getKubeConfig();
-            kubeConfig['localPid'] = daemonProcess.pid;
+            webConfig['localPid'] = daemonProcess.pid;
+
+            // Also save the name of the target to display
+            webConfig['name'] = webConfig.name;
 
             // Wait for daemon HTTP server to be bound and running
             await waitUntilUsedOnHost(localPort, 'localhost', 100, 1000 * 20);
 
-            configService.setKubeConfig(kubeConfig);
+            configService.setWebConfig(webConfig);
             logger.info(`Started web daemon at localhost:${localPort} for ${targetName}`);
 
             // Open our browser window 
             await open(`http://localhost:${localPort}`);
 
-            await cleanExit(0, logger);
+            return 0;
         } else {
+            logger.warn(`Started web daemon in debug mode at localhost:${localPort} for ${targetName}`);
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
+            await cleanExit(0, logger);
         }
     } catch (error) {
         logger.error(`Something went wrong starting the Web Daemon: ${error}`);
-        await cleanExit(1, logger);
+        return 1;
     }
 }
 
 async function getWebTargetInfoFromName(webTargets: WebTargetSummary[], targetName: string, logger: Logger): Promise<WebTargetSummary> {
     for (const webTarget of webTargets) {
-        if (webTarget.targetName == targetName) {
+        if (webTarget.name == targetName) {
             return webTarget;
         }
     }

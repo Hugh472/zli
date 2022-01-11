@@ -1,3 +1,4 @@
+import { AgentStatus } from '../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 
 export interface TargetUser
@@ -18,15 +19,19 @@ export enum TargetStatus {
     Error = 'Error'
 }
 
-export interface TargetSummary
+export interface TargetSummary extends TargetBase
+{
+    agentVersion: string;
+    targetUsers: string[];
+    type: TargetType; 
+}
+
+export interface TargetBase
 {
     id: string;
+    status: TargetStatus;
     name: string;
     environmentId: string;
-    type: TargetType;
-    agentVersion: string;
-    status: TargetStatus;
-    targetUsers: string[];
 }
 
 export interface ParsedTargetString

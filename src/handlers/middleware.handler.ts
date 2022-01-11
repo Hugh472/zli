@@ -95,7 +95,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await virtualTargetService.ListDbTargets();
             const results = response.map<DbTargetSummary>((target, _index, _array) => {
-                return { id: target.id, targetName: target.targetName, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, targetPort: target.targetPort, targetHost: target.targetHost, targetHostName: target.targetHostName };
+                return { id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost };
             });
 
             res(results);
@@ -109,7 +109,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await virtualTargetService.ListWebTargets();
             const results = response.map<WebTargetSummary>((target, _index, _array) => {
-                return { id: target.id, targetName: target.targetName, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, targetPort: target.targetPort, targetHost: target.targetHost, targetHostName: target.targetHostName };
+                return { id: target.id, name: target.name, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId , localPort: target.localPort, localHost: target.localHost };
             });
 
             res(results);

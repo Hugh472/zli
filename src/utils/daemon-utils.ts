@@ -3,7 +3,12 @@ import fs from 'fs';
 import utils from 'util';
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { Logger } from '../services/logger/logger.service';
+import { ConfigService } from '../services/config/config.service';
+
 const { spawn } = require('child_process');
+const exec = require('child_process').execSync;
+const pids = require('port-pid');
+
 
 export function getAppEntrypoint() {
     const pkgProcess = isPkgProcess();
@@ -30,39 +35,43 @@ export function isPkgProcess() {
 }
 
 export async function startDaemonInDebugMode(finalDaemonPath: string, cwd: string, args: string[]) {
-    // Start our daemon process, but stream our stdio to the user (pipe)
-    const daemonProcess = await spawn(finalDaemonPath, args,
-        {
-            cwd: cwd,
-            shell: true,
-            detached: true,
-            stdio: 'inherit'
-        }
-    );
-
-    process.on('SIGINT', () => {
-        // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
-        if (process.platform === 'linux') {
-            spawn('pkill', ['-s', daemonProcess.pid], {
-                cwd: process.cwd(),
+    const startDaemonPromise = new Promise<void>(async (resolve, reject) => {
+        // Start our daemon process, but stream our stdio to the user (pipe)
+        const daemonProcess = await spawn(finalDaemonPath, args,
+            {
+                cwd: cwd,
                 shell: true,
                 detached: true,
                 stdio: 'inherit'
-            });
-        } else {
-            spawn('pkill', ['-P', daemonProcess.pid], {
-                cwd: process.cwd(),
-                shell: true,
-                detached: true,
-                stdio: 'inherit'
-            });
-        }
-    });
+            }
+        );
 
-    daemonProcess.on('exit', function () {
-        // Whenever the daemon exits, exit
-        process.exit();
+        process.on('SIGINT', () => {
+            // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
+            if (process.platform === 'linux') {
+                spawn('pkill', ['-s', daemonProcess.pid], {
+                    cwd: process.cwd(),
+                    shell: true,
+                    detached: true,
+                    stdio: 'inherit'
+                });
+            } else {
+                spawn('pkill', ['-P', daemonProcess.pid], {
+                    cwd: process.cwd(),
+                    shell: true,
+                    detached: true,
+                    stdio: 'inherit'
+                });
+            }
+        });
+
+        daemonProcess.on('exit', function () {
+            // Whenever the daemon exits, exit
+            resolve();
+            process.exit();
+        });
     });
+    await startDaemonPromise;
 }
 
 export async function copyExecutableToLocalDir(logger: Logger, configPath: string): Promise<string> {
@@ -141,5 +150,57 @@ async function deleteIfExists(pathToFile: string) {
     if (fs.existsSync(pathToFile)) {
         // Delete the file
         fs.unlinkSync(pathToFile);
+    }
+}
+
+
+export async function killDaemon(localPid: number, logger: Logger) {
+    // then kill the daemon
+    if ( localPid != null) {
+        // First try to kill the process
+        try {
+            killPid(localPid.toString());
+        } catch (err: any) {
+            // If the daemon pid was killed, or doesn't exist, just continue
+            logger.warn(`Attempt to kill existing daemon failed. This is expected if the daemon has been killed already. Make sure no program is using port: ${localPid}`);
+            logger.debug(`Error: ${err}`)
+        }
+    }
+    // Always ensure nothing is using the localport
+    await killPortProcess(localPid);
+}
+
+export async function killPortProcess(port: number) {
+    // Helper function to kill a process running on a given port (if it exists)
+    try {
+        const portPids = await getPidForPort(port);
+
+        // Loop over all pids and kill
+        portPids.forEach( (portPid: number) => {
+            killPid(portPid.toString());
+        });
+    } catch {
+        // Don't try to capture any errors incase the process has already been killed
+    }
+}
+
+async function getPidForPort(port: number): Promise<number[]> {
+    // Helper function to get a pids from a port number
+    const getPidPromise = new Promise<number[]>(async (resolve, _) => {
+        pids(port).then((pids: any) => {
+            resolve(pids.tcp);
+        });
+    });
+    return await getPidPromise;
+}
+
+function killPid(pid: string) {
+    // Helper function to kill a process for a given pid
+    if (process.platform === 'win32') {
+        exec(`taskkill /F /T /PID ${pid}`);
+    } else if (process.platform === 'linux') {
+        exec(`pkill -s ${pid}`);
+    } else {
+        exec(`kill -9 ${pid}`);
     }
 }

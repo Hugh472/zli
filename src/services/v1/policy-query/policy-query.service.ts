@@ -3,7 +3,7 @@ import { TargetUser } from '../../common.types';
 import { ConfigService } from '../../config/config.service';
 import { HttpService } from '../../http/http.service';
 import { Logger } from '../../logger/logger.service';
-import { GetTargetPolicyResponse, GetTargetPolicyRequest, KubeProxyResponse, KubeProxyRequest, GetAllPoliciesForClusterIdResponse, GetAllPoliciesForClusterIdRequest, DbConnectResponse, DbConnectRequest, WebConnectResponse, WebConnectRequest } from './policy-query.messages';
+import { GetTargetPolicyResponse, GetTargetPolicyRequest, KubeProxyResponse as KubernetesResponse, KubeProxyRequest as KubernetesRequest, GetAllPoliciesForClusterIdResponse, GetAllPoliciesForClusterIdRequest, ProxyResponse, ProxyRequest } from './policy-query.messages';
 import { Verb } from './policy-query.types';
 
 export class PolicyQueryService extends HttpService
@@ -25,13 +25,13 @@ export class PolicyQueryService extends HttpService
         return this.Post('target-connect', request);
     }
 
-    public CheckKubeProxy(
+    public CheckKubernetes(
         targetUser: string,
         clusterId: string,
         targetGroups: string[],
-    ): Promise<KubeProxyResponse>
+    ): Promise<KubernetesResponse>
     {
-        const request: KubeProxyRequest = {
+        const request: KubernetesRequest = {
             clusterId: clusterId,
             targetUser: targetUser,
             targetGroups: targetGroups,
@@ -40,38 +40,21 @@ export class PolicyQueryService extends HttpService
         return this.Post('kube-tunnel', request);
     }
 
-    public CheckDbConnect(
+    public Proxy(
         targetId: string,
-        targetHost: string,
-        targetPort: number,
-        targetHostName: string
-    ): Promise<DbConnectResponse>
+        remoteHost: string,
+        remotePort: number,
+        targetType: TargetType
+    ): Promise<ProxyResponse>
     {
-        const request: DbConnectRequest = {
+        const request: ProxyRequest = {
             targetId: targetId,
-            targetHost: targetHost,
-            targetPort: targetPort,
-            targetHostName: targetHostName,
+            targetHost: remoteHost,
+            targetPort: remotePort,
+            targetType: targetType
         };
 
-        return this.Post('db-connect', request);
-    }
-
-    public CheckWebConnect(
-        targetId: string,
-        targetHost: string,
-        targetPort: number,
-        targetHostName: string
-    ): Promise<WebConnectResponse>
-    {
-        const request: WebConnectRequest = {
-            targetId: targetId,
-            targetHost: targetHost,
-            targetPort: targetPort,
-            targetHostName: targetHostName,
-        };
-
-        return this.Post('web-connect', request);
+        return this.Post('proxy', request);
     }
 
     public GetAllPoliciesForClusterId(

@@ -1,10 +1,11 @@
 import Table from 'cli-table3';
 import fs from 'fs';
-import { concat, filter, map, max } from 'lodash';
+import { concat, filter, map, max, zip } from 'lodash';
+import { DbTargetSummary, WebTargetSummary } from '../services/virtual-target/virtual-target.types';
 import util from 'util';
 import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.types';
 import { cleanExit } from '../handlers/clean-exit.handler';
-import { ParsedTargetString, TargetStatus, TargetSummary } from '../services/common.types';
+import { ParsedTargetString, TargetBase, TargetStatus, TargetSummary } from '../services/common.types';
 import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
@@ -21,6 +22,9 @@ import { GroupSummary } from '../../webshell-common-ts/http/v2/organization/type
 import { SsmTargetSummary } from '../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 import { DynamicAccessConfigSummary } from '../../webshell-common-ts/http/v2/target/dynamic/types/dynamic-access-config-summary.types';
 import { ApiKeySummary } from '../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
+import { WebConfig } from '../services/web/web.service';
+import { DbConfig } from '../services/db/db.service';
+import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 
 
 // case insensitive substring search, 'find targetString in searchString'
@@ -281,6 +285,44 @@ export function getTableOfKubeStatus(kubeConfig: KubeConfig) : string
 {
     const title: string = 'Kube Daemon Running';
     const values = [`Target Cluster: ${kubeConfig['targetCluster']}`, `Target User: ${kubeConfig['targetUser']}`, `Target Group: ${kubeConfig['targetGroups'].join(',')}`, `Local URL: ${kubeConfig['localHost']}:${kubeConfig['localPort']}`];
+
+    const valuesLength = max(values.map(s => s.length).concat(16));
+
+    // If the title's length is bigger than the longer user use that as the row length (0 index is the longest header)
+    const rowLength = valuesLength > title.length ? valuesLength : title.length;
+    const columnWidths = [rowLength + 2];
+
+    const table = new Table({ head: [title], colWidths: columnWidths });
+    values.forEach( value => {
+        table.push([value]);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfWebStatus(webConfig: WebConfig) : string
+{
+    const title: string = 'Web Daemon Running';
+    const values = [`Target Name: ${webConfig['name']}`, `Local URL: ${webConfig['localHost']}:${webConfig['localPort']}`];
+
+    const valuesLength = max(values.map(s => s.length).concat(16));
+
+    // If the title's length is bigger than the longer user use that as the row length (0 index is the longest header)
+    const rowLength = valuesLength > title.length ? valuesLength : title.length;
+    const columnWidths = [rowLength + 2];
+
+    const table = new Table({ head: [title], colWidths: columnWidths });
+    values.forEach( value => {
+        table.push([value]);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfDbStatus(dbConfig: DbConfig) : string
+{
+    const title: string = 'Db Daemon Running';
+    const values = [`Target Name: ${dbConfig['name']}`, `Local URL: ${dbConfig['localHost']}:${dbConfig['localPort']}`];
 
     const valuesLength = max(values.map(s => s.length).concat(16));
 
@@ -625,6 +667,11 @@ function getGroupName(groupId: string, groupMap: {[id: string]: GroupSummary}) :
         : 'GROUP DELETED';
 }
 
+// Interface that we can use to compare target info between TargetsSummary, DbTargetSummary, WebTargetSummary
+interface CommonTargetInfo extends TargetBase {
+    type: TargetType;
+}
+
 // Figure out target id based on target name and target type.
 // Also preforms error checking on target type and target string passed in
 export async function disambiguateTarget(
@@ -633,6 +680,9 @@ export async function disambiguateTarget(
     logger: Logger,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
+    dbTargets: Promise<DbTargetSummary[]>,
+    webTargets: Promise<WebTargetSummary[]>,
+    clusterTargets: Promise<KubeClusterSummary[]>,
     envs: Promise<EnvironmentSummary[]>): Promise<ParsedTargetString> {
 
     const parsedTarget = parseTargetString(targetString);
@@ -641,17 +691,74 @@ export async function disambiguateTarget(
         return undefined;
     }
 
-    let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
+    let zippedShellTargetsUnformatted = concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
-    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SsmTarget || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
+    zippedShellTargetsUnformatted = filter(zippedShellTargetsUnformatted, t => t.type !== TargetType.SsmTarget || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
+
+    // Now cast everything to a common target info object
+    let zippedTargetsShell: CommonTargetInfo[] = [];
+    zippedShellTargetsUnformatted.forEach((targetSummary: TargetSummary) => {
+        let newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id, 
+            type: targetSummary.type,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId
+        }
+        zippedTargetsShell.push(newVal)
+    })
+
+    // Now create similar lists for the other types of targets, db, web
+    let zippedTargetsDb: CommonTargetInfo[] = [];
+    let awaitedDbTarget = await dbTargets;
+    awaitedDbTarget.forEach((targetSummary: DbTargetSummary) => {
+        let newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id, 
+            type: TargetType.Db,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId
+        }
+        zippedTargetsDb.push(newVal)
+    })
+
+    let zippedTargetsWeb: CommonTargetInfo[] = [];
+    let awaitedWebTarget = await webTargets;
+    awaitedWebTarget.forEach((targetSummary: WebTargetSummary) => {
+        let newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id, 
+            type: TargetType.Web,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId
+        }
+        zippedTargetsWeb.push(newVal)
+    })
+
+    let zippedTargetsKube: CommonTargetInfo[] = [];
+    let awaitedKubeTarget = await clusterTargets;
+    awaitedKubeTarget.forEach((targetSummary: KubeClusterSummary) => {
+        let newVal: CommonTargetInfo = {
+            name: targetSummary.clusterName,
+            id: targetSummary.id, 
+            type: TargetType.Cluster,
+            status: null, // KubeClusterSummary has AgentStatus, and this is expecting TargetStatus.
+            // This should be fixed once all targets are using agents
+            environmentId: targetSummary.environmentId
+        }
+        zippedTargetsKube.push(newVal)
+    })
+
+    // Now concat all the types of targets
+    let zippedTargets = concat (zippedTargetsShell, zippedTargetsDb, zippedTargetsWeb, zippedTargetsKube);
 
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);
         zippedTargets = filter(zippedTargets,t => t.type == targetType);
     }
 
-    let matchedTargets: TargetSummary[];
+    let matchedTargets: CommonTargetInfo[];
 
     if(!! parsedTarget.id) {
         matchedTargets = filter(zippedTargets,t => t.id == parsedTarget.id);
@@ -669,7 +776,13 @@ export async function disambiguateTarget(
         parsedTarget.envName = filter(await envs, e => e.id == parsedTarget.envId)[0].name;
     } else {
         logger.warn('More than one target found with the same targetName');
-        logger.info(`Please specify the targetId instead of the targetName (zli lt -n ${parsedTarget.name} -d)`);
+
+        // Print the targets we have found so the user can easily type the next command
+        logger.info(`Matched ${matchedTargets.length} targets:`)
+        matchedTargets.forEach((matchedTarget: CommonTargetInfo) => {
+                logger.warn(`    * ${matchedTarget.name} (${matchedTarget.id}): ${matchedTarget.type}`);
+        })
+        logger.info(`Please connect using targetId instead of the targetName (zli connect test@1234)`);
         await cleanExit(1, logger);
     }
 

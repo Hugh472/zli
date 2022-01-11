@@ -1,25 +1,20 @@
-import { TargetStatus } from "../common.types";
+import { TargetBase } from "../common.types";
 
-export interface DbTargetSummary {
-    id: string;
-    targetName: string;
+export interface DbTargetSummary extends TargetBase {
     engine: string;
-    status: TargetStatus;
     agentVersion: string;
     lastAgentUpdate: Date;
     localPort: number;
-    targetPort: number;
-    targetHost: string;
-    targetHostName: string;
+    localHost: string;
+    remotePort: number;
+    remoteHost: string;
 }
 
-export interface WebTargetSummary {
-    id: string;
-    targetName: string;
-    status: TargetStatus;
+export interface WebTargetSummary extends TargetBase {
     agentVersion: string;
     lastAgentUpdate: Date;
-    targetPort: number;
-    targetHost: string;
-    targetHostName: string;
+    localPort: number;
+    localHost: string;
+    remotePort: number;
+    remoteHost: string;
 }

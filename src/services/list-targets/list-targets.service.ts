@@ -55,15 +55,15 @@ export async function listTargets(
         }
     })
 
-    const webTargets = webTargetsRaw.map<TargetSummary>((webTargets) => {
+    const webTargets = webTargetsRaw.map<TargetSummary>((webTarget) => {
         return {
             type: TargetType.Web,
-            id: webTargets.id,
-            name: webTargets.targetName,
-            status: parseTargetStatus(webTargets.status.toString()),
-            environmentId: 'N/A',
+            id: webTarget.id,
+            name: webTarget.name,
+            status: parseTargetStatus(webTarget.status.toString()),
+            environmentId: webTarget.environmentId,
             targetUsers: [],
-            agentVersion: webTargets.agentVersion
+            agentVersion: webTarget.agentVersion
         }
     })
 
@@ -71,9 +71,9 @@ export async function listTargets(
         return {
             type: TargetType.Db,
             id: dbTarget.id,
-            name: dbTarget.targetName,
+            name: dbTarget.name,
             status: parseTargetStatus(dbTarget.status.toString()),
-            environmentId: 'N/A',
+            environmentId: dbTarget.environmentId,
             targetUsers: [],
             agentVersion: dbTarget.agentVersion
         }

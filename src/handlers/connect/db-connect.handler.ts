@@ -2,35 +2,35 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
-import yargs from 'yargs';
-import { dbConnectArgs } from './db-connect.command-builder';
-import { exit } from 'process';
-import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir } from '../../utils/daemon-utils';
+import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
 import { DbTargetSummary } from '../../services/virtual-target/virtual-target.types';
 import { TargetStatus } from '../../services/common.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
+import { connectArgs } from './connect.command-builder';
+import yargs from 'yargs';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
 
 
-export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, targetName: string, dbTargets: Promise<DbTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string, dbTargets: Promise<DbTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
     // First ensure the target is online
     const dbTarget = await getDbTargetInfoFromName(await dbTargets, targetName, logger);
     if (dbTarget.status != TargetStatus.Online) {
         logger.error('Target is offline!');
-        await cleanExit(1, logger);
+        return 1;
     }
 
     // Make our API client
     const policyService = new PolicyQueryService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.CheckDbConnect(dbTarget.id, dbTarget.targetHost, dbTarget.targetPort, dbTarget.targetHostName);
+    const response = await policyService.Proxy(dbTarget.id, dbTarget.remoteHost, dbTarget.remotePort, TargetType.Db);
     if (response.allowed != true) {
-        logger.error(`You do not have the correct policy setup to access ${dbTarget.targetName}!`);
-        await cleanExit(1, logger);
+        logger.error(`You do not have the correct policy setup to access ${dbTarget.name}!`);
+        return 1;
     }
 
     // Build the refresh command so it works in the case of the pkg'd app which
@@ -47,7 +47,6 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, tar
     let localPort = dbTarget.localPort;
     if (localPort == null) {
 
-
         // Make sure we have set our local daemon port
         if (dbConfig['localPort'] == null) {
             logger.info('First time running db connect, setting local daemon port');
@@ -63,22 +62,10 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, tar
 
         localPort = dbConfig['localPort'];
     }
-    
 
-    logger.info(`Started db daemon at ${dbConfig['localHost']}:${localPort} for ${targetName}`); 
-
-    // Golang does not accept "null" as params, so convert them to empty strings or -1
-    let port = -1
-    let host = ""
-    let hostName = ""
-    if (dbTarget.targetPort != null) {
-        port = dbTarget.targetPort;
-    }
-    if (dbTarget.targetHost != null) {
-        host = dbTarget.targetHost;
-    }
-    if (dbTarget.targetHostName != null) {
-        hostName = dbTarget.targetHostName;
+    // Check if we've already started a process
+    if (dbConfig['localPid'] != null) {
+        killDaemon(dbConfig['localPid'], logger);
     }
 
     // Build our args and cwd
@@ -91,9 +78,8 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, tar
         `-configPath=${configService.configPath()}`,
         `-logPath="${loggerConfigService.daemonLogPath()}"`,
         `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
-        `-targetPort=${port}`,
-        `-targetHost=${host}`,
-        `-targetHostName=${hostName}`,
+        `-remotePort=${dbTarget.remotePort}`,
+        `-remoteHost=${dbTarget.remoteHost}`,
         `-plugin="db"`
     ];
     let cwd = process.cwd();
@@ -122,28 +108,34 @@ export async function dbConnectHandler(argv: yargs.Arguments<dbConnectArgs>, tar
             const daemonProcess = await spawn(finalDaemonPath, args, options);
 
             // Now save the Pid so we can kill the process next time we start it
-            // TODO: This needs to change so people can have kube + db + web all online 
-            const kubeConfig = configService.getKubeConfig();
-            kubeConfig['localPid'] = daemonProcess.pid;
+            dbConfig['localPid'] = daemonProcess.pid;
+
+            // Also save the name of the target to display
+            dbConfig['name'] = dbTarget.name;
 
             // Wait for daemon HTTP server to be bound and running
             await waitUntilUsedOnHost(localPort, 'localhost', 100, 1000 * 20);
+            logger.info(`Started db daemon at ${dbConfig['localHost']}:${localPort} for ${targetName}`); 
 
-            configService.setKubeConfig(kubeConfig);
+
+            configService.setDbConfig(dbConfig);
             logger.info(`Started db daemon at localhost:${localPort} for ${targetName}`);
-            await cleanExit(0, logger);
+            return 0;
         } else {
+            logger.warn(`Started db daemon in debug mode at localhost:${localPort} for ${targetName}`);
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
+            await cleanExit(0, logger);
         }
     } catch (error) {
         logger.error(`Something went wrong starting the Db Daemon: ${error}`);
-        await cleanExit(1, logger);
+        return 1;
     }
+    return 0;
 }
 
 async function getDbTargetInfoFromName(dbTargets: DbTargetSummary[], targetName: string, logger: Logger): Promise<DbTargetSummary> {
     for (const dbTarget of dbTargets) {
-        if (dbTarget.targetName == targetName) {
+        if (dbTarget.name == targetName) {
             return dbTarget;
         }
     }

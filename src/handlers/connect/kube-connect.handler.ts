@@ -1,30 +1,28 @@
 import path from 'path';
 import utils from 'util';
 import fs from 'fs';
-import { killDaemon } from '../../services/v1/kube/kube.service';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import yargs from 'yargs';
-import { tunnelArgs } from './tunnel.command-builder';
+import { connectArgs } from './connect.command-builder';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
 import got from 'got/dist/source';
 import { Retrier } from '@jsier/retrier';
-import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode } from '../../utils/daemon-utils';
-import { TargetStatus } from '../../services/common.types';
+import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, killDaemon } from '../../utils/daemon-utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 const { spawn } = require('child_process');
 
 
-export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, targetCluster, logger);
     if (clusterTarget.status != AgentStatus.Online) {
         logger.error('Target cluster is offline!');
-        await cleanExit(1, logger);
+        return 1;
     }
 
     // Open up our zli kubeConfig
@@ -33,7 +31,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     // Make sure the user has created a kubeConfig before
     if (kubeConfig['keyPath'] == null) {
         logger.error('Please make sure you have created your kubeconfig before running proxy. You can do this via "zli generate kubeConfig"');
-        await cleanExit(1, logger);
+        return 1;
     }
 
     // If they have not passed targetGroups attempt to use the default ones stored
@@ -48,12 +46,12 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     const response = await policyQueryHttpService.CheckKubeTunnel(targetUser, clusterTarget.id, targetGroups);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${targetCluster} as ${targetUser} in the group(s): ${targetGroups}`);
-        await cleanExit(1, logger);
+        return 1;
     }
 
     // Check if we've already started a process
     if (kubeConfig['localPid'] != null) {
-        killDaemon(configService, logger);
+        killDaemon(kubeConfig['localPid'], logger);
     }
 
     // See if the user passed in a custom port
@@ -127,13 +125,15 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
             logger.info('Waiting for daemon to become ready...');
             await pollDaemonReady(kubeConfig['localPort']);
             logger.info(`Started kube daemon at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
-            await cleanExit(0, logger);
+            return 0;
         } else {
+            logger.warn(`Started kube daemon in debug mode at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
+            await cleanExit(0, logger);
         }
     } catch (error) {
         logger.error(`Something went wrong starting the Kube Daemon: ${error}`);
-        await cleanExit(1, logger);
+        return 1;
     }
 }
 
