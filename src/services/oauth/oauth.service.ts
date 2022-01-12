@@ -11,11 +11,11 @@ import { logoutHtml } from './templates/logout';
 import { cleanExit } from '../../handlers/clean-exit.handler';
 import { parse as QueryStringParse } from 'query-string';
 import { parseIdpType, randomAlphaNumericString } from '../../utils/utils';
-
-const findPort = require('find-open-port');
-
 import { check as checkTcpPort } from 'tcp-port-used';
 import { RefreshTokenError, UserNotLoggedInError } from './oauth.service.types';
+
+// Do not remove any of these, clients have integrations set up based on these!
+const callbackPorts: number[] = [49172, 51252, 58243, 59360, 62109];
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -223,10 +223,24 @@ export class OAuthService implements IDisposable {
 
     public async login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void> {
         const portToCheck = this.configService.callbackListenerPort();
-        let portToUse : number;
+        let portToUse : number = undefined;
+        // If no port has been set by user
         if (portToCheck == 0) {
             // Find open port
-            portToUse = await findPort();
+            for (const port of callbackPorts) {
+                if (! await checkTcpPort(port, this.host)) {
+                    portToUse = port;
+                    break;
+                }
+            }
+
+            if ( portToUse === undefined){
+                this.logger.error(`Log in listener could not bind to any of the default ports ${callbackPorts}`);
+                this.logger.warn(`Please make sure either of ports ${callbackPorts} is open/whitelisted`);
+                this.logger.warn('To set a custom callback port please run: \'zli configure\' and change \'callbackListenerPort\' in your config file');
+                await cleanExit(1, this.logger);
+            }
+
         } else {
             // User supplied custom port in configuration
             // Check to see if the port is in use and fail early if we

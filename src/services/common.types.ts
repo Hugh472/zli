@@ -1,4 +1,3 @@
-import { AgentStatus } from '../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 
 export interface TargetUser
