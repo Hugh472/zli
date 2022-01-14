@@ -31,14 +31,23 @@ export function findSubstring(targetString: string, searchString: string) : bool
 
 export const targetStringExample : string = '[targetUser@]<targetId-or-targetName>';
 
-export function parseTargetType(connectionType: string) : TargetType
+export function parseTargetType(targetType: string) : TargetType
 {
-    const connectionTypePattern = /^(ssm|dynamic|cluster)$/i; // case insensitive check for connectionType
+    const connectionTypePattern = /^(ssmtarget|dynamicaccessconfig|cluster)$/i; // case insensitive check for targetType
 
-    if(! connectionTypePattern.test(connectionType))
+    if(! connectionTypePattern.test(targetType))
         return undefined;
 
-    return <TargetType> connectionType.toUpperCase();
+    switch (targetType.toLowerCase()) {
+    case TargetType.SsmTarget.toLowerCase():
+        return TargetType.SsmTarget;
+    case TargetType.DynamicAccessConfig.toLowerCase():
+        return TargetType.DynamicAccessConfig;
+    case TargetType.Cluster.toLowerCase():
+        return TargetType.Cluster;
+    default:
+        return undefined;
+    }
 }
 
 export function parsePolicyType(policyType: string) : PolicyType

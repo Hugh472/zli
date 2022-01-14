@@ -540,7 +540,7 @@ export class CliDriver
 
                     // modify argv to have the targetString and targetType params
                     const targetString = argv.user + '@' + argv.host.substr(prefix.length);
-                    const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(TargetType.SsmTarget, targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
                     if(argv.port < 1 || argv.port > 65535)
                     {
