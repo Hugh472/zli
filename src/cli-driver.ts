@@ -52,7 +52,7 @@ import { listTargetUsersHandler } from './handlers/target-user/list-target-users
 import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler.v2';
 import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler.v2';
 import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler.v2';
-import { listKubeTunnelPoliciesHandler } from './handlers/policy/list-kube-tunnel-policies.handler';
+import { listKubernetesPoliciesHandler } from './handlers/policy/list-kubernetes-policies.handler';
 import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-connect-policies.handler';
 import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
 import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-controls-policies.handler';
@@ -370,8 +370,8 @@ export class CliDriver
                     case PolicyType.TargetConnect:
                         await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
                         break;
-                    case PolicyType.KubernetesTunnel:
-                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
+                    case PolicyType.Kubernetes:
+                        await listKubernetesPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         break;
                     case PolicyType.SessionRecording:
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
@@ -381,7 +381,7 @@ export class CliDriver
                         break;
                     default:
                         await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
-                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
+                        await listKubernetesPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;

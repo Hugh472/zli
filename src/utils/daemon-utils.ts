@@ -154,7 +154,7 @@ async function deleteIfExists(pathToFile: string) {
 }
 
 
-export async function killDaemon(localPid: number, logger: Logger) {
+export async function killDaemon(localPid: number, localPort: number, logger: Logger) {
     // then kill the daemon
     if ( localPid != null) {
         // First try to kill the process
@@ -162,12 +162,12 @@ export async function killDaemon(localPid: number, logger: Logger) {
             killPid(localPid.toString());
         } catch (err: any) {
             // If the daemon pid was killed, or doesn't exist, just continue
-            logger.warn(`Attempt to kill existing daemon failed. This is expected if the daemon has been killed already. Make sure no program is using port: ${localPid}`);
+            logger.warn(`Attempt to kill existing daemon failed. This is expected if the daemon has been killed already. Make sure no program is using port: ${localPort}`);
             logger.debug(`Error: ${err}`)
         }
     }
     // Always ensure nothing is using the localport
-    await killPortProcess(localPid);
+    await killPortProcess(localPort);
 }
 
 export async function killPortProcess(port: number) {

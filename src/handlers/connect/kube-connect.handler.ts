@@ -43,7 +43,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyQueryHttpService.CheckKubeTunnel(targetUser, clusterTarget.id, targetGroups);
+    const response = await policyQueryHttpService.CheckKubernetes(targetUser, clusterTarget.id, targetGroups);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${targetCluster} as ${targetUser} in the group(s): ${targetGroups}`);
         return 1;
@@ -51,7 +51,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
 
     // Check if we've already started a process
     if (kubeConfig['localPid'] != null) {
-        killDaemon(kubeConfig['localPid'], logger);
+        killDaemon(kubeConfig['localPid'], kubeConfig['localPort'], logger);
     }
 
     // See if the user passed in a custom port

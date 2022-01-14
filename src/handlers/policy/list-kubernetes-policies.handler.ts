@@ -7,13 +7,13 @@ import { OrganizationHttpService } from '../../http-services/organization/organi
 import { UserHttpService } from '../../http-services/user/user.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
-import { getTableOfKubeTunnelPolicies } from '../../../src/utils/utils';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
+import { getTableOfKubernetesPolicies } from '../../utils/utils';
 import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
 import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
 import { GroupSummary } from '../../../webshell-common-ts/http/v2/organization/types/group-summary.types';
 
-export async function listKubeTunnelPoliciesHandler(
+export async function listKubernetesPoliciesHandler(
     argv: yargs.Arguments<policyArgs>,
     configService: ConfigService,
     logger: Logger,
@@ -25,7 +25,7 @@ export async function listKubeTunnelPoliciesHandler(
     const apiKeyHttpService = new ApiKeyHttpService(configService, logger);
     const organizationHttpService = new OrganizationHttpService(configService, logger);
 
-    const kubeTunnelPolicies = await policyHttpService.ListKubeTunnelPolicies();
+    const kubernetesPolicies = await policyHttpService.ListKubernetesPolicies();
 
     // Fetch all the users, apiKeys, environments and targets
     // We will use that info to print the policies in a readable way
@@ -60,14 +60,14 @@ export async function listKubeTunnelPoliciesHandler(
 
     if(!! argv.json) {
         // json output
-        console.log(JSON.stringify(kubeTunnelPolicies));
+        console.log(JSON.stringify(kubernetesPolicies));
     } else {
-        if (kubeTunnelPolicies.length === 0){
-            logger.info('There are no available Kubernetes Tunnel policies');
+        if (kubernetesPolicies.length === 0){
+            logger.info('There are no available Kubernetes policies');
         } else {
             // regular table output
-            const tableString = getTableOfKubeTunnelPolicies(kubeTunnelPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
-            logger.warn('Kubernetes Tunnel Policies:\n');
+            const tableString = getTableOfKubernetesPolicies(kubernetesPolicies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
+            logger.warn('Kubernetes Policies:\n');
             console.log(tableString);
             console.log('\n\n');
         }

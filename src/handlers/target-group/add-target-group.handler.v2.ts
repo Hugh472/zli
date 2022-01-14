@@ -7,7 +7,7 @@ import { cleanExit } from '../clean-exit.handler';
 export async function addTargetGroupHandler(targetGroupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy
     const policyHttpService = new PolicyHttpService(configService, logger);
-    const kubePolicies = await policyHttpService.ListKubeTunnelPolicies();
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
 
     // Loop till we find the one we are looking for
     const kubePolicy = kubePolicies.find(p => p.name == policyName);
@@ -32,7 +32,7 @@ export async function addTargetGroupHandler(targetGroupName: string, policyName:
     // And finally update the policy
     kubePolicy.clusterGroups.push(clusterGroupToAdd);
 
-    await policyHttpService.EditKubeTunnelPolicy(kubePolicy);
+    await policyHttpService.EditKubernetesPolicy(kubePolicy);
 
     logger.info(`Added ${targetGroupName} to ${policyName} policy!`);
     await cleanExit(0, logger);

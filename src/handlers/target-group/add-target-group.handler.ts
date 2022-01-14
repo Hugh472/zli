@@ -19,7 +19,7 @@ export async function addTargetGroupHandler(targetGroupName: string, policyName:
     }
 
     switch (policy.type) {
-    case PolicyType.KubernetesTunnel:
+    case PolicyType.Kubernetes:
         // Then add the group to the policy
         const clusterGroupToAdd: KubernetesPolicyClusterGroup = {
             name: targetGroupName

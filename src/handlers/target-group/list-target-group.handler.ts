@@ -13,7 +13,7 @@ export async function listTargetGroupHandler(configService: ConfigService, logge
     const policies = await policyService.ListAllPolicies();
     const targetGroups : string[] = [];
     const policy = policies.find(p => p.name == policyName);
-    if (policy != null && policy.type == PolicyType.KubernetesTunnel) {
+    if (policy != null && policy.type == PolicyType.Kubernetes) {
         const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
         Object.values(kubernetesPolicyContext.clusterGroups).forEach(
             clusterGroup => targetGroups.push(clusterGroup.name)

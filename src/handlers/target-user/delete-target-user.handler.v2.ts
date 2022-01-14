@@ -6,7 +6,7 @@ import { PolicyHttpService } from '../../../src/http-services/policy/policy.http
 export async function deleteTargetUserHandler(targetUserName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy
     const policyHttpService = new PolicyHttpService(configService, logger);
-    const kubePolicies = await policyHttpService.ListKubeTunnelPolicies();
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
     const targetPolicies = await policyHttpService.ListTargetConnectPolicies();
 
     // Loop till we find the one we are looking for
@@ -29,7 +29,7 @@ export async function deleteTargetUserHandler(targetUserName: string, policyName
         // And finally update the policy
         kubePolicy.clusterUsers = kubePolicy.clusterUsers.filter(u => u.name !== targetUserName);
 
-        await policyHttpService.EditKubeTunnelPolicy(kubePolicy);
+        await policyHttpService.EditKubernetesPolicy(kubePolicy);
     } else if (targetPolicy) {
         // If this cluster targetUser exists already
         if (!targetPolicy.targetUsers.find(u => u.userName === targetUserName)) {

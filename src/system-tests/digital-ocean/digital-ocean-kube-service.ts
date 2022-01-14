@@ -123,10 +123,10 @@ export class DigitalOceanKubeService {
     private async deleteClusterPolicy(registeredCluster: RegisteredDigitalOceanKubernetesCluster): Promise<void> {
         // Find the policy that Helm creates and delete it
         const policyName = this.getHelmClusterPolicyName(registeredCluster.doClusterSummary.name);
-        const kubeTunnelPolicies = await this.policyHttpService.ListKubeTunnelPolicies();
-        const kubeTunnelPolicy = kubeTunnelPolicies.find(p => p.name === policyName);
-        if (kubeTunnelPolicy) {
-            await this.policyHttpService.DeleteKubeTunnelPolicy(kubeTunnelPolicy.id);
+        const kubernetesPolicies = await this.policyHttpService.ListKubernetesPolicies();
+        const kubernetesPolicy = kubernetesPolicies.find(p => p.name === policyName);
+        if (kubernetesPolicy) {
+            await this.policyHttpService.DeleteKubernetesPolicy(kubernetesPolicy.id);
         } else {
             throw new Error(`Unexpected error! Expected to find at least one policy with name: ${policyName}`);
         }

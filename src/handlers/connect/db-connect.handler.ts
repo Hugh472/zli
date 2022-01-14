@@ -68,7 +68,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
 
     // Check if we've already started a process
     if (dbConfig['localPid'] != null) {
-        killDaemon(dbConfig['localPid'], logger);
+        killDaemon(dbConfig['localPid'], dbConfig['localPort'], logger);
     }
 
     // Build our args and cwd

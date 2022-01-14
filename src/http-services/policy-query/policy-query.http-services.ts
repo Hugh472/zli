@@ -1,8 +1,8 @@
 import { GetKubePoliciesRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/get-kube-policies.requests';
-import { KubeTunnelRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/kube-tunnel.requests';
+import { KubernetesRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/kubernetes.requests';
 import { TargetPolicyQueryRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/target-policy-query.requests';
-import { GetKubePoliciesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/get-kube-policies.responses';
-import { KubeTunnelResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/kube-tunnel.responses';
+import { GetKubernetesPoliciesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/get-kube-policies.responses';
+import { KubernetesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/kubernetes.responses';
 import { TargetPolicyQueryResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/target-policy-query.responses';
 import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
 import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.types';
@@ -30,24 +30,24 @@ export class PolicyQueryHttpService extends HttpService
         return this.Post('target-connect', request);
     }
 
-    public CheckKubeTunnel(
+    public CheckKubernetes(
         targetUser: string,
         clusterId: string,
         targetGroups: string[],
-    ): Promise<KubeTunnelResponse>
+    ): Promise<KubernetesResponse>
     {
-        const request: KubeTunnelRequest = {
+        const request: KubernetesRequest = {
             clusterId: clusterId,
             targetUser: targetUser,
             targetGroups: targetGroups,
         };
 
-        return this.Post('kube-tunnel', request);
+        return this.Post('kubernetes', request);
     }
 
     public GetKubePolicies(
         clusterId: string,
-    ): Promise<GetKubePoliciesResponse>
+    ): Promise<GetKubernetesPoliciesResponse>
     {
         const request: GetKubePoliciesRequest = {
             clusterId: clusterId,

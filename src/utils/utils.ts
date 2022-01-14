@@ -12,7 +12,7 @@ import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target
 import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { UserSummary } from '../../webshell-common-ts/http/v2/user/types/user-summary.types';
-import { KubeTunnelPolicySummary } from '../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/types/kube-tunnel-policy-summary.types';
+import { KubernetesPolicySummary } from '../../webshell-common-ts/http/v2/policy/kubernetes/types/kubernetes-policy-summary.types';
 import { TargetConnectPolicySummary } from '../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
 import { OrganizationControlsPolicySummary } from '../../webshell-common-ts/http/v2/policy/organization-controls/types/organization-controls-policy-summary.types';
 import { SessionRecordingPolicySummary } from '../../webshell-common-ts/http/v2/policy/session-recording/types/session-recording-policy-summary.types';
@@ -47,14 +47,14 @@ export function parseTargetType(connectionType: string) : TargetType
 
 export function parsePolicyType(policyType: string) : PolicyType
 {
-    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetestunnel)$/i; // case insensitive check for policyType
+    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetes)$/i; // case insensitive check for policyType
 
     if(! policyTypePattern.test(policyType))
         return undefined;
 
     switch (policyType.toLowerCase()) {
-    case PolicyType.KubernetesTunnel.toLowerCase():
-        return PolicyType.KubernetesTunnel;
+    case PolicyType.Kubernetes.toLowerCase():
+        return PolicyType.Kubernetes;
     case PolicyType.OrganizationControls.toLowerCase():
         return PolicyType.OrganizationControls;
     case PolicyType.SessionRecording.toLowerCase():
@@ -338,20 +338,20 @@ export function getTableOfDbStatus(dbConfig: DbConfig) : string
     return table.toString();
 }
 
-export function getTableOfDescribeCluster(kubernetesTunnelPolicies: KubeTunnelPolicySummary[]) : string {
+export function getTableOfDescribeCluster(kubernetesPolicies: KubernetesPolicySummary[]) : string {
     const header: string[] = ['Policy', 'Target Users', 'Target Group'];
 
-    const policyLength = max(kubernetesTunnelPolicies.map(p => p.name.length).concat(16));
-    const targetUserLength = max(kubernetesTunnelPolicies.map(p => p.clusterUsers.length).concat(16));
-    const targetGroupLength = max(kubernetesTunnelPolicies.map(p => p.clusterGroups.length).concat(16));
+    const policyLength = max(kubernetesPolicies.map(p => p.name.length).concat(16));
+    const targetUserLength = max(kubernetesPolicies.map(p => p.clusterUsers.length).concat(16));
+    const targetGroupLength = max(kubernetesPolicies.map(p => p.clusterGroups.length).concat(16));
 
     const columnWidths = [policyLength + 2, targetUserLength + 4, targetGroupLength + 4];
 
 
     const table = new Table({ head: header, colWidths: columnWidths });
-    kubernetesTunnelPolicies.forEach(p => {
-        const formattedTargetUsers = p.clusterUsers.map(u => u.name).join(', \n');
-        const formattedTargetGroups = p.clusterGroups.map(g => g.name).join(', \n');
+    kubernetesPolicies.forEach(p => {
+        const formattedTargetUsers = p.clusterUsers.map((u: any) => u.name).join(', \n');
+        const formattedTargetGroups = p.clusterGroups.map((g: any) => g.name).join(', \n');
         const row = [p.name, formattedTargetUsers, formattedTargetGroups];
         table.push(row);
     });
@@ -359,8 +359,8 @@ export function getTableOfDescribeCluster(kubernetesTunnelPolicies: KubeTunnelPo
     return table.toString();
 }
 
-export function getTableOfKubeTunnelPolicies(
-    kubeTunnelPolicies: KubeTunnelPolicySummary[],
+export function getTableOfKubernetesPolicies(
+    kubernetesPolicies: KubernetesPolicySummary[],
     userMap: {[id: string]: UserSummary},
     apiKeyMap: {[id: string]: ApiKeySummary},
     environmentMap: {[id: string]: EnvironmentSummary},
@@ -372,17 +372,17 @@ export function getTableOfKubeTunnelPolicies(
     const columnWidths = [24, 19, 26, 28, 29];
 
     const table = new Table({ head: header, colWidths: columnWidths });
-    kubeTunnelPolicies.forEach(p => {
+    kubernetesPolicies.forEach(p => {
 
         // Translate the policy subject ids to human readable subjects
         const groupNames : string [] = [];
-        p.groups.forEach(group => {
+        p.groups.forEach((group: any) => {
             groupNames.push(getGroupName(group.id, groupMap));
         });
         const formattedGroups = !! groupNames.length ? 'Groups: ' + groupNames.join( ', \n') : '';
 
         const subjectNames : string [] = [];
-        p.subjects.forEach(subject => {
+        p.subjects.forEach((subject: any) => {
             switch (subject.type) {
             case SubjectType.ApiKey:
                 subjectNames.push('ApiKey:' + getApiKeyName(subject.id, apiKeyMap));
@@ -408,13 +408,13 @@ export function getTableOfKubeTunnelPolicies(
         if (p.environments) {
             const environmentNames : string [] = [];
             p.environments.forEach(
-                env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
+                (env: any) => environmentNames.push(getEnvironmentName(env.id, environmentMap))
             );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
         } else if (p.clusters) { // Alternatively if this policy gets applied straight on some clusters
             const clusterNames : string [] = [];
             p.clusters.forEach(
-                c => clusterNames.push(getTargetName(c.id, targetMap))
+                (c: any) => clusterNames.push(getTargetName(c.id, targetMap))
             );
             formattedResource = 'Clusters: ' + clusterNames.join( ', \n');
         }
@@ -422,7 +422,7 @@ export function getTableOfKubeTunnelPolicies(
         if (p.clusterUsers) {
             const clusterUsersNames : string [] = [];
             p.clusterUsers.forEach(
-                cu => clusterUsersNames.push(cu.name)
+                (cu: any) => clusterUsersNames.push(cu.name)
             );
             formattedTargetUsers = 'Cluster Users: ' + clusterUsersNames.join(', \n');
         }
@@ -430,7 +430,7 @@ export function getTableOfKubeTunnelPolicies(
         if (p.clusterGroups) {
             const clusterGroupsName: string[] = [];
             p.clusterGroups.forEach(
-                cg => clusterGroupsName.push(cg.name)
+                (cg: any) => clusterGroupsName.push(cg.name)
             );
             formattedTargetGroup = 'Cluster Groups: ' + clusterGroupsName.join(', \n');
         }

@@ -3,7 +3,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
-import { KubeTunnelPolicySummary } from '../../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/types/kube-tunnel-policy-summary.types';
+import { KubernetesPolicySummary } from '../../../webshell-common-ts/http/v2/policy/kubernetes/types/kubernetes-policy-summary.types';
 import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
 
 export async function deleteGroupFromPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
@@ -18,7 +18,7 @@ export async function deleteGroupFromPolicyHandler(groupName: string, policyName
 
     // Get the existing policy
     const policyHttpService = new PolicyHttpService(configService, logger);
-    const kubePolicies = await policyHttpService.ListKubeTunnelPolicies();
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
     const targetPolicies = await policyHttpService.ListTargetConnectPolicies();
 
     // Loop till we find the one we are looking for
@@ -46,7 +46,7 @@ export async function deleteGroupFromPolicyHandler(groupName: string, policyName
 
     // And finally update the policy
     if (kubePolicy)
-        await policyHttpService.EditKubeTunnelPolicy(policy as KubeTunnelPolicySummary);
+        await policyHttpService.EditKubernetesPolicy(policy as KubernetesPolicySummary);
     else
         await policyHttpService.EditTargetConnectPolicy(policy as TargetConnectPolicySummary);
 

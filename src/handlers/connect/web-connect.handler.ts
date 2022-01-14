@@ -59,7 +59,7 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
 
     // Check if we've already started a process
     if (webConfig['localPid'] != null) {
-        killDaemon(webConfig['localPid'], logger);
+        killDaemon(webConfig['localPid'], webConfig['localPort'], logger);
     }
 
 
