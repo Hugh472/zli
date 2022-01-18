@@ -8,9 +8,9 @@ import { TargetSummary } from '../services/common.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { BzeroAgentSummary } from '../../src/services/bzero-agent/bzero-agent.types';
 import { BzeroAgentService } from '../../src/services/bzero-agent/bzero-agent.service';
-import { VirtualTargetService } from '../../src/services/virtual-target/virtual-target.service';
-import { DbTargetSummary } from '../../src/services/virtual-target/virtual-target.types';
-import { WebTargetSummary } from '../../src/services/virtual-target/virtual-target.types';
+import { WebTargetService } from '../services/web-target/web-target.service';
+import { DbTargetSummary } from '../services/db-target/db-target.types';
+import { WebTargetSummary } from '../services/web-target/web-target.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -18,12 +18,14 @@ import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment
 import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
+import { DbTargetService } from '../services/db-target/db-target.service';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
     const bzeroAgentService = new BzeroAgentService(configService, logger);
-    const virtualTargetService = new VirtualTargetService(configService, logger);
+    const webTargetService = new WebTargetService(configService, logger);
+    const dbTargetService = new DbTargetService(configService, logger);
     const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
     const kubeHttpService = new KubeHttpService(configService, logger);
     const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
@@ -93,7 +95,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
     const dbAgentTargets = new Promise<DbTargetSummary[]>( async (res) => {
         try {
-            const response = await virtualTargetService.ListDbTargets();
+            const response = await dbTargetService.ListDbTargets();
             const results = response.map<DbTargetSummary>((target, _index, _array) => {
                 return { id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost };
             });
@@ -107,7 +109,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
     const webAgentTargets = new Promise<WebTargetSummary[]>( async (res) => {
         try {
-            const response = await virtualTargetService.ListWebTargets();
+            const response = await webTargetService.ListWebTargets();
             const results = response.map<WebTargetSummary>((target, _index, _array) => {
                 return { id: target.id, name: target.name, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId , localPort: target.localPort, localHost: target.localHost };
             });

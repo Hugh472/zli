@@ -3,7 +3,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
-import { DbTargetSummary } from '../../services/virtual-target/virtual-target.types';
+import { DbTargetSummary } from '../../services/db-target/db-target.types';
 import { TargetStatus } from '../../services/common.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';

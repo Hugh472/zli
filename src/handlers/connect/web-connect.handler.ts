@@ -5,7 +5,7 @@ import { LoggerConfigService } from '../../services/logger/logger-config.service
 import yargs from 'yargs';
 import open from 'open';
 import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
-import { WebTargetSummary } from '../../services/virtual-target/virtual-target.types';
+import { WebTargetSummary } from '../../services/web-target/web-target.types';
 import { TargetStatus } from '../../services/common.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';

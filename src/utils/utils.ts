@@ -1,7 +1,8 @@
 import Table from 'cli-table3';
 import fs from 'fs';
 import { concat, filter, map, max, zip } from 'lodash';
-import { DbTargetSummary, WebTargetSummary } from '../services/virtual-target/virtual-target.types';
+import { WebTargetSummary } from '../services/web-target/web-target.types';
+import { DbTargetSummary } from '../services/db-target/db-target.types';
 import util from 'util';
 import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.types';
 import { cleanExit } from '../handlers/clean-exit.handler';

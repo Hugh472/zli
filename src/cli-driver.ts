@@ -82,7 +82,8 @@ import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.c
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 import { BzeroAgentSummary } from './services/bzero-agent/bzero-agent.types';
-import { DbTargetSummary, WebTargetSummary } from './services/virtual-target/virtual-target.types';
+import { WebTargetSummary } from './services/web-target/web-target.types';
+import { DbTargetSummary } from './services/db-target/db-target.types';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
@@ -123,8 +124,6 @@ export class CliDriver
         'ssh-proxy-config',
         'connect',
         'tunnel',
-        'db-connect',
-        'web-connect',
         'user',
         'targetUser',
         'targetGroup',
@@ -151,8 +150,6 @@ export class CliDriver
         'ssh-proxy-config',
         'connect',
         'tunnel',
-        'db-connect',
-        'web-connect',
         'user',
         'targetUser',
         'targetGroup',

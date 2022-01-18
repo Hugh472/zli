@@ -3,13 +3,14 @@ import { TargetSummary } from '../common.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 import { BzeroAgentService } from '../bzero-agent/bzero-agent.service';
-import { VirtualTargetService } from '../virtual-target/virtual-target.service';
+import { WebTargetService } from '../web-target/web-target.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { DynamicAccessConfigHttpService } from '../../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
+import { DbTargetService } from '../db-target/db-target.service';
 
 export async function listTargets(
     configService: ConfigService,
@@ -20,15 +21,16 @@ export async function listTargets(
     const kubeHttpService = new KubeHttpService(configService, logger);
     const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
     const bzeroAgentService = new BzeroAgentService(configService, logger);
-    const virtualTargetService = new VirtualTargetService(configService, logger);
+    const webTargetService = new WebTargetService(configService, logger);
+    const dbTargetService = new DbTargetService(configService, logger);
 
     const [clusters, ssmTargets, dynamicConfigs, bzeroAgents, webTargetsRaw, dbTargetsRaw] = await Promise.all([
         kubeHttpService.ListKubeClusters(),
         ssmTargetHttpService.ListSsmTargets(true),
         dynamicConfigHttpService.ListDynamicAccessConfigs(),
         bzeroAgentService.ListBzeroAgents(),
-        virtualTargetService.ListWebTargets(),
-        virtualTargetService.ListDbTargets()
+        webTargetService.ListWebTargets(),
+        dbTargetService.ListDbTargets()
     ]);
 
     const clusterTargets = clusters.map<TargetSummary>((cluster) => {
