@@ -122,7 +122,6 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
 
 
             configService.setDbConfig(dbConfig);
-            logger.info(`Started db daemon at localhost:${localPort} for ${targetName}`);
             return 0;
         } else {
             logger.warn(`Started db daemon in debug mode at localhost:${localPort} for ${targetName}`);
