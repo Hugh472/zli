@@ -96,7 +96,7 @@ export async function generateKubeconfigHandler(
     // Determine if this is using the dev or stage config
     const configName = configService.getConfigName();
     let clusterName = 'bctl-agent';
-    let contextName = 'bctl-agent-context';
+    let contextName = 'bzero-context';
     let userName = configService.me()['email'];
 
     // If this is dev or stage, add that appropriate flag
