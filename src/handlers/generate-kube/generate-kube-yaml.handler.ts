@@ -6,7 +6,7 @@ import yargs from 'yargs';
 import { generateKubeArgs } from './generate-kube.command-builder';
 import { getEnvironmentFromName } from '../../../src/utils/utils';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
+import { KubeService } from '../../services/v1/kube/kube.service';
 
 const fs = require('fs');
 
@@ -26,7 +26,9 @@ export async function generateKubeYamlHandler(
     const outputFileArg = argv.outputFile;
 
     // Make our API client
-    const kubeHttpService = new KubeHttpService(configService, logger);
+    // TODO: Uncomment this out once our v2 endpoint is fixed
+    // const kubeHttpService = new KubeHttpService(configService, logger);
+    const kubeHttpService = new KubeService(configService, logger);
 
     // Format our labels if they exist
     const labels: { [index: string ]: string } = {};
@@ -46,7 +48,9 @@ export async function generateKubeYamlHandler(
     }
 
     // Get our kubeYaml
-    const kubeYaml = await kubeHttpService.CreateNewAgentToken(argv.clusterName, labels, argv.namespace, environmentId);
+    // TODO: Uncomment this out once our v2 endpoint is fixed
+    // const kubeYaml = await kubeHttpService.CreateNewAgentToken(argv.clusterName, labels, argv.namespace, environmentId);
+    const kubeYaml = await kubeHttpService.getKubeUnregisteredAgentYaml(argv.clusterName, labels, argv.namespace, environmentId);
 
     // Show it to the user or write to file
     if (outputFileArg) {

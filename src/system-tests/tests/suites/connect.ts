@@ -84,7 +84,7 @@ export const connectSuite = () => {
             await waitForExpect(() => {
                 expect(outputSpy).toHaveBeenCalled();
                 expect(capturedOutput.find(e => e.indexOf('hello world') !== -1)).toBeTruthy();
-            }, 1000 * 10);
+            }, 1000 * 30);
 
             // Send exit to the terminal so the zli connect handler will exit
             // and the test can complete. However we must override the mock
