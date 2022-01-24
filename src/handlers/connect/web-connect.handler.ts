@@ -45,16 +45,27 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
     const webConfig = configService.getWebConfig();
 
     // Make sure we have set our local daemon port
-    if (webConfig['localPort'] == null) {
-        logger.info('First time running web connect, setting local daemon port');
-        
-        // Generate and set a localport + localhost
-        const localPort = await findPort();
-        webConfig['localPort'] = localPort;
-        webConfig['localHost'] = 'localhost'
-
-        // Save these values so they don't need to be recreated
-        configService.setWebConfig(webConfig);
+    let localPort = webTarget.localPort;
+    if (localPort == null) {
+        // If there is no local port setup by the admin, default to generating/using a local random one
+        if (webConfig['localPort'] == null) {
+            logger.info('First time running web connect, setting local daemon port');
+            
+            // Generate and set a localport + localhost
+            const localPort = await findPort();
+            webConfig['localPort'] = localPort;
+            webConfig['localHost'] = 'localhost'
+    
+            // Save these values so they don't need to be recreated
+            configService.setWebConfig(webConfig);
+        }
+        localPort = webConfig['localPort'];
+    }
+    // Do the same thing for the host
+    let localHost = webTarget.localHost;
+    if (localHost == null) {
+        // Default to localhost unless otherwise stated
+        localHost = 'localhost'
     }
 
     // Check if we've already started a process
@@ -62,13 +73,11 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
         killDaemon(webConfig['localPid'], webConfig['localPort'], logger);
     }
 
-
-    let localPort = webConfig['localPort'];
-
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
-        `-daemonPort=${localPort}`,
+        `-localPort=${localPort}`,
+        `-localHost=${localHost}`,
         `-targetId=${webTarget.id}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
@@ -116,14 +125,14 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
             await waitUntilUsedOnHost(localPort, 'localhost', 100, 1000 * 20);
 
             configService.setWebConfig(webConfig);
-            logger.info(`Started web daemon at localhost:${localPort} for ${targetName}`);
+            logger.info(`Started web daemon at ${localHost}:${localPort} for ${targetName}`);
 
             // Open our browser window 
             await open(`http://localhost:${localPort}`);
 
             return 0;
         } else {
-            logger.warn(`Started web daemon in debug mode at localhost:${localPort} for ${targetName}`);
+            logger.warn(`Started web daemon in debug mode at ${localHost}:${localPort} for ${targetName}`);
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
             await cleanExit(0, logger);
         }

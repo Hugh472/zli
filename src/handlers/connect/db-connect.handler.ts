@@ -43,11 +43,10 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     // Open up our zli dbConfig
     const dbConfig = configService.getDbConfig();
 
-    // If the config has a localport set use that, else generate our own
+    // Make sure we have set our local daemon port
     let localPort = dbTarget.localPort;
     if (localPort == null) {
-
-        // Make sure we have set our local daemon port
+        // If there is no local port setup by the admin, default to generating/using a local random one
         if (dbConfig['localPort'] == null) {
             logger.info('First time running db connect, setting local daemon port');
             
@@ -62,8 +61,13 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
             // Save these values so they don't need to be recreated
             configService.setDbConfig(dbConfig);
         }
-
         localPort = dbConfig['localPort'];
+    }
+    // Do the same thing for the host
+    let localHost = dbTarget.localHost;
+    if (localHost == null) {
+        // Default to localhost unless otherwise stated
+        localHost = 'localhost'
     }
 
     // Check if we've already started a process
@@ -74,7 +78,8 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
-        `-daemonPort=${localPort}`,
+        `-localPort=${localPort}`,
+        `-localHost=${localHost}`,
         `-targetId=${dbTarget.id}`, 
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
@@ -124,7 +129,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
             configService.setDbConfig(dbConfig);
             return 0;
         } else {
-            logger.warn(`Started db daemon in debug mode at localhost:${localPort} for ${targetName}`);
+            logger.warn(`Started db daemon in debug mode at ${localHost}:${localPort} for ${targetName}`);
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
             await cleanExit(0, logger);
         }

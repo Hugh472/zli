@@ -1,20 +1,18 @@
-import path from 'path';
-import utils from 'util';
-import fs from 'fs';
+import yargs from 'yargs';
+import got from 'got/dist/source';
+import { Retrier } from '@jsier/retrier';
+const { spawn } = require('child_process');
+
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
-import yargs from 'yargs';
 import { connectArgs } from './connect.command-builder';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
-import got from 'got/dist/source';
-import { Retrier } from '@jsier/retrier';
-import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, killDaemon } from '../../utils/daemon-utils';
+import { getAppExecPath, getAppEntrypoint, startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir } from '../../utils/daemon-utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
-const { spawn } = require('child_process');
 
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
@@ -73,7 +71,8 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
         `-targetUser=${targetUser}`,
         `-targetGroups=${targetGroups}`,
         `-targetId=${clusterTarget.id}`,
-        `-daemonPort=${daemonPort}`,
+        `-localPort=${daemonPort}`,
+        `-localHost=localhost`, // Currently kube does not support editing localhost
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-localhostToken="${kubeConfig['token']}"`,
@@ -163,85 +162,4 @@ function pollDaemonReady(daemonPort: number) : Promise<void> {
             throw new Error('Daemon took too long to become ready');
         }
     });
-}
-
-// TODO: Remove this and pull from common daemon utils
-async function copyExecutableToLocalDir(logger: Logger, configPath: string): Promise<string> {
-    // Helper function to copy the Daemon executable to a local dir on the file system
-    // Ref: https://github.com/vercel/pkg/issues/342
-
-    const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
-    const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
-    const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
-
-    let prefix = '';
-    if(isPkgProcess()) {
-        // /snapshot/zli/dist/src/handlers/tunnel
-        prefix = path.join(__dirname, '../../../../');
-    } else {
-        // /zli/src/handlers/tunnel
-        prefix = path.join(__dirname, '../../../');
-    }
-
-    // First get the parent dir of the config path
-    const configFileDir = path.dirname(configPath);
-
-    const chmod = utils.promisify(fs.chmod);
-
-    // Our copy function as we cannot use fs.copyFileSync
-    async function copy(source: string, target: string) {
-        return new Promise<void>(async function (resolve, reject) {
-            const ret = await fs.createReadStream(source).pipe(fs.createWriteStream(target), { end: true });
-            ret.on('close', () => {
-                resolve();
-            });
-            ret.on('error', () => {
-                reject();
-            });
-        });
-
-    }
-
-    let daemonExecPath = undefined;
-    let finalDaemonPath = undefined;
-    if (process.platform === 'win32') {
-        daemonExecPath = path.join(prefix, WINDOWS_DAEMON_PATH);
-
-        finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe');
-    }
-    else if (process.platform === 'linux' || process.platform === 'darwin') {
-        if (process.platform === 'linux') {
-            daemonExecPath = path.join(prefix, LINUX_DAEMON_PATH);
-        } else {
-            daemonExecPath = path.join(prefix, MACOS_DAEMON_PATH);
-        }
-
-        finalDaemonPath = path.join(configFileDir, 'daemon');
-    } else {
-        logger.error(`Unsupported operating system: ${process.platform}`);
-        await cleanExit(1, logger);
-    }
-
-    await deleteIfExists(finalDaemonPath);
-
-    // Create our executable file
-    fs.writeFileSync(finalDaemonPath, '');
-
-    // Copy the file to the computers file system
-    await copy(daemonExecPath, finalDaemonPath);
-
-    // Grant execute permission
-    await chmod(finalDaemonPath, 0o755);
-
-    // Return the path
-    return finalDaemonPath;
-}
-
-
-async function deleteIfExists(pathToFile: string) {
-    // Check if the file exists, delete if so
-    if (fs.existsSync(pathToFile)) {
-        // Delete the file
-        fs.unlinkSync(pathToFile);
-    }
 }

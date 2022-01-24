@@ -9,6 +9,9 @@ const { spawn } = require('child_process');
 const exec = require('child_process').execSync;
 const pids = require('port-pid');
 
+export const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
+export const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
+export const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
 
 export function getAppEntrypoint() {
     const pkgProcess = isPkgProcess();
@@ -77,10 +80,6 @@ export async function startDaemonInDebugMode(finalDaemonPath: string, cwd: strin
 export async function copyExecutableToLocalDir(logger: Logger, configPath: string): Promise<string> {
     // Helper function to copy the Daemon executable to a local dir on the file system
     // Ref: https://github.com/vercel/pkg/issues/342
-
-    const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
-    const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
-    const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
 
     let prefix = '';
     if(isPkgProcess()) {

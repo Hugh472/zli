@@ -15,7 +15,9 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc && cd bzero/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o daemon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
+    "build": "npm run build-binaries && npm run build-clean",
+    "build-binaries": "tsc && cd bzero/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o daemon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
+    "build-clean": "ts-node clean-build.ts",
     "update-daemon-version": "replace '\\$DAEMON_VERSION' \"$(cat bzero/VERSION)\" bzero/bctl/daemon/daemon.go",
     "package": "npm run copy-files && pkg .",
     "release": "npm run build && npm run package",
