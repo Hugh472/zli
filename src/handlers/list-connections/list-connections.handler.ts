@@ -19,6 +19,11 @@ export async function listConnectionsHandler(
     const spaceHttpService = new SpaceHttpService(configService, logger);
     const cliSpace = await getCliSpace(spaceHttpService, logger);
 
+    if (cliSpace == undefined) {
+        logger.warn('You have not opened any zli connections.');
+        await cleanExit(0, logger);
+    }
+
     const openConnections = cliSpace.connections.filter(c => c.state === ConnectionState.Open);
 
     // await and concatenate
