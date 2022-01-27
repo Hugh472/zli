@@ -1,5 +1,5 @@
 export interface WebConfig {
-    name: string, 
+    name: string,
     localHost: string,
     localPort: number,
     localPid: null

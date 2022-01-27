@@ -1,4 +1,4 @@
-import { AgentStatus } from "../../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types";
+import { AgentStatus } from '../../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 
 export interface ClusterSummary {
     id: string;

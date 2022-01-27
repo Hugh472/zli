@@ -1,4 +1,4 @@
-import { TargetBase } from "../common.types";
+import { TargetBase } from '../common.types';
 
 export interface DbTargetSummary extends TargetBase {
     engine: string;

@@ -8,8 +8,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { connectArgs } from './connect.command-builder';
-import { waitUntilUsedOnHost } from 'tcp-port-used';
-import { getAppExecPath, getAppEntrypoint, startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir } from '../../utils/daemon-utils';
+import { getAppExecPath, getAppEntrypoint, startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir, handleServerStart } from '../../utils/daemon-utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
@@ -118,7 +117,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
             configService.setKubeConfig(kubeConfig);
 
             // Wait for daemon HTTP server to be bound and running
-            await waitUntilUsedOnHost(parseInt(daemonPort), 'localhost', 100, 1000 * 5);
+            await handleServerStart(loggerConfigService.daemonLogPath(), parseInt(daemonPort), kubeConfig['localHost']);
 
             // Poll ready endpoint
             logger.info('Waiting for daemon to become ready...');

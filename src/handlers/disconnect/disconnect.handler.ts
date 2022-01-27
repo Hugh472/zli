@@ -17,7 +17,7 @@ export async function disconnectHandler(
         const kubeConfig = configService.getKubeConfig();
 
         if (kubeConfig['localPid'] != null) {
-            await killDaemon(kubeConfig['localPid'], kubeConfig['localPort'], logger)
+            await killDaemon(kubeConfig['localPid'], kubeConfig['localPort'], logger);
 
             // Update the localPid
             kubeConfig['localPid'] = null;
@@ -32,7 +32,7 @@ export async function disconnectHandler(
         const webConfig = configService.getWebConfig();
 
         if (webConfig['localPid'] != null) {
-            await killDaemon(webConfig['localPid'], webConfig['localPort'], logger)
+            await killDaemon(webConfig['localPid'], webConfig['localPort'], logger);
 
             // Update the localPid
             webConfig['localPid'] = null;
@@ -47,7 +47,7 @@ export async function disconnectHandler(
         const dbConfig = configService.getDbConfig();
 
         if (dbConfig['localPid'] != null) {
-            await killDaemon(dbConfig['localPid'], dbConfig['localPort'], logger)
+            await killDaemon(dbConfig['localPid'], dbConfig['localPort'], logger);
 
             // Update the localPid
             dbConfig['localPid'] = null;

@@ -2,11 +2,10 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
-import { getAppExecPath, isPkgProcess, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
+import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
 import { DbTargetSummary } from '../../services/db-target/db-target.types';
 import { TargetStatus } from '../../services/common.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
-import { waitUntilUsedOnHost } from 'tcp-port-used';
 import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
@@ -43,17 +42,24 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     // Open up our zli dbConfig
     const dbConfig = configService.getDbConfig();
 
+    // Figure out our local host
+    let localHost = dbTarget.localHost;
+    if (localHost == null) {
+        // Default to localhost unless otherwise stated
+        localHost = 'localhost';
+    }
+
     // Make sure we have set our local daemon port
     let localPort = dbTarget.localPort;
     if (localPort == null) {
         // If there is no local port setup by the admin, default to generating/using a local random one
         if (dbConfig['localPort'] == null) {
             logger.info('First time running db connect, setting local daemon port');
-            
+
             // Generate and set a localport + localhost
             const localPort = await findPort();
             dbConfig['localPort'] = localPort;
-            dbConfig['localHost'] = 'localhost'
+            dbConfig['localHost'] = localHost;
 
             // Save the name as well
             dbConfig['name'] = dbTarget.name;
@@ -62,12 +68,6 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
             configService.setDbConfig(dbConfig);
         }
         localPort = dbConfig['localPort'];
-    }
-    // Do the same thing for the host
-    let localHost = dbTarget.localHost;
-    if (localHost == null) {
-        // Default to localhost unless otherwise stated
-        localHost = 'localhost'
     }
 
     // Check if we've already started a process
@@ -80,7 +80,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
         `-sessionId=${configService.sessionId()}`,
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
-        `-targetId=${dbTarget.id}`, 
+        `-targetId=${dbTarget.id}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,
@@ -122,8 +122,9 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
             dbConfig['name'] = dbTarget.name;
 
             // Wait for daemon HTTP server to be bound and running
-            await waitUntilUsedOnHost(localPort, 'localhost', 100, 1000 * 20);
-            logger.info(`Started db daemon at ${dbConfig['localHost']}:${localPort} for ${targetName}`); 
+            await handleServerStart(loggerConfigService.daemonLogPath(), dbConfig['localPort'], dbConfig['localHost']);
+
+            logger.info(`Started db daemon at ${dbConfig['localHost']}:${localPort} for ${targetName}`);
 
 
             configService.setDbConfig(dbConfig);

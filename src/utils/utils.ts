@@ -1,6 +1,6 @@
 import Table from 'cli-table3';
 import fs from 'fs';
-import { concat, filter, map, max, zip } from 'lodash';
+import { concat, filter, map, max } from 'lodash';
 import { WebTargetSummary } from '../services/web-target/web-target.types';
 import { DbTargetSummary } from '../services/db-target/db-target.types';
 import util from 'util';
@@ -184,9 +184,9 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
     targets.forEach(target => {
         let env = target.environmentId;
         if (env != 'N/A') {
-            env = envs.filter(e => e.id == target.environmentId).pop().name
+            env = envs.filter(e => e.id == target.environmentId).pop().name;
         }
-        
+
         const row = [target.type, target.name, env];
 
         if(showGuid) {
@@ -698,58 +698,58 @@ export async function disambiguateTarget(
     zippedShellTargetsUnformatted = filter(zippedShellTargetsUnformatted, t => t.type !== TargetType.SsmTarget || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
 
     // Now cast everything to a common target info object
-    let zippedTargetsShell: CommonTargetInfo[] = [];
+    const zippedTargetsShell: CommonTargetInfo[] = [];
     zippedShellTargetsUnformatted.forEach((targetSummary: TargetSummary) => {
-        let newVal: CommonTargetInfo = {
+        const newVal: CommonTargetInfo = {
             name: targetSummary.name,
-            id: targetSummary.id, 
+            id: targetSummary.id,
             type: targetSummary.type,
             status: targetSummary.status,
             environmentId: targetSummary.environmentId
-        }
-        zippedTargetsShell.push(newVal)
-    })
+        };
+        zippedTargetsShell.push(newVal);
+    });
 
     // Now create similar lists for the other types of targets, db, web
-    let zippedTargetsDb: CommonTargetInfo[] = [];
-    let awaitedDbTarget = await dbTargets;
+    const zippedTargetsDb: CommonTargetInfo[] = [];
+    const awaitedDbTarget = await dbTargets;
     awaitedDbTarget.forEach((targetSummary: DbTargetSummary) => {
-        let newVal: CommonTargetInfo = {
+        const newVal: CommonTargetInfo = {
             name: targetSummary.name,
-            id: targetSummary.id, 
+            id: targetSummary.id,
             type: TargetType.Db,
             status: targetSummary.status,
             environmentId: targetSummary.environmentId
-        }
-        zippedTargetsDb.push(newVal)
-    })
+        };
+        zippedTargetsDb.push(newVal);
+    });
 
-    let zippedTargetsWeb: CommonTargetInfo[] = [];
-    let awaitedWebTarget = await webTargets;
+    const zippedTargetsWeb: CommonTargetInfo[] = [];
+    const awaitedWebTarget = await webTargets;
     awaitedWebTarget.forEach((targetSummary: WebTargetSummary) => {
-        let newVal: CommonTargetInfo = {
+        const newVal: CommonTargetInfo = {
             name: targetSummary.name,
-            id: targetSummary.id, 
+            id: targetSummary.id,
             type: TargetType.Web,
             status: targetSummary.status,
             environmentId: targetSummary.environmentId
-        }
-        zippedTargetsWeb.push(newVal)
-    })
+        };
+        zippedTargetsWeb.push(newVal);
+    });
 
-    let zippedTargetsKube: CommonTargetInfo[] = [];
-    let awaitedKubeTarget = await clusterTargets;
+    const zippedTargetsKube: CommonTargetInfo[] = [];
+    const awaitedKubeTarget = await clusterTargets;
     awaitedKubeTarget.forEach((targetSummary: KubeClusterSummary) => {
-        let newVal: CommonTargetInfo = {
+        const newVal: CommonTargetInfo = {
             name: targetSummary.clusterName,
-            id: targetSummary.id, 
+            id: targetSummary.id,
             type: TargetType.Cluster,
             status: null, // KubeClusterSummary has AgentStatus, and this is expecting TargetStatus.
             // This should be fixed once all targets are using agents
             environmentId: targetSummary.environmentId
-        }
-        zippedTargetsKube.push(newVal)
-    })
+        };
+        zippedTargetsKube.push(newVal);
+    });
 
     // Now concat all the types of targets
     let zippedTargets = concat (zippedTargetsShell, zippedTargetsDb, zippedTargetsWeb, zippedTargetsKube);
@@ -779,10 +779,10 @@ export async function disambiguateTarget(
         logger.warn('More than one target found with the same targetName');
 
         // Print the targets we have found so the user can easily type the next command
-        logger.info(`Matched ${matchedTargets.length} targets:`)
+        logger.info(`Matched ${matchedTargets.length} targets:`);
         matchedTargets.forEach((matchedTarget: CommonTargetInfo) => {
-                logger.warn(`    * ${matchedTarget.name} (${matchedTarget.id}): ${matchedTarget.type}`);
-        })
+            logger.warn(`    * ${matchedTarget.name} (${matchedTarget.id}): ${matchedTarget.type}`);
+        });
         logger.info(`Please connect using targetId instead of the targetName (zli connect test@1234)`);
         await cleanExit(1, logger);
     }

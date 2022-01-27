@@ -1,4 +1,4 @@
-import { TargetBase } from "../common.types";
+import { TargetBase } from '../common.types';
 
 export interface WebTargetSummary extends TargetBase {
     agentVersion: string;

@@ -120,7 +120,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             res([]);
         }
     });
-    
+
     const envs = new Promise<EnvironmentSummary[]>( async (res) => {
         try {
             const response = await envHttpService.ListEnvironments();

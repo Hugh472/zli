@@ -3,15 +3,42 @@ import fs from 'fs';
 import utils from 'util';
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { Logger } from '../services/logger/logger.service';
-import { ConfigService } from '../services/config/config.service';
+import { waitUntilUsedOnHost } from 'tcp-port-used';
 
 const { spawn } = require('child_process');
 const exec = require('child_process').execSync;
 const pids = require('port-pid');
+const readLastLines = require('read-last-lines');
 
 export const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
 export const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
 export const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
+
+// Allow errors on early daemon startup to bubble up to the user
+export async function handleServerStart(logPath: string, localPort: number, localHost: string) {
+    await new Promise<void>(async (resolve, reject) => {
+        await waitUntilUsedOnHost(localPort, localHost, 100, 1000 * 5).then(function() {
+            resolve();
+        }, function() {
+            if (fs.existsSync(logPath)) {
+                readLastLines.read(logPath, 1)
+                    .then((line: string) => {
+                        try {
+                            const lastLog = JSON.parse(line);
+                            reject(`Error kept daemon from starting up correctly\nLast log entry: ${lastLog.message}`);
+                        }
+                        catch(e) {
+                            reject(`Error parsing last line in log: ${e}`);
+                        }
+                    });
+            } else {
+                throw reject('Daemon failed to create log file');
+            }
+        });
+    }).catch((e: any) => {
+        throw e;
+    });
+}
 
 export function getAppEntrypoint() {
     const pkgProcess = isPkgProcess();
@@ -38,7 +65,7 @@ export function isPkgProcess() {
 }
 
 export async function startDaemonInDebugMode(finalDaemonPath: string, cwd: string, args: string[]) {
-    const startDaemonPromise = new Promise<void>(async (resolve, reject) => {
+    const startDaemonPromise = new Promise<void>(async (resolve) => {
         // Start our daemon process, but stream our stdio to the user (pipe)
         const daemonProcess = await spawn(finalDaemonPath, args,
             {
@@ -162,7 +189,7 @@ export async function killDaemon(localPid: number, localPort: number, logger: Lo
         } catch (err: any) {
             // If the daemon pid was killed, or doesn't exist, just continue
             logger.warn(`Attempt to kill existing daemon failed. This is expected if the daemon has been killed already. Make sure no program is using port: ${localPort}`);
-            logger.debug(`Error: ${err}`)
+            logger.debug(`Error: ${err}`);
         }
     }
     // Always ensure nothing is using the localport
@@ -195,11 +222,13 @@ async function getPidForPort(port: number): Promise<number[]> {
 
 function killPid(pid: string) {
     // Helper function to kill a process for a given pid
+    // Ignore output and do not show that to the user
+    const options = { stdio: ['ignore', 'ignore', 'ignore'] };
     if (process.platform === 'win32') {
-        exec(`taskkill /F /T /PID ${pid}`);
+        exec(`taskkill /F /T /PID ${pid}`, options);
     } else if (process.platform === 'linux') {
-        exec(`pkill -s ${pid}`);
+        exec(`pkill -s ${pid}`, options);
     } else {
-        exec(`kill -9 ${pid}`);
+        exec(`kill -9 ${pid}`, options);
     }
 }

@@ -54,8 +54,8 @@ export async function listTargets(
             environmentId: bzeroAgent.environmentId,
             targetUsers: [],
             agentVersion: bzeroAgent.agentVersion
-        }
-    })
+        };
+    });
 
     const webTargets = webTargetsRaw.map<TargetSummary>((webTarget) => {
         return {
@@ -66,8 +66,8 @@ export async function listTargets(
             environmentId: webTarget.environmentId,
             targetUsers: [],
             agentVersion: webTarget.agentVersion
-        }
-    })
+        };
+    });
 
     const dbTargets = dbTargetsRaw.map<TargetSummary>((dbTarget) => {
         return {
@@ -78,8 +78,8 @@ export async function listTargets(
             environmentId: dbTarget.environmentId,
             targetUsers: [],
             agentVersion: dbTarget.agentVersion
-        }
-    })
+        };
+    });
 
     let allTargets = [...ssmTargets.map(ssmTargetToTargetSummary), ...dynamicConfigs.map(dynamicConfigToTargetSummary)];
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
