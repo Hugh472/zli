@@ -32,7 +32,8 @@ export async function listTargets(
             status: parseTargetStatus(cluster.status.toString()),
             environmentId: cluster.environmentId,
             targetUsers: cluster.validUsers,
-            agentVersion: cluster.agentVersion
+            agentVersion: cluster.agentVersion,
+            region: 'N/A'
         };
     });
 

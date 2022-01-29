@@ -1,5 +1,5 @@
 import { Droplet } from 'digitalocean-js';
-import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
+import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.types';
 
 /**

@@ -177,8 +177,8 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
 
     if(showDetail)
     {
-        header.push('Agent Version', 'Status', 'Target Users');
-        columnWidths.push(15, 9, 29);
+        header.push('Agent Version', 'Status', 'Target Users', 'Region');
+        columnWidths.push(15, 9, 29, 18);
     }
 
     // ref: https://github.com/cli-table/cli-table3
@@ -195,6 +195,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
             row.push(target.agentVersion);
             row.push(target.status || 'N/A'); // status is undefined for non-SSM targets
             row.push(map(target.targetUsers).join(', \n') || 'N/A'); // targetUsers are undefined for now for non-cluster targets
+            row.push(target.region);
         }
 
         table.push(row);
@@ -704,9 +705,9 @@ export function randomAlphaNumericString(length: number) : string {
 
 
 export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
-    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
+    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
 }
 
 export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
-    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
+    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A'};
 }

@@ -9,7 +9,7 @@ import { getEnvironmentFromName, randomAlphaNumericString } from '../../utils/ut
 import { connectSuite } from './suites/connect';
 import { listTargetsSuite } from './suites/list-targets';
 import { versionSuite } from './suites/version';
-import { DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
+import { convertAwsRegionToDigitalOceanRegion, DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
 import { ClusterTargetStatusPollError, DigitalOceanKubernetesClusterVersion, RegisteredDigitalOceanKubernetesCluster } from '../digital-ocean/digital-ocean-kube.service.types';
 import { DigitalOceanKubeService } from '../digital-ocean/digital-ocean-kube-service';
 import { kubeSuite } from './suites/kube';
@@ -60,18 +60,24 @@ let systemTestRegistrationApiKey: NewApiKeyResponse;
 // Global mapping of system test targets
 export const testTargets = new Map<SSMTestTarget, DigitalOceanSSMTarget>();
 
+const defaultAwsRegion = 'us-east-1';
+const defaultDigitalOceanRegion = convertAwsRegionToDigitalOceanRegion(defaultAwsRegion);
+
 // Different types of SSM test targets to create. Each object corresponds to a
 // new droplet.
 export const ssmTestTargetsToRun: SSMTestTarget[] = [
     // old autodiscovery script (all-in-bash)
-    { installType: 'autodiscovery', dropletImage: DigitalOceanDistroImage.AmazonLinux2 },
+    { installType: 'ad', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
     // { type: 'autodiscovery', dropletImage: DigitalOceanDistroImage.CentOS8 },
-    { installType: 'autodiscovery', dropletImage: DigitalOceanDistroImage.Debian11 },
-    { installType: 'autodiscovery', dropletImage: DigitalOceanDistroImage.Ubuntu20 },
+    { installType: 'ad', dropletImage: DigitalOceanDistroImage.Debian11, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
+    { installType: 'ad', dropletImage: DigitalOceanDistroImage.Ubuntu20, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
     // new autodiscovery script (self-registration)
-    { installType: 'package-manager', dropletImage: DigitalOceanDistroImage.Debian11 },
-    { installType: 'package-manager', dropletImage: DigitalOceanDistroImage.AmazonLinux2 },
+    { installType: 'pm', dropletImage: DigitalOceanDistroImage.Debian11, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
+    { installType: 'pm', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
 ];
+
+// Add extra targets to test config based on EXTRA_REGIONS env var
+initRegionalSSMTargetsTestConfig();
 
 // Global mapping of Kubernetes cluster targets
 export const testClusters = new Map<DigitalOceanKubernetesClusterVersion, RegisteredDigitalOceanKubernetesCluster>();
@@ -263,7 +269,7 @@ async function createDOTestTargets() {
 
     // Create a droplet for various types of SSM test targets
     const createDroplet = async (testTarget: SSMTestTarget) => {
-        const targetName = `system-test-${systemTestUniqueId}-${getDOImageName(testTarget.dropletImage)}-${testTarget.installType}`;
+        const targetName = `st-${systemTestUniqueId}-${getDOImageName(testTarget.dropletImage)}-${testTarget.installType}-${randomAlphaNumericString(15)}`;
 
         // Get default env
         const environmentService = new EnvironmentHttpService(configService, logger);
@@ -273,11 +279,11 @@ async function createDOTestTargets() {
 
         let autoDiscoveryScript : string;
         switch (testTarget.installType) {
-        case 'autodiscovery':
+        case 'ad':
             // Get the beta agent
             autoDiscoveryScript = await getAutodiscoveryScript(logger, configService, envId, ScriptTargetNameOption.DigitalOceanMetadata, 'staging');
             break;
-        case 'package-manager':
+        case 'pm':
             autoDiscoveryScript = getPackageManagerRegistrationScript(testTarget, envId, systemTestRegistrationApiKey.secret);
             break;
         default:
@@ -292,7 +298,7 @@ async function createDOTestTargets() {
                 dropletName: targetName,
                 dropletSize: 's-1vcpu-1gb',
                 dropletImage: testTarget.dropletImage,
-                dropletRegion: DigitalOceanRegion.NewYork1,
+                dropletRegion: testTarget.doRegion,
                 dropletTags: ['system-tests'],
             }
         }, autoDiscoveryScript);
@@ -323,6 +329,8 @@ async function createDOTestTargets() {
 
         console.log(
             `Successfully created DigitalOceanSSMTarget:
+            \tAWS region: ${testTarget.awsRegion}
+            \tDigitalOcean region: ${testTarget.doRegion}
             \tInstall Type: ${testTarget.installType}
             \tDroplet ID: ${digitalOceanSsmTarget.droplet.id}
             \tDroplet Image: ${getDOImageName(testTarget.dropletImage)}
@@ -349,6 +357,36 @@ async function cleanupDOTestTargets() {
     }));
 
     await checkAllSettledPromise(allTargetsCleanup);
+}
+
+function initRegionalSSMTargetsTestConfig() {
+    const enabledExtraRegionsEnvVar = process.env.EXTRA_REGIONS;
+    const enabledExtraRegions = [];
+
+    if (!enabledExtraRegionsEnvVar) {
+        // If not set, add Tokyo as a default extra region
+        enabledExtraRegions.push('ap-northeast-1');
+    } else {
+        const enabledExtraRegionsEnvVarSplitAwsRegions = enabledExtraRegionsEnvVar.split(',');
+        enabledExtraRegions.push(...enabledExtraRegionsEnvVarSplitAwsRegions);
+    }
+
+    enabledExtraRegions.forEach(awsRegion =>
+        ssmTestTargetsToRun.push(
+            {
+                installType: 'ad',
+                dropletImage: DigitalOceanDistroImage.Debian11,
+                doRegion: convertAwsRegionToDigitalOceanRegion(awsRegion),
+                awsRegion: awsRegion
+            },
+            {
+                installType: 'pm',
+                dropletImage: DigitalOceanDistroImage.Debian11,
+                doRegion: convertAwsRegionToDigitalOceanRegion(awsRegion),
+                awsRegion: awsRegion
+            }
+        )
+    );
 }
 
 async function setupSystemTestApiKeys() {

@@ -63,8 +63,7 @@ export class ShellTerminal implements IDisposable
                 this.logger,
                 new ZliAuthConfigService(this.configService, this.logger),
                 this.connectionSummary.id,
-                shellConnectionAuthDetails.connectionNodeId,
-                shellConnectionAuthDetails.authToken,
+                { authToken: shellConnectionAuthDetails.authToken, connectionServiceUrl: shellConnectionAuthDetails.connectionServiceUrl },
                 this.inputSubject,
                 this.resizeSubject
             );

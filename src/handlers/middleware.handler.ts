@@ -27,7 +27,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await dynamicConfigHttpService.ListDynamicAccessConfigs();
             const results = response.map<TargetSummary>((config, _index, _array) => {
-                return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
+                return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A'};
             });
 
             res(results);
@@ -45,7 +45,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await ssmTargetHttpService.ListSsmTargets(true);
             const results = response.map<TargetSummary>((ssm, _index, _array) => {
-                return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
+                return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
             });
 
             res(results);

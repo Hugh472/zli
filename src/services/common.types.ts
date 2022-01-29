@@ -27,6 +27,7 @@ export interface TargetSummary
     agentVersion: string;
     status: TargetStatus;
     targetUsers: string[];
+    region: string;
 }
 
 export interface ParsedTargetString
