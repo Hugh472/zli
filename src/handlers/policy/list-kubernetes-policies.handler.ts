@@ -55,7 +55,7 @@ export async function listKubernetesPoliciesHandler(
 
     const targetNameMap : { [id: string]: string } = {};
     (await clusterTargets).forEach(clusterTarget => {
-        targetNameMap[clusterTarget.id] = clusterTarget.clusterName;
+        targetNameMap[clusterTarget.id] = clusterTarget.name;
     });
 
     if(!! argv.json) {

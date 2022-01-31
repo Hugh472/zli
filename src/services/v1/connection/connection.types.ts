@@ -19,6 +19,7 @@ export enum ConnectionState {
 export interface ShellConnectionAuthDetails {
     connectionNodeId: string;
     authToken: string;
+    connectionServiceUrl: string
 }
 
 // TODO : Do we need both types? Stick with summary?

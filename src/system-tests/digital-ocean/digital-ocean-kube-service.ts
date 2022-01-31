@@ -8,8 +8,9 @@ import { checkAllSettledPromise } from '../tests/utils/utils';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
 import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
-import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
+import { TargetStatus } from '../../../src/services/common.types';
+
 export class DigitalOceanKubeService {
     private doClient: DigitalOcean;
     private kubeHttpService: KubeHttpService;
@@ -154,17 +155,17 @@ export class DigitalOceanKubeService {
         const retrier = new Retrier({
             limit: 30,
             delay: 1000 * 10,
-            stopRetryingIf: (reason: any) => reason instanceof ClusterTargetStatusPollError && reason.clusterSummary.status === AgentStatus.Error
+            stopRetryingIf: (reason: any) => reason instanceof ClusterTargetStatusPollError && reason.clusterSummary.status === TargetStatus.Error
         });
 
         // We don't know Cluster target ID initially
         let clusterTargetId: string = '';
         return retrier.resolve(() => new Promise<KubeClusterSummary>(async (resolve, reject) => {
             const checkIsClusterTargetOnline = (clusterSummary: KubeClusterSummary) => {
-                if (clusterSummary.status === AgentStatus.Online) {
+                if (clusterSummary.status === TargetStatus.Online) {
                     resolve(clusterSummary);
                 } else {
-                    throw new ClusterTargetStatusPollError(clusterSummary, `Cluster target ${clusterSummary.clusterName} is not online. Has status: ${clusterSummary.status}`);
+                    throw new ClusterTargetStatusPollError(clusterSummary, `Cluster target ${clusterSummary.name} is not online. Has status: ${clusterSummary.status}`);
                 }
             };
             try {
@@ -172,7 +173,7 @@ export class DigitalOceanKubeService {
                     // We don't know the cluster target ID yet, so we have to
                     // use the less efficient list API to learn about the ID
                     const clusters = await this.kubeHttpService.ListKubeClusters();
-                    const foundTarget = clusters.find(target => target.clusterName === clusterTargetName);
+                    const foundTarget = clusters.find(target => target.name === clusterTargetName);
                     if (foundTarget) {
                         clusterTargetId = foundTarget.id;
                         checkIsClusterTargetOnline(foundTarget);

@@ -19,6 +19,19 @@ export const DigitalOceanRegion = {
 } as const;
 export type DigitalOceanRegion = typeof DigitalOceanRegion[keyof typeof DigitalOceanRegion];
 
+export function convertAwsRegionToDigitalOceanRegion(awsRegion: string): DigitalOceanRegion {
+    switch (awsRegion) {
+    case 'us-east-1':
+        return DigitalOceanRegion.NewYork1;
+    case 'ap-northeast-1':
+        return DigitalOceanRegion.Singapore1;
+    case 'us-west-1':
+        return DigitalOceanRegion.SanFrancisco1;
+    default:
+        throw new Error(`Unknown AWS region ${awsRegion} to map to DigitalOcean region`);
+    }
+}
+
 /**
  * String union of all droplet sizes with Class = "Basic". Source:
  * https://slugs.do-api.dev/

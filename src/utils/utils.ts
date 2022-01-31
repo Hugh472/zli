@@ -36,14 +36,23 @@ export function findSubstring(targetString: string, searchString: string) : bool
 
 export const targetStringExample : string = '[targetUser@]<targetId-or-targetName>';
 
-export function parseTargetType(connectionType: string) : TargetType
+export function parseTargetType(targetType: string) : TargetType
 {
-    const connectionTypePattern = /^(ssm|dynamic|cluster)$/i; // case insensitive check for connectionType
+    const connectionTypePattern = /^(ssmtarget|dynamicaccessconfig|cluster)$/i; // case insensitive check for targetType
 
-    if(! connectionTypePattern.test(connectionType))
+    if(! connectionTypePattern.test(targetType))
         return undefined;
 
-    return <TargetType> connectionType.toUpperCase();
+    switch (targetType.toLowerCase()) {
+    case TargetType.SsmTarget.toLowerCase():
+        return TargetType.SsmTarget;
+    case TargetType.DynamicAccessConfig.toLowerCase():
+        return TargetType.DynamicAccessConfig;
+    case TargetType.Cluster.toLowerCase():
+        return TargetType.Cluster;
+    default:
+        return undefined;
+    }
 }
 
 export function parsePolicyType(policyType: string) : PolicyType
@@ -174,8 +183,8 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
 
     if(showDetail)
     {
-        header.push('Agent Version', 'Status', 'Target Users');
-        columnWidths.push(15, 9, 29);
+        header.push('Agent Version', 'Status', 'Target Users', 'Region');
+        columnWidths.push(15, 9, 29, 18);
     }
 
     // ref: https://github.com/cli-table/cli-table3
@@ -197,6 +206,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
             row.push(target.agentVersion);
             row.push(target.status || 'N/A'); // status is undefined for non-SSM targets
             row.push(map(target.targetUsers).join(', \n') || 'N/A'); // targetUsers are undefined for now for non-cluster targets
+            row.push(target.region);
         }
 
         table.push(row);
@@ -705,7 +715,9 @@ export async function disambiguateTarget(
             id: targetSummary.id,
             type: targetSummary.type,
             status: targetSummary.status,
-            environmentId: targetSummary.environmentId
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
         };
         zippedTargetsShell.push(newVal);
     });
@@ -719,7 +731,9 @@ export async function disambiguateTarget(
             id: targetSummary.id,
             type: TargetType.Db,
             status: targetSummary.status,
-            environmentId: targetSummary.environmentId
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
         };
         zippedTargetsDb.push(newVal);
     });
@@ -732,7 +746,9 @@ export async function disambiguateTarget(
             id: targetSummary.id,
             type: TargetType.Web,
             status: targetSummary.status,
-            environmentId: targetSummary.environmentId
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
         };
         zippedTargetsWeb.push(newVal);
     });
@@ -741,12 +757,13 @@ export async function disambiguateTarget(
     const awaitedKubeTarget = await clusterTargets;
     awaitedKubeTarget.forEach((targetSummary: KubeClusterSummary) => {
         const newVal: CommonTargetInfo = {
-            name: targetSummary.clusterName,
+            name: targetSummary.name,
             id: targetSummary.id,
             type: TargetType.Cluster,
-            status: null, // KubeClusterSummary has AgentStatus, and this is expecting TargetStatus.
-            // This should be fixed once all targets are using agents
-            environmentId: targetSummary.environmentId
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
         };
         zippedTargetsKube.push(newVal);
     });
@@ -815,9 +832,9 @@ export function randomAlphaNumericString(length: number) : string {
 
 
 export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
-    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
+    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
 }
 
 export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
-    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
+    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A'};
 }

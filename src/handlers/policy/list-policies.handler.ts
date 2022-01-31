@@ -72,7 +72,7 @@ export async function listPoliciesHandler(
         targetNameMap[dacs.id] = dacs.name;
     });
     (await clusterTargets).forEach(clusterTarget => {
-        targetNameMap[clusterTarget.id] = clusterTarget.clusterName;
+        targetNameMap[clusterTarget.id] = clusterTarget.name;
     });
 
     if(!! argv.json) {

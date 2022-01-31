@@ -27,7 +27,8 @@ export const listTargetsSuite = () => {
                 agentVersion: t.ssmTarget.agentVersion,
                 agentId: t.ssmTarget.agentId,
                 status: t.ssmTarget.status,
-                targetUsers: expect.anything()
+                targetUsers: expect.anything(),
+                region: t.ssmTarget.region
             }));
 
             for (const target of expectedSSMTargetSummaries) {

@@ -15,7 +15,7 @@ export async function describeClusterPolicyHandler(
     // First determine if the name passed is valid
     let clusterSummary: KubeClusterSummary = null;
     for (const cluster of await clusterTargets) {
-        if (cluster.clusterName == clusterName) {
+        if (cluster.name == clusterName) {
             clusterSummary = cluster;
             break;
         }

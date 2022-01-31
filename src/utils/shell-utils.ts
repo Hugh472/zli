@@ -15,8 +15,27 @@ export async function createAndRunShell(
     onOutput: (output: Uint8Array) => any
 ) {
     return new Promise<number>(async (resolve, _) => {
-        // connect to target and run terminal
         const terminal = new ShellTerminal(logger, configService, connectionSummary);
+
+        // Subscribe first so we don't miss events
+        terminal.terminalRunning.subscribe(
+            () => {},
+            // If an error occurs in the terminal running observable then log the
+            // error, clean up the connection, and exit zli
+            async (error) => {
+                logger.error(error);
+                terminal.dispose();
+                resolve(1);
+            },
+            // If terminal running observable completes without error, exit zli
+            // without closing the connection
+            async () => {
+                terminal.dispose();
+                resolve(0);
+            }
+        );
+
+        // connect to target and run terminal
         try {
             await terminal.start(termsize());
         } catch (err) {
@@ -34,23 +53,6 @@ export async function createAndRunShell(
             () => {
                 const resizeEvent = termsize();
                 terminal.resize(resizeEvent);
-            }
-        );
-
-        terminal.terminalRunning.subscribe(
-            () => { },
-            // If an error occurs in the terminal running observable then log the
-            // error, clean up the connection, and exit zli
-            async (error) => {
-                logger.error(error);
-                terminal.dispose();
-                resolve(1);
-            },
-            // If terminal running observable completes without error, exit zli
-            // without closing the connection
-            async () => {
-                terminal.dispose();
-                resolve(0);
             }
         );
 

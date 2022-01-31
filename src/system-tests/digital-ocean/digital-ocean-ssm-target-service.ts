@@ -2,12 +2,12 @@ import { Retrier } from '@jsier/retrier';
 import { DigitalOcean, Droplet } from 'digitalocean-js';
 import { TargetStatus } from '../../services/common.types';
 import { ConfigService } from '../../services/config/config.service';
-import { SsmTargetSummary } from '../../services/v1/ssm-target/ssm-target.types';
 import { Logger } from '../../services/logger/logger.service';
 import { CreateNewDropletParameters, DigitalOceanSSMTarget, DigitalOceanSsmTargetParameters, SsmTargetStatusPollError } from './digital-ocean-ssm-target.service.types';
 import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';
 import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
+import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;

@@ -31,6 +31,9 @@ export interface TargetBase
     status: TargetStatus;
     name: string;
     environmentId: string;
+    type: TargetType;
+    agentVersion: string;
+    region: string;
 }
 
 export interface ParsedTargetString

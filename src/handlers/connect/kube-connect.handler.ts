@@ -10,14 +10,14 @@ import { LoggerConfigService } from '../../services/logger/logger-config.service
 import { connectArgs } from './connect.command-builder';
 import { getAppExecPath, getAppEntrypoint, startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir, handleServerStart } from '../../utils/daemon-utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
-import { AgentStatus } from '../../../webshell-common-ts/http/v2/target/kube/types/agent-status.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { TargetStatus } from '../../../src/services/common.types';
 
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, targetCluster, logger);
-    if (clusterTarget.status != AgentStatus.Online) {
+    if (clusterTarget.status != TargetStatus.Online) {
         logger.error('Target cluster is offline!');
         return 1;
     }
@@ -137,7 +137,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
 
 async function getClusterInfoFromName(clusterTargets: KubeClusterSummary[], clusterName: string, logger: Logger): Promise<KubeClusterSummary> {
     for (const clusterTarget of clusterTargets) {
-        if (clusterTarget.clusterName == clusterName) {
+        if (clusterTarget.name == clusterName) {
             return clusterTarget;
         }
     }

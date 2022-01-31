@@ -1,12 +1,11 @@
 import { MockSTDIN, stdin } from 'mock-stdin';
-import { ShellTerminal } from '../../../terminal/terminal';
 import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
-import { Subscription } from 'rxjs';
 import { ssmTestTargetsToRun, testTargets } from '../system-test';
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
+import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
 
 export const connectSuite = () => {
     describe('connect suite', () => {
@@ -33,10 +32,10 @@ export const connectSuite = () => {
         test.each(ssmTestTargetsToRun)('zli connect %p', async (testTarget) => {
             const doTarget = testTargets.get(testTarget);
 
-            // Spy on terminal running getter so this test can spy+subscribe
-            // on the terminal running observable used by ShellTerminal to
-            // indicate that the terminal is ready to receive input
-            const terminalRunningSpy = jest.spyOn(ShellTerminal.prototype, 'terminalRunning', 'get');
+            // Spy on result Bastion gives for shell auth details. This spy is
+            // used at the end of the test to assert the correct regional
+            // connection node was used to establish the websocket.
+            const shellConnectionAuthDetailsSpy = jest.spyOn(ConnectionHttpService.prototype, 'GetShellConnectionAuthDetails');
 
             // Spy on output pushed to stdout
             const capturedOutput: string[] = [];
@@ -48,43 +47,35 @@ export const connectSuite = () => {
             // Call "zli connect"
             const connectPromise = callZli(['connect', `ssm-user@${doTarget.ssmTarget.name}`]);
 
-            // This promise is resolved when ShellTerminal sets blockInput
-            // to false, and sends next(true) on the terminalRunning
-            // subject.
-            //
-            // Note: We must wrap the expect call in waitForExpect because
-            // zli connect does some async things (call bastion, get auth
-            // token, connect to connection node, etc.) before finally
-            // subscribing on terminalRunning.
-            let terminalRunningSub: Subscription;
-            const terminalIsReadyForInput = new Promise<boolean>(async (resolve, reject) => {
-                await waitForExpect(() => {
-                    expect(terminalRunningSpy).toHaveBeenCalled();
-
-                    const terminalRunningObservable = getMockResultValue(terminalRunningSpy.mock.results[0]);
-                    terminalRunningSub = terminalRunningObservable.subscribe(
-                        () => resolve(true),
-                        (err) => reject(new Error(`terminalRunning observable returned error: ${err}`))
-                    );
-                }, 1000 * 10);
-            }).finally(() => terminalRunningSub.unsubscribe());
-
-            // Wait for terminal to be ready before we start sending keystrokes
-            // to stdin await
-            await Promise.race([terminalIsReadyForInput, connectPromise]);
-
-            // Start sending input
-            // Mock stdin input so we can send input programmatically to the
-            // terminal
+            // Assert the output spy receives the same input sent to mock stdIn.
+            // Keep sending input until the output spy says we've received what
+            // we sent (possibly sends command more than once).
             const enterKey = '\x0D';
-            mockStdin.send('echo \"hello world\"');
-            mockStdin.send(enterKey);
+            await waitForExpect(
+                () => {
+                    // Wait for there to be some output
+                    expect(outputSpy).toHaveBeenCalled();
 
-            // Assert the output spy receives the same input sent to mock stdIn
-            await waitForExpect(() => {
-                expect(outputSpy).toHaveBeenCalled();
-                expect(capturedOutput.find(e => e.indexOf('hello world') !== -1)).toBeTruthy();
-            }, 1000 * 10);
+                    // There is still a chance that pty is not ready, or
+                    // blockInput is still true (no shell start received).
+                    // Therefore, we might send this command more than once.
+                    // Also, most likely there is some network delay to receive
+                    // output.
+                    mockStdin.send('echo \"hello world\"');
+                    mockStdin.send(enterKey);
+
+                    // Check that "hello world" exists somewhere in the output
+                    // (could be in "echo" command or in the output from running
+                    // "echo")
+                    const expectedRegex = [
+                        expect.stringMatching(new RegExp('hello world'))
+                    ];
+                    expect(capturedOutput).toEqual(
+                        expect.arrayContaining(expectedRegex),
+                    );
+                },
+                1000 * 30,  // Timeout
+            );
 
             // Send exit to the terminal so the zli connect handler will exit
             // and the test can complete. However we must override the mock
@@ -101,6 +92,12 @@ export const connectSuite = () => {
 
             // Wait for connect shell to cleanup
             await connectPromise;
+
+            // Assert shell connection auth details returns expected connection
+            // node region
+            expect(shellConnectionAuthDetailsSpy).toHaveBeenCalled();
+            const gotShellConnectionAuthDetails = await getMockResultValue(shellConnectionAuthDetailsSpy.mock.results[0]);
+            expect(gotShellConnectionAuthDetails.region).toBe<string>(testTarget.awsRegion);
         }, 60 * 1000);
     });
 };

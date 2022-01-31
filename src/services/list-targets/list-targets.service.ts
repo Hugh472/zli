@@ -37,11 +37,12 @@ export async function listTargets(
         return {
             type: TargetType.Cluster,
             id: cluster.id,
-            name: cluster.clusterName,
+            name: cluster.name,
             status: parseTargetStatus(cluster.status.toString()),
             environmentId: cluster.environmentId,
             targetUsers: cluster.validUsers,
-            agentVersion: cluster.agentVersion
+            agentVersion: cluster.agentVersion,
+            region: 'N/A'
         };
     });
 
@@ -53,7 +54,8 @@ export async function listTargets(
             status: parseTargetStatus(bzeroAgent.status.toString()),
             environmentId: bzeroAgent.environmentId,
             targetUsers: [],
-            agentVersion: bzeroAgent.agentVersion
+            agentVersion: bzeroAgent.agentVersion,
+            region: bzeroAgent.region
         };
     });
 
@@ -65,7 +67,8 @@ export async function listTargets(
             status: parseTargetStatus(webTarget.status.toString()),
             environmentId: webTarget.environmentId,
             targetUsers: [],
-            agentVersion: webTarget.agentVersion
+            agentVersion: webTarget.agentVersion,
+            region: webTarget.region
         };
     });
 
@@ -77,7 +80,8 @@ export async function listTargets(
             status: parseTargetStatus(dbTarget.status.toString()),
             environmentId: dbTarget.environmentId,
             targetUsers: [],
-            agentVersion: dbTarget.agentVersion
+            agentVersion: dbTarget.agentVersion,
+            region: dbTarget.region
         };
     });
 

@@ -30,7 +30,7 @@ export const kubeSuite = () => {
             const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
             // Start tunnel
-            await callZli(['tunnel', `foo@${doCluster.bzeroClusterTargetSummary.clusterName}`, '--targetGroup', 'system:masters']);
+            await callZli(['tunnel', `foo@${doCluster.bzeroClusterTargetSummary.name}`, '--targetGroup', 'system:masters']);
 
             // Attempt to list namespaces using agent
             try {

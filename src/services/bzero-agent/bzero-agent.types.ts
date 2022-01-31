@@ -7,4 +7,5 @@ export interface BzeroAgentSummary {
     environmentId?: string;
     agentVersion: string;
     lastAgentUpdate: Date;
+    region: string;
 }

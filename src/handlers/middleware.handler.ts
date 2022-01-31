@@ -36,7 +36,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await dynamicConfigHttpService.ListDynamicAccessConfigs();
             const results = response.map<TargetSummary>((config, _index, _array) => {
-                return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
+                return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A'};
             });
 
             res(results);
@@ -54,7 +54,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await ssmTargetHttpService.ListSsmTargets(true);
             const results = response.map<TargetSummary>((ssm, _index, _array) => {
-                return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
+                return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
             });
 
             res(results);
@@ -69,7 +69,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await kubeHttpService.ListKubeClusters();
             const results = response.map<KubeClusterSummary>((cluster, _index, _array) => {
-                return { id: cluster.id, clusterName: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate };
+                return { type: TargetType.Cluster, id: cluster.id, name: cluster.name, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate, region: cluster.region };
             });
 
             res(results);
@@ -83,7 +83,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await bzeroAgentService.ListBzeroAgents();
             const results = response.map<BzeroAgentSummary>((target, _index, _array) => {
-                return { id: target.id, targetName: target.targetName, status: target.status, environmentId: target.environmentId, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate };
+                return { type: TargetType.Bzero, id: target.id, targetName: target.targetName, status: target.status, environmentId: target.environmentId, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, region: target.region };
             });
 
             res(results);
@@ -97,7 +97,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await dbTargetService.ListDbTargets();
             const results = response.map<DbTargetSummary>((target, _index, _array) => {
-                return { id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost };
+                return { type: TargetType.Db, id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost, region: target.region };
             });
 
             res(results);
@@ -111,7 +111,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await webTargetService.ListWebTargets();
             const results = response.map<WebTargetSummary>((target, _index, _array) => {
-                return { id: target.id, name: target.name, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId , localPort: target.localPort, localHost: target.localHost };
+                return { type: TargetType.Web, id: target.id, name: target.name, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId , localPort: target.localPort, localHost: target.localHost, region: target.region };
             });
 
             res(results);

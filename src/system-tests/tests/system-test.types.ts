@@ -1,4 +1,5 @@
 import { DigitalOceanDistroImage } from '../digital-ocean/digital-ocean-ssm-target.service.types';
+import { DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
 
 /**
  * SSMTestTargetAutoDiscovery represents an SSM test target that should be
@@ -6,8 +7,10 @@ import { DigitalOceanDistroImage } from '../digital-ocean/digital-ocean-ssm-targ
  * retrieved from the backend.
  */
 export type SSMTestTargetAutoDiscovery = {
-    installType: 'autodiscovery';
+    installType: 'ad';
     dropletImage: DigitalOceanDistroImage;
+    doRegion: DigitalOceanRegion;
+    awsRegion: string;
 }
 
 /**
@@ -16,8 +19,10 @@ export type SSMTestTargetAutoDiscovery = {
  * agent itself.
  */
 export type SSMTestTargetSelfRegistrationAutoDiscovery = {
-    installType: 'package-manager';
+    installType: 'pm';
     dropletImage: DigitalOceanDistroImage;
+    doRegion: DigitalOceanRegion;
+    awsRegion: string;
 }
 
 export type SSMTestTarget = SSMTestTargetAutoDiscovery | SSMTestTargetSelfRegistrationAutoDiscovery
