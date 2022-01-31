@@ -42,7 +42,7 @@ export async function listTargets(
             environmentId: cluster.environmentId,
             targetUsers: cluster.validUsers,
             agentVersion: cluster.agentVersion,
-            region: 'N/A'
+            region: cluster.region
         };
     });
 
