@@ -50,7 +50,7 @@ export async function listTargets(
         return {
             type: TargetType.Bzero,
             id: bzeroAgent.id,
-            name: bzeroAgent.targetName,
+            name: bzeroAgent.name,
             status: parseTargetStatus(bzeroAgent.status.toString()),
             environmentId: bzeroAgent.environmentId,
             targetUsers: [],

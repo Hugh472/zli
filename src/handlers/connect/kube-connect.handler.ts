@@ -11,7 +11,7 @@ import { connectArgs } from './connect.command-builder';
 import { getAppExecPath, getAppEntrypoint, startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir, handleServerStart } from '../../utils/daemon-utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
-import { TargetStatus } from '../../../src/services/common.types';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {

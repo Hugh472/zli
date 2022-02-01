@@ -1,4 +1,4 @@
-import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetBase, TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 
 export interface TargetUser
 {
@@ -10,30 +10,11 @@ export enum IdP {
     Microsoft = 'Microsoft'
 }
 
-export enum TargetStatus {
-    NotActivated = 'NotActivated',
-    Offline = 'Offline',
-    Online = 'Online',
-    Terminated = 'Terminated',
-    Error = 'Error'
-}
-
 export interface TargetSummary extends TargetBase
 {
     agentVersion: string;
     targetUsers: string[];
     type: TargetType;
-}
-
-export interface TargetBase
-{
-    id: string;
-    status: TargetStatus;
-    name: string;
-    environmentId: string;
-    type: TargetType;
-    agentVersion: string;
-    region: string;
 }
 
 export interface ParsedTargetString

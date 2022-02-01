@@ -4,11 +4,10 @@ import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
 import { DbTargetSummary } from '../../services/db-target/db-target.types';
-import { TargetStatus } from '../../services/common.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
-import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus, TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
@@ -117,6 +116,8 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
 
             // Now save the Pid so we can kill the process next time we start it
             dbConfig['localPid'] = daemonProcess.pid;
+            dbConfig['localPort'] = localPort;
+            dbConfig['localHost'] = localHost;
 
             // Also save the name of the target to display
             dbConfig['name'] = dbTarget.name;
@@ -124,7 +125,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
             // Wait for daemon HTTP server to be bound and running
             await handleServerStart(loggerConfigService.daemonLogPath(), dbConfig['localPort'], dbConfig['localHost']);
 
-            logger.info(`Started db daemon at ${dbConfig['localHost']}:${localPort} for ${targetName}`);
+            logger.info(`Started db daemon at ${localHost}:${localPort} for ${targetName}`);
 
 
             configService.setDbConfig(dbConfig);

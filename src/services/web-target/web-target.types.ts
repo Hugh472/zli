@@ -1,4 +1,4 @@
-import { TargetBase } from '../common.types';
+import { TargetBase } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 export interface WebTargetSummary extends TargetBase {
     lastAgentUpdate: Date;

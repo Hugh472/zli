@@ -11,7 +11,7 @@ import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { TargetSummary, TargetStatus } from './services/common.types';
+import { TargetSummary } from './services/common.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/v1/policy/policy.types';
 
@@ -86,7 +86,8 @@ import { WebTargetSummary } from './services/web-target/web-target.types';
 import { DbTargetSummary } from './services/db-target/db-target.types';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus, TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { parse } from 'path';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -304,7 +305,7 @@ export class CliDriver
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.dbTargets, this.webTargets, this.clusterTargets, this.envs);
 
                     if (parsedTarget == undefined) {
-                        this.logger.warn(`No target was able to be parsed from the name ${argv.targetString}`);
+                        this.logger.error(`No target was able to be parsed from the name ${argv.targetString}`);
                         await cleanExit(1, this.logger);
                     }
                     let exitCode = 1;
@@ -560,7 +561,12 @@ export class CliDriver
 
                     // modify argv to have the targetString and targetType params
                     const targetString = argv.user + '@' + argv.host.substr(prefix.length);
-                    const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.dbTargets, this.webTargets, this.clusterTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(TargetType.SsmTarget.toString(), targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.dbTargets, this.webTargets, this.clusterTargets, this.envs);
+                    
+                    if (parsedTarget == undefined) {
+                        this.logger.error(`Unable to find target with given targetString: ${targetString}`);
+                        await cleanExit(1, this.logger);
+                    }
 
                     if (parsedTarget.type != TargetType.SsmTarget && parsedTarget.type != TargetType.DynamicAccessConfig) {
                         this.logger.warn(`ssh-proxy only available on ssh and dynamic targets`);
