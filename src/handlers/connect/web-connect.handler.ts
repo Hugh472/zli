@@ -77,8 +77,6 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
         `-sessionId=${configService.sessionId()}`,
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
-        `-certPath="${webConfig['certPath']}"`,
-        `-keyPath="${webConfig['keyPath']}"`,
         `-targetId=${webTarget.id}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
