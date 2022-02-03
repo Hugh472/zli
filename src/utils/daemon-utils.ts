@@ -252,6 +252,8 @@ export async function killDaemon(localPid: number, localPort: number, logger: Lo
 }
 
 export async function killPortProcess(port: number) {
+    if(port == null) return;
+
     // Helper function to kill a process running on a given port (if it exists)
     try {
         const portPids = await getPidForPort(port);
