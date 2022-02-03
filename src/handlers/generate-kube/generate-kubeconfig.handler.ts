@@ -5,6 +5,7 @@ import { exec } from 'child_process';
 import yargs from 'yargs';
 import { generateKubeArgs } from './generate-kube.command-builder';
 import { cleanExit } from '../clean-exit.handler';
+import { generateNewCert } from '../../utils/daemon-utils';
 
 const path = require('path');
 const fs = require('fs');
@@ -25,35 +26,12 @@ export async function generateKubeconfigHandler(
         logger.info('No KubeConfig has been generated before, generating key and cert for local daemon...');
 
         // Create and save key/cert
-        const createCertPromise = new Promise<void>(async (resolve, reject) => {
+        try {
             // Get the path of where we want to save
             const pathToConfig = path.dirname(configService.configPath());
             const configName = configService.getConfigName();
-            const pathToKey = path.join(pathToConfig, `kubeKey-${configName}.pem`);
-            const pathToCsr = path.join(pathToConfig, `kubeCsr-${configName}.pem`);
-            const pathToCert = path.join(pathToConfig, `kubeCert-${configName}.pem`);
 
-            // Generate a new key
-            try {
-                await execPromise(`openssl genrsa -out ${pathToKey}`);
-            } catch (e: any) {
-                reject(e);
-            }
-
-            // Generate a new csr
-            try {
-                const pass = randtoken.generate(128);
-                await execPromise(`openssl req -sha256 -passin pass:${pass} -new -key ${pathToKey} -subj "/C=US/ST=Bastionzero/L=Boston/O=Dis/CN=bastionzero.com" -out ${pathToCsr}`);
-            } catch (e: any) {
-                reject(e);
-            }
-
-            // Now generate the certificate
-            try {
-                await execPromise(`openssl x509 -req -days 999 -in ${pathToCsr} -signkey ${pathToKey} -out ${pathToCert}`);
-            } catch (e: any) {
-                reject(e);
-            }
+            const [pathToKey, pathToCert, pathToCsr] = await generateNewCert(pathToConfig, 'kube', configName);
 
             // Generate a token that can be used for auth
             const token = randtoken.generate(128);
@@ -76,11 +54,6 @@ export async function generateKubeconfigHandler(
                 defaultTargetGroups: null
             };
             configService.setKubeConfig(kubeConfig);
-            resolve();
-        });
-
-        try {
-            await createCertPromise;
         } catch (e: any) {
             logger.error(`Error creating cert for local daemon: ${e}`);
             await cleanExit(1, logger);

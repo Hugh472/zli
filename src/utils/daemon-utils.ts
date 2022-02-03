@@ -4,11 +4,13 @@ import utils from 'util';
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { Logger } from '../services/logger/logger.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
+import { ConsoleLogger } from '@microsoft/signalr/dist/esm/Utils';
 
 const { spawn } = require('child_process');
 const exec = require('child_process').execSync;
 const pids = require('port-pid');
 const readLastLines = require('read-last-lines');
+const randtoken = require('rand-token');
 
 export const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
 export const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
@@ -56,6 +58,59 @@ export function getAppExecPath() {
     } else {
         return 'npx ts-node';
     }
+}
+
+
+/**
+ * This function will generate a new cert to use for a daemon application (i.e. kube, web server)
+ * @param {string} pathToConfig Path to our zli config
+ * @param {string} name name of the application (i.e. kube)
+ * @param {string} configName  Dev, stage, prod
+ * @returns Path to the key, path to the cert, path to the certificate signing request. 
+ */
+export async function generateNewCert(pathToConfig: string, name: string, configName: string ): Promise<string[]> {
+    const options = { stdio: ['ignore', 'ignore', 'ignore'] };
+
+    // Create and save key/cert
+    const createCertPromise = new Promise<string[]>(async (resolve, reject) => {
+        // Only add the prefix for non-prod
+        let prefix = '';
+        if (configName !== 'prod') {
+            prefix = `-${configName}`;
+        }
+
+        const pathToKey = path.join(pathToConfig, `${name}Key${prefix}.pem`);
+        const pathToCsr = path.join(pathToConfig, `${name}Csr${prefix}.pem`);
+        const pathToCert = path.join(pathToConfig, `${name}Cert${prefix}.pem`);
+
+        // Generate a new key
+        try {
+            await exec(`openssl genrsa -out ${pathToKey}`, options);
+        } catch (e: any) {
+            reject(e);
+        }
+
+        // Generate a new csr
+        // Ref: https://www.openssl.org/docs/man1.0.2/man1/openssl-req.html
+        try {
+            const pass = randtoken.generate(128);
+            await exec(`openssl req -sha256 -passin pass:${pass} -new -key ${pathToKey} -subj "/C=US/ST=Bastionzero/L=Boston/O=Dis/CN=bastionzero.com" -out ${pathToCsr}`, options);
+        } catch (e: any) {
+            reject(e);
+        }
+
+        // Now generate the certificate
+        // https://www.openssl.org/docs/man1.1.1/man1/x509.html
+        try {
+            await exec(`openssl x509 -req -days 999 -in ${pathToCsr} -signkey ${pathToKey} -out ${pathToCert}`, options);
+        } catch (e: any) {
+            reject(e);
+        }
+
+        resolve([pathToKey, pathToCert, pathToCsr]);
+    });
+
+    return await createCertPromise;
 }
 
 

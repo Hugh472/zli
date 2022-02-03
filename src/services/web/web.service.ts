@@ -2,7 +2,7 @@ export interface WebConfig {
     name: string,
     localHost: string,
     localPort: number,
-    localPid: null
+    localPid: null,
 }
 
 export function getDefaultWebConfig(): WebConfig {
