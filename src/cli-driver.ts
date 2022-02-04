@@ -567,7 +567,7 @@ export class CliDriver
                     // modify argv to have the targetString and targetType params
                     const targetString = argv.user + '@' + argv.host.substr(prefix.length);
                     const parsedTarget = await disambiguateTarget(TargetType.SsmTarget.toString(), targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.dbTargets, this.webTargets, this.clusterTargets, this.envs);
-                    
+
                     if (parsedTarget == undefined) {
                         this.logger.error(`Unable to find target with given targetString: ${targetString}`);
                         await cleanExit(1, this.logger);

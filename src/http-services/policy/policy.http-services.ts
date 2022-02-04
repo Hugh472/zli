@@ -19,7 +19,7 @@ const KUBE: string = 'kubernetes';
 const ORG: string = 'organization-controls';
 const SESSION: string = 'session-recording';
 const TARGET: string = 'target-connect';
-const PROXY: string = 'proxy'
+const PROXY: string = 'proxy';
 
 export class PolicyHttpService extends HttpService
 {

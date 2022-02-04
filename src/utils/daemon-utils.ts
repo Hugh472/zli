@@ -4,7 +4,6 @@ import utils from 'util';
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { Logger } from '../services/logger/logger.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
-import { ConsoleLogger } from '@microsoft/signalr/dist/esm/Utils';
 
 const { spawn } = require('child_process');
 const exec = require('child_process').execSync;
@@ -66,7 +65,7 @@ export function getAppExecPath() {
  * @param {string} pathToConfig Path to our zli config
  * @param {string} name name of the application (i.e. kube)
  * @param {string} configName  Dev, stage, prod
- * @returns Path to the key, path to the cert, path to the certificate signing request. 
+ * @returns Path to the key, path to the cert, path to the certificate signing request.
  */
 export async function generateNewCert(pathToConfig: string, name: string, configName: string ): Promise<string[]> {
     const options = { stdio: ['ignore', 'ignore', 'ignore'] };

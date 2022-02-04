@@ -4,7 +4,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import yargs from 'yargs';
 import open from 'open';
-import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, generateNewCert } from '../../utils/daemon-utils';
+import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../services/web-target/web-target.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { connectArgs } from './connect.command-builder';
@@ -12,7 +12,6 @@ import { TargetStatus, TargetType } from '../../../webshell-common-ts/http/v2/ta
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
-const path = require('path');
 
 
 export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string, webTargets: Promise<WebTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number>{

@@ -16,7 +16,7 @@ import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/t
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
     // First check that the cluster is online
-    logger.info(`${await clusterTargets}`)
+    logger.info(`${await clusterTargets}`);
 
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, targetCluster, logger);
     if (clusterTarget.status != TargetStatus.Online) {
