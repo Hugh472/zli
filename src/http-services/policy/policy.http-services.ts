@@ -4,6 +4,7 @@ import { KubernetesPolicySummary } from '../../../webshell-common-ts/http/v2/pol
 import { OrganizationControlsPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/organization-controls/requests/organization-controls-policy-create.requests';
 import { OrganizationControlsPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/organization-controls/requests/organization-controls-policy-update.requests';
 import { OrganizationControlsPolicySummary } from '../../../webshell-common-ts/http/v2/policy/organization-controls/types/organization-controls-policy-summary.types';
+import { ProxyPolicySummary } from '../../../webshell-common-ts/http/v2/policy/proxy/types/proxy-policy-summary.types';
 import { SessionRecordingPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/session-recording/requests/session-recording-create.requests';
 import { SessionRecordingPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/session-recording/requests/session-recording-policy-update.requests';
 import { SessionRecordingPolicySummary } from '../../../webshell-common-ts/http/v2/policy/session-recording/types/session-recording-policy-summary.types';
@@ -18,6 +19,7 @@ const KUBE: string = 'kubernetes';
 const ORG: string = 'organization-controls';
 const SESSION: string = 'session-recording';
 const TARGET: string = 'target-connect';
+const PROXY: string = 'proxy'
 
 export class PolicyHttpService extends HttpService
 {
@@ -34,6 +36,11 @@ export class PolicyHttpService extends HttpService
     public ListOrganizationControlPolicies(): Promise<OrganizationControlsPolicySummary[]>
     {
         return this.Get(ORG);
+    }
+
+    public ListProxyPolicies(): Promise<ProxyPolicySummary[]>
+    {
+        return this.Get(PROXY);
     }
 
     public ListSessionRecordingPolicies(): Promise<SessionRecordingPolicySummary[]>

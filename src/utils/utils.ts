@@ -26,6 +26,8 @@ import { ApiKeySummary } from '../../webshell-common-ts/http/v2/api-key/types/ap
 import { WebConfig } from '../services/web/web.service';
 import { DbConfig } from '../services/db/db.service';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { ProxyPolicySummary } from '../../webshell-common-ts/http/v2/policy/proxy/types/proxy-policy-summary.types';
+import { Group } from '../../webshell-common-ts/http/v2/policy/types/group.types';
 
 
 // case insensitive substring search, 'find targetString in searchString'
@@ -57,7 +59,7 @@ export function parseTargetType(targetType: string) : TargetType
 
 export function parsePolicyType(policyType: string) : PolicyType
 {
-    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetes)$/i; // case insensitive check for policyType
+    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetes|proxy)$/i; // case insensitive check for policyType
 
     if(! policyTypePattern.test(policyType))
         return undefined;
@@ -71,6 +73,8 @@ export function parsePolicyType(policyType: string) : PolicyType
         return PolicyType.SessionRecording;
     case PolicyType.TargetConnect.toLowerCase():
         return PolicyType.TargetConnect;
+    case PolicyType.Proxy.toLowerCase():
+        return PolicyType.Proxy;
     default:
         return undefined;
     }
@@ -588,6 +592,56 @@ export function getTableOfOrganizationControlPolicies(
             'N/A',
             'N/A',
             'N/A'
+        ];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfProxyPolicies(
+    proxyPolicies: ProxyPolicySummary[],
+    userMap: {[id: string]: UserSummary},
+    apiKeyMap: {[id: string]: ApiKeySummary},
+    groupMap : {[id: string]: GroupSummary}
+) : string
+{
+    const header: string[] = ['Name', 'Type', 'Subject'];
+    const columnWidths = [24, 19, 26];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    proxyPolicies.forEach(p => {
+
+        // Translate the policy subject ids to human readable subjects
+        const groupNames : string [] = [];
+        p.groups.forEach((group: Group) => {
+            groupNames.push(getGroupName(group.id, groupMap));
+        });
+        const formattedGroups = !! groupNames.length ? 'Groups: ' + groupNames.join( ', \n') : '';
+
+        const subjectNames : string [] = [];
+        p.subjects.forEach(subject => {
+            switch (subject.type) {
+            case SubjectType.ApiKey:
+                subjectNames.push('ApiKey:' + getApiKeyName(subject.id, apiKeyMap));
+                break;
+            case SubjectType.User:
+                subjectNames.push(getUserName(subject.id, userMap));
+                break;
+            default:
+                break;
+            }
+        });
+        let formattedSubjects = subjectNames.join( ', \n');
+        if (subjectNames.length > 0 && !!formattedGroups) {
+            formattedSubjects += '\n';
+        }
+        formattedSubjects += formattedGroups;
+
+        const row = [
+            p.name,
+            p.type,
+            formattedSubjects || 'N/A',
         ];
         table.push(row);
     });

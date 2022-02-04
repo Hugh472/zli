@@ -6,13 +6,13 @@ import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
 import { UserHttpService } from '../../http-services/user/user.http-services';
-import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
-import { getTableOfSessionRecordingPolicies } from '../../../src/utils/utils';
-import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
+import { getTableOfProxyPolicies } from '../../utils/utils';
 import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
+import { ApiKeySummary } from '../../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
 import { GroupSummary } from '../../../webshell-common-ts/http/v2/organization/types/group-summary.types';
 
-export async function listSessionRecordingPoliciesHandler(
+export async function listProxyPoliciesHandler(
     argv: yargs.Arguments<policyArgs>,
     configService: ConfigService,
     logger: Logger
@@ -22,7 +22,7 @@ export async function listSessionRecordingPoliciesHandler(
     const apiKeyHttpService = new ApiKeyHttpService(configService, logger);
     const organizationHttpService = new OrganizationHttpService(configService, logger);
 
-    const sessionRecordingPolicies = await policyHttpService.ListSessionRecordingPolicies();
+    const proxyPolicies = await policyHttpService.ListProxyPolicies();
 
     // Fetch all the users, apiKeys, environments and targets
     // We will use that info to print the policies in a readable way
@@ -47,16 +47,16 @@ export async function listSessionRecordingPoliciesHandler(
 
     if(!! argv.json) {
         // json output
-        console.log(JSON.stringify(sessionRecordingPolicies));
+        console.log(JSON.stringify(proxyPolicies));
     } else {
-        if (sessionRecordingPolicies.length === 0){
-            logger.info('There are no available Session Recording policies');
-        } else {
-            // regular table output
-            const tableString = getTableOfSessionRecordingPolicies(sessionRecordingPolicies, userMap, apiKeyMap, groupMap);
-            logger.warn('Session Recording Policies:\n');
-            console.log(tableString);
-            console.log('\n\n');
+        if (proxyPolicies.length === 0){
+            logger.info('There are no available Proxy policies');
+            await cleanExit(0, logger);
         }
+        // regular table output
+        const tableString = getTableOfProxyPolicies(proxyPolicies, userMap, apiKeyMap, groupMap);
+        logger.warn('Proxy Policies:\n');
+        console.log(tableString);
+        console.log('\n\n');
     }
 }

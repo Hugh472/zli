@@ -87,7 +87,7 @@ import { DbTargetSummary } from './services/db-target/db-target.types';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { TargetStatus, TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
-import { parse } from 'path';
+import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -364,6 +364,7 @@ export class CliDriver
                     if(!! argv.type) {
                         policyType = parsePolicyType(argv.type);
                     }
+
                     switch (policyType) {
                     case PolicyType.TargetConnect:
                         await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
@@ -374,6 +375,9 @@ export class CliDriver
                     case PolicyType.SessionRecording:
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
                         break;
+                    case PolicyType.Proxy:
+                        await listProxyPoliciesHandler(argv, this.configService, this.logger);
+                        break;
                     case PolicyType.OrganizationControls:
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;
@@ -381,6 +385,7 @@ export class CliDriver
                         await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
                         await listKubernetesPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                        await listProxyPoliciesHandler(argv, this.configService, this.logger);
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;
                     }
