@@ -53,7 +53,7 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
         killDaemon(webConfig.localPid, webConfig.localPort, logger);
     }
     // Build our args and cwd
-    const baseArgs = getBaseDaemonArgs(configService);
+    const baseArgs = getBaseDaemonArgs(configService, loggerConfigService);
     const pluginArgs = [
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,

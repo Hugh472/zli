@@ -5,6 +5,7 @@ import { cleanExit } from '../handlers/clean-exit.handler';
 import { Logger } from '../services/logger/logger.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
 import { ConfigService } from '../services/config/config.service';
+import { LoggerConfigService } from '../services/logger/logger-config.service';
 
 const { spawn } = require('child_process');
 const exec = require('child_process').execSync;
@@ -297,7 +298,7 @@ function killPid(pid: string) {
 /**
  * Helper function to get common args to pass to the daemon
  */
-export function getBaseDaemonArgs(configService: ConfigService): string[] {
+export function getBaseDaemonArgs(configService: ConfigService, loggerConfigService: LoggerConfigService): string[] {
     // Build the refresh command so it works in the case of the pkg'd app which
     // is expecting a second argument set to internal main script
     // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
@@ -311,6 +312,7 @@ export function getBaseDaemonArgs(configService: ConfigService): string[] {
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,
         `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
+        `-logPath="${loggerConfigService.daemonLogPath()}"`
     ];
 }
 

@@ -60,7 +60,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
     }
 
     // Build our args and cwd
-    const baseArgs = getBaseDaemonArgs(configService);
+    const baseArgs = getBaseDaemonArgs(configService, loggerConfigService);
     const pluginArgs = [
         `-targetUser=${targetUser}`,
         `-targetGroups=${targetGroups}`,

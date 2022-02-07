@@ -53,7 +53,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     }
 
     // Build our args and cwd
-    const baseArgs = getBaseDaemonArgs(configService);
+    const baseArgs = getBaseDaemonArgs(configService, loggerConfigService);
     const pluginArgs = [
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
