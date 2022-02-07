@@ -5,7 +5,7 @@ import { LoggerConfigService } from '../../services/logger/logger-config.service
 import yargs from 'yargs';
 import open from 'open';
 import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
-import { WebTargetSummary } from '../../../webshell-common-ts/http/v2/target/web/web-target.types';
+import { WebTargetSummary } from '../../../webshell-common-ts/http/v2/target/web/web-target-summary.types';
 import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';

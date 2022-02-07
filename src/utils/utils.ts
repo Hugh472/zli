@@ -1,7 +1,7 @@
 import Table from 'cli-table3';
 import fs from 'fs';
 import { concat, filter, map, max } from 'lodash';
-import { WebTargetSummary } from '../../webshell-common-ts/http/v2/target/web/web-target.types';
+import { WebTargetSummary } from '../../webshell-common-ts/http/v2/target/web/web-target-summary.types';
 import { DbTargetSummary } from '../../webshell-common-ts/http/v2/target/db/db-target-summary.types';
 import util from 'util';
 import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.types';

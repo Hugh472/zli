@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
-import { BzeroAgentSummary } from './bzero-agent.types';
+import { BzeroAgentSummary } from '../../../webshell-common-ts/http/v2/target/bzero/bzero-agent-summary.types';
 
 export class BzeroAgentService extends HttpService
 {
