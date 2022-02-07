@@ -31,6 +31,10 @@ import { DbConfig } from '../services/db/db.service';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { ProxyPolicySummary } from '../../webshell-common-ts/http/v2/policy/proxy/types/proxy-policy-summary.types';
 import { Group } from '../../webshell-common-ts/http/v2/policy/types/group.types';
+import { WebTargetService } from '../http-services/web-target/web-target.http-service';
+import { DbTargetService } from '../http-services/db-target/db-target.http-service';
+import { ConfigService } from '../services/config/config.service';
+import { listDbTargets, listWebTargets } from './list-utils';
 
 
 // case insensitive substring search, 'find targetString in searchString'
@@ -748,10 +752,13 @@ export async function disambiguateTarget(
     logger: Logger,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
-    dbTargets: Promise<DbTargetSummary[]>,
-    webTargets: Promise<WebTargetSummary[]>,
     clusterTargets: Promise<KubeClusterSummary[]>,
-    envs: Promise<EnvironmentSummary[]>): Promise<ParsedTargetString> {
+    envs: Promise<EnvironmentSummary[]>,
+    configService: ConfigService): Promise<ParsedTargetString> {
+
+    // First query for our web + db targets as we no longer pre-fetch
+    const dbTargets = await listDbTargets(logger, configService);
+    const webTargets = await listWebTargets(logger, configService);
 
     const parsedTarget = parseTargetString(targetString);
 

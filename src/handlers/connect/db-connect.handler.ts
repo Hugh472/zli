@@ -8,15 +8,17 @@ import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
-import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
+import { listDbTargets } from '../../utils/list-utils';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
 
 
-export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string, dbTargets: Promise<DbTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
+export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string,  configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
     // First ensure the target is online
-    const dbTarget = await getDbTargetInfoFromName(await dbTargets, targetName, logger);
+    const dbTargets = await listDbTargets(logger, configService);
+    const dbTarget = await getDbTargetInfoFromName(dbTargets, targetName, logger);
     if (dbTarget.status != TargetStatus.Online) {
         logger.error('Target is offline!');
         return 1;

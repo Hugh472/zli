@@ -7,10 +7,6 @@ import { KeySplittingService } from '../../webshell-common-ts/keysplitting.servi
 import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { BzeroAgentSummary } from '../../webshell-common-ts/http/v2/target/bzero/bzero-agent-summary.types';
-import { BzeroAgentService } from '../http-services/bzero-agent/bzero-agent.http-service';
-import { WebTargetService } from '../http-services/web-target/web-target.http-service';
-import { DbTargetSummary } from '../../webshell-common-ts/http/v2/target/db/db-target-summary.types';
-import { WebTargetSummary } from '../../webshell-common-ts/http/v2/target/web/web-target-summary.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -23,9 +19,6 @@ import { DbTargetService } from '../http-services/db-target/db-target.http-servi
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
-    const bzeroAgentService = new BzeroAgentService(configService, logger);
-    const webTargetService = new WebTargetService(configService, logger);
-    const dbTargetService = new DbTargetService(configService, logger);
     const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
     const kubeHttpService = new KubeHttpService(configService, logger);
     const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
@@ -79,48 +72,6 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         }
     });
 
-    const bzeroAgentTargets = new Promise<BzeroAgentSummary[]>( async (res) => {
-        try {
-            const response = await bzeroAgentService.ListBzeroAgents();
-            const results = response.map<BzeroAgentSummary>((target, _index, _array) => {
-                return { type: TargetType.Bzero, id: target.id, name: target.name, status: target.status, environmentId: target.environmentId, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, region: target.region };
-            });
-
-            res(results);
-        } catch (e: any) {
-            logger.error(`Failed to fetch bzero agent targets: ${e}`);
-            res([]);
-        }
-    });
-
-    const dbAgentTargets = new Promise<DbTargetSummary[]>( async (res) => {
-        try {
-            const response = await dbTargetService.ListDbTargets();
-            const results = response.map<DbTargetSummary>((target, _index, _array) => {
-                return { type: TargetType.Db, id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost, region: target.region };
-            });
-
-            res(results);
-        } catch (e: any) {
-            logger.error(`Failed to fetch db targets: ${e}`);
-            res([]);
-        }
-    });
-
-    const webAgentTargets = new Promise<WebTargetSummary[]>( async (res) => {
-        try {
-            const response = await webTargetService.ListWebTargets();
-            const results = response.map<WebTargetSummary>((target, _index, _array) => {
-                return { type: TargetType.Web, id: target.id, name: target.name, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId , localPort: target.localPort, localHost: target.localHost, region: target.region };
-            });
-
-            res(results);
-        } catch (e: any) {
-            logger.error(`Failed to fetch web targets: ${e}`);
-            res([]);
-        }
-    });
-
     const envs = new Promise<EnvironmentSummary[]>( async (res) => {
         try {
             const response = await envHttpService.ListEnvironments();
@@ -134,10 +85,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
         clusterTargets: clusterTargets,
-        envs: envs,
-        bzeroAgentTargets: bzeroAgentTargets,
-        dbTargets: dbAgentTargets,
-        webTargets: webAgentTargets
+        envs: envs
     };
 }
 

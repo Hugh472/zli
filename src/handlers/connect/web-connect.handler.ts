@@ -10,14 +10,16 @@ import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { listWebTargets } from '../../utils/list-utils';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
 
 
-export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string, webTargets: Promise<WebTargetSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number>{
+export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number>{
     // First ensure the target is online
-    const webTarget = await getWebTargetInfoFromName(await webTargets, targetName, logger);
+    const webTargets = await listWebTargets(logger, configService);
+    const webTarget = await getWebTargetInfoFromName(webTargets, targetName, logger);
     if (webTarget.status != TargetStatus.Online) {
         logger.error('Target is offline!');
         return 1;
