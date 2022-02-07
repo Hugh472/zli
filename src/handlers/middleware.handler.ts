@@ -6,7 +6,7 @@ import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
-import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetType } from '../../w../../webshell-common-ts/http/v2/target/bzero/types/bzero-agent-summary.types
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
 import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
