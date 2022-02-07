@@ -29,7 +29,7 @@ import { listTargetsHandler } from './handlers/list-targets/list-targets.handler
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/connect/kube-connect.handler';
-import { dbConnectHandler } from './handlers/connect/db-connect.handler'
+import { dbConnectHandler } from './handlers/connect/db-connect.handler';
 import { webConnectHandler } from './handlers/connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
