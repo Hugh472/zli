@@ -9,7 +9,7 @@ import { EnvironmentHttpService } from '../../http-services/environment/environm
 import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
-import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.status';
 
 export class DigitalOceanKubeService {
     private doClient: DigitalOcean;

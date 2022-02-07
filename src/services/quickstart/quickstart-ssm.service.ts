@@ -25,7 +25,7 @@ import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/
 import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
 import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
-import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.base';
 
 export class QuickstartSsmService {
     constructor(

@@ -1,4 +1,4 @@
-import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.base';
 
 export interface BzeroAgentSummary {
     id: string;

@@ -8,7 +8,8 @@ import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebug
 import { WebTargetSummary } from '../../services/web-target/web-target.types';
 import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { connectArgs } from './connect.command-builder';
-import { TargetStatus, TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.status';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');

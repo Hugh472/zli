@@ -86,7 +86,8 @@ import { WebTargetSummary } from './services/web-target/web-target.types';
 import { DbTargetSummary } from './services/db-target/db-target.types';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { TargetStatus, TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/target.status';
 import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
 
 export type EnvMap = Readonly<{
