@@ -13,7 +13,7 @@ export async function listDbTargets(logger: Logger, configService: ConfigService
         try {
             const response = await dbTargetService.ListDbTargets();
             const results = response.map<DbTargetSummary>((target, _index, _array) => {
-                return { type: TargetType.Db, id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, engine: target.engine, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost, region: target.region };
+                return { type: TargetType.Db, id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost, region: target.region };
             });
 
             res(results);
