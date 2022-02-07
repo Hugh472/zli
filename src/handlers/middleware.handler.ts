@@ -116,7 +116,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
             res(results);
         } catch (e: any) {
-            logger.error(`Failed to fetch db targets: ${e}`);
+            logger.error(`Failed to fetch web targets: ${e}`);
             res([]);
         }
     });
