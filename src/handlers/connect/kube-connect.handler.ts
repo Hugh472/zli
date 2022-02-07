@@ -8,7 +8,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { connectArgs } from './connect.command-builder';
-import { getAppExecPath, getAppEntrypoint, startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir, handleServerStart } from '../../utils/daemon-utils';
+import { startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir, handleServerStart, getBaseDaemonArgs } from '../../utils/daemon-utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
@@ -28,14 +28,14 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
     const kubeConfig = configService.getKubeConfig();
 
     // Make sure the user has created a kubeConfig before
-    if (kubeConfig['keyPath'] == null) {
+    if (kubeConfig.keyPath == null) {
         logger.error('Please make sure you have created your kubeconfig before running proxy. You can do this via "zli generate kubeConfig"');
         return 1;
     }
 
     // If they have not passed targetGroups attempt to use the default ones stored
-    if (targetGroups.length == 0 && kubeConfig['defaultTargetGroups'] != null) {
-        targetGroups = kubeConfig['defaultTargetGroups'];
+    if (targetGroups.length == 0 && kubeConfig.defaultTargetGroups != null) {
+        targetGroups = kubeConfig.defaultTargetGroups;
     }
 
     // Make our API client
@@ -49,41 +49,31 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
     }
 
     // Check if we've already started a process
-    if (kubeConfig['localPid'] != null) {
-        killDaemon(kubeConfig['localPid'], kubeConfig['localPort'], logger);
+    if (kubeConfig.localPid != null) {
+        killDaemon(kubeConfig.localPid, kubeConfig.localPort, logger);
     }
 
     // See if the user passed in a custom port
-    let daemonPort = kubeConfig['localPort'].toString();
+    let daemonPort = kubeConfig.localPort.toString();
     if (argv.customPort != -1) {
         daemonPort = argv.customPort.toString();
     }
 
-    // Build the refresh command so it works in the case of the pkg'd app which
-    // is expecting a second argument set to internal main script
-    // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
-    // https://github.com/vercel/pkg/issues/897#issuecomment-679200552
-    const execPath = getAppExecPath();
-    const entryPoint = getAppEntrypoint();
-
     // Build our args and cwd
-    let args = [
-        `-sessionId=${configService.sessionId()}`,
+    const baseArgs = getBaseDaemonArgs(configService);
+    const pluginArgs = [
         `-targetUser=${targetUser}`,
         `-targetGroups=${targetGroups}`,
         `-targetId=${clusterTarget.id}`,
         `-localPort=${daemonPort}`,
         `-localHost=localhost`, // Currently kube does not support editing localhost
-        `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
-        `-authHeader="${configService.getAuthHeader()}"`,
-        `-localhostToken="${kubeConfig['token']}"`,
-        `-certPath="${kubeConfig['certPath']}"`,
-        `-keyPath="${kubeConfig['keyPath']}"`,
-        `-configPath=${configService.configPath()}`,
-        `-logPath="${loggerConfigService.daemonLogPath()}"`,
-        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
+        `-localhostToken="${kubeConfig.token}"`,
+        `-certPath="${kubeConfig.certPath}"`,
+        `-keyPath="${kubeConfig.keyPath}"`,
         `-plugin="kube"`
     ];
+    let args = baseArgs.concat(pluginArgs);
+
     let cwd = process.cwd();
 
     // Copy over our executable to a temp file
@@ -110,24 +100,24 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
             const daemonProcess = await spawn(finalDaemonPath, args, options);
 
             // Now save the Pid so we can kill the process next time we start it
-            kubeConfig['localPid'] = daemonProcess.pid;
+            kubeConfig.localPid = daemonProcess.pid;
 
             // Save the info about target user and group
-            kubeConfig['targetUser'] = targetUser;
-            kubeConfig['targetGroups'] = targetGroups;
-            kubeConfig['targetCluster'] = targetCluster;
+            kubeConfig.targetUser = targetUser;
+            kubeConfig.targetGroups = targetGroups;
+            kubeConfig.targetCluster = targetCluster;
             configService.setKubeConfig(kubeConfig);
 
             // Wait for daemon HTTP server to be bound and running
-            await handleServerStart(loggerConfigService.daemonLogPath(), parseInt(daemonPort), kubeConfig['localHost']);
+            await handleServerStart(loggerConfigService.daemonLogPath(), parseInt(daemonPort), kubeConfig.localHost);
 
             // Poll ready endpoint
             logger.info('Waiting for daemon to become ready...');
-            await pollDaemonReady(kubeConfig['localPort']);
-            logger.info(`Started kube daemon at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
+            await pollDaemonReady(kubeConfig.localPort);
+            logger.info(`Started kube daemon at ${kubeConfig.localHost}:${kubeConfig.localPort} for ${targetUser}@${targetCluster}`);
             return 0;
         } else {
-            logger.warn(`Started kube daemon in debug mode at ${kubeConfig['localHost']}:${kubeConfig['localPort']} for ${targetUser}@${targetCluster}`);
+            logger.warn(`Started kube daemon in debug mode at ${kubeConfig.localHost}:${kubeConfig.localPort} for ${targetUser}@${targetCluster}`);
             await startDaemonInDebugMode(finalDaemonPath, cwd, args);
             await cleanExit(0, logger);
         }

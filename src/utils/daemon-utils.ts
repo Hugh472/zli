@@ -4,12 +4,14 @@ import utils from 'util';
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { Logger } from '../services/logger/logger.service';
 import { waitUntilUsedOnHost } from 'tcp-port-used';
+import { ConfigService } from '../services/config/config.service';
 
 const { spawn } = require('child_process');
 const exec = require('child_process').execSync;
 const pids = require('port-pid');
 const readLastLines = require('read-last-lines');
 const randtoken = require('rand-token');
+const findPort = require('find-open-port');
 
 export const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
 export const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
@@ -290,4 +292,52 @@ function killPid(pid: string) {
     } else {
         exec(`kill -9 ${pid}`, options);
     }
+}
+
+/**
+ * Helper function to get common args to pass to the daemon
+ */
+export function getBaseDaemonArgs(configService: ConfigService): string[] {
+    // Build the refresh command so it works in the case of the pkg'd app which
+    // is expecting a second argument set to internal main script
+    // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
+    // https://github.com/vercel/pkg/issues/897#issuecomment-679200552
+    const execPath = getAppExecPath();
+    const entryPoint = getAppEntrypoint();
+
+    return [
+        `-sessionId=${configService.sessionId()}`,
+        `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
+        `-authHeader="${configService.getAuthHeader()}"`,
+        `-configPath=${configService.configPath()}`,
+        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
+    ];
+}
+
+/**
+ * Helper function to get the localHost value (or return the default value)
+ * @param {string} passedLocalhost This is the value of the localhost saved in our DB
+ */
+export function getOrDefaultLocalhost(passedLocalhost: string): string {
+    if (passedLocalhost == null) {
+        return 'localhost'
+    }; 
+    return passedLocalhost;
+}
+
+/**
+ * Helper function to get the localport value (or return the default value via finding an open port)
+ * @param {number} passedLocalport This is the value of the localport saved in our DB
+ * @param {number} savedLocalPort This is the value of the localport saved in our local config
+ */
+export async function getOrDefaultLocalport(passedLocalport: number, savedLocalPort: number, logger: Logger): Promise<number> {
+    if (passedLocalport == null) {
+        if (savedLocalPort == null) {
+            logger.info('First time running connect, setting local daemon port');
+            const localPort = await findPort();
+            return localPort;
+        };
+        return savedLocalPort;
+    };
+    return passedLocalport;
 }

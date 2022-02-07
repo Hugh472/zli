@@ -2,9 +2,9 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
-import yargs from 'yargs';
+import yargs, { config } from 'yargs';
 import open from 'open';
-import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
+import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../../webshell-common-ts/http/v2/target/web/web-target-summary.types';
 import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
@@ -13,7 +13,6 @@ import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/
 import { listWebTargets } from '../../utils/list-utils';
 
 const { spawn } = require('child_process');
-const findPort = require('find-open-port');
 
 
 export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number>{
@@ -35,60 +34,36 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
         return 1;
     }
 
-    // Build the refresh command so it works in the case of the pkg'd app which
-    // is expecting a second argument set to internal main script
-    // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
-    // https://github.com/vercel/pkg/issues/897#issuecomment-679200552
-    const execPath = getAppExecPath();
-    const entryPoint = getAppEntrypoint();
-
     // Open up our zli dbConfig
     const webConfig = configService.getWebConfig();
 
     // Set our local host
-    let localHost = webTarget.localHost;
-    if (localHost == null) {
-        // Default to localhost unless otherwise stated
-        localHost = 'localhost';
-    }
+    const localHost = getOrDefaultLocalhost(webTarget.localHost)
 
     // Make sure we have set our local daemon port
-    let localPort = webTarget.localPort;
-    if (localPort == null) {
-        // If there is no local port setup by the admin, default to generating/using a local random one
-        if (webConfig['localPort'] == null) {
-            logger.info('First time running web connect, setting local daemon port');
+    const localPort = await getOrDefaultLocalport(webTarget.localPort, webTarget.localPort, logger);
 
-            // Generate and set a localport + localhost
-            const localPort = await findPort();
-            webConfig['localPort'] = localPort;
-            webConfig['localHost'] = localHost;
-
-            // Save these values so they don't need to be recreated
-            configService.setWebConfig(webConfig);
-        }
-        localPort = webConfig['localPort'];
-    }
+    // Note: These values will only be saved if we are not running in debug mode
+    webConfig.localPort = localPort;
+    webConfig.localHost = localHost;
+    webConfig.name = webTarget.name;
 
     // Check if we've already started a process
-    if (webConfig['localPid'] != null) {
-        killDaemon(webConfig['localPid'], webConfig['localPort'], logger);
+    if (webConfig.localPid != null) {
+        killDaemon(webConfig.localPid, webConfig.localPort, logger);
     }
     // Build our args and cwd
-    let args = [
-        `-sessionId=${configService.sessionId()}`,
+    const baseArgs = getBaseDaemonArgs(configService)
+    const pluginArgs = [
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
         `-targetId=${webTarget.id}`,
-        `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
-        `-authHeader="${configService.getAuthHeader()}"`,
-        `-configPath=${configService.configPath()}`,
-        `-logPath="${loggerConfigService.daemonLogPath()}"`,
-        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
         `-remotePort=${webTarget.remotePort}`,
         `-remoteHost=${webTarget.remoteHost}`,
         `-plugin="web"`
     ];
+    let args = baseArgs.concat(pluginArgs);
+
     let cwd = process.cwd();
 
     // Copy over our executable to a temp file
@@ -115,15 +90,15 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
             const daemonProcess = await spawn(finalDaemonPath, args, options);
 
             // Now save the Pid so we can kill the process next time we start it
-            webConfig['localPid'] = daemonProcess.pid;
-            webConfig['localPort'] = localPort;
-            webConfig['localHost'] = localHost;
+            webConfig.localPid = daemonProcess.pid;
+            webConfig.localPort = localPort;
+            webConfig.localHost = localHost;
 
             // Also save the name of the target to display
-            webConfig['name'] = webTarget.name;
+            webConfig.name = webTarget.name;
 
             // Wait for daemon HTTP server to be bound and running
-            await handleServerStart(loggerConfigService.daemonLogPath(), webConfig['localPort'], webConfig['localHost']);
+            await handleServerStart(loggerConfigService.daemonLogPath(), webConfig.localPort, webConfig.localHost);
 
             configService.setWebConfig(webConfig);
             logger.info(`Started web daemon at ${localHost}:${localPort} for ${targetName}`);

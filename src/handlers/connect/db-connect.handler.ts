@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
-import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
+import {  handleServerStart, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport } from '../../utils/daemon-utils';
 import { DbTargetSummary } from '../../../webshell-common-ts/http/v2/target/db/db-target-summary.types';
 import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
@@ -12,7 +12,6 @@ import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-
 import { listDbTargets } from '../../utils/list-utils';
 
 const { spawn } = require('child_process');
-const findPort = require('find-open-port');
 
 
 export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targetName: string,  configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
@@ -34,64 +33,37 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
         return 1;
     }
 
-    // Build the refresh command so it works in the case of the pkg'd app which
-    // is expecting a second argument set to internal main script
-    // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
-    // https://github.com/vercel/pkg/issues/897#issuecomment-679200552
-    const execPath = getAppExecPath();
-    const entryPoint = getAppEntrypoint();
-
     // Open up our zli dbConfig
     const dbConfig = configService.getDbConfig();
 
-    // Figure out our local host
-    let localHost = dbTarget.localHost;
-    if (localHost == null) {
-        // Default to localhost unless otherwise stated
-        localHost = 'localhost';
-    }
+    // Set our local host
+    const localHost = getOrDefaultLocalhost(dbTarget.localHost)
 
     // Make sure we have set our local daemon port
-    let localPort = dbTarget.localPort;
-    if (localPort == null) {
-        // If there is no local port setup by the admin, default to generating/using a local random one
-        if (dbConfig['localPort'] == null) {
-            logger.info('First time running db connect, setting local daemon port');
+    const localPort = await getOrDefaultLocalport(dbTarget.localPort, dbConfig.localPort, logger);
 
-            // Generate and set a localport + localhost
-            const localPort = await findPort();
-            dbConfig['localPort'] = localPort;
-            dbConfig['localHost'] = localHost;
-
-            // Save the name as well
-            dbConfig['name'] = dbTarget.name;
-
-            // Save these values so they don't need to be recreated
-            configService.setDbConfig(dbConfig);
-        }
-        localPort = dbConfig['localPort'];
-    }
+    // Note: These values will only be saved if we are not running in debug mode
+    dbConfig.localPort = localPort;
+    dbConfig.localHost = localHost;
+    dbConfig.name = dbTarget.name;
 
     // Check if we've already started a process
-    if (dbConfig['localPid'] != null) {
-        killDaemon(dbConfig['localPid'], dbConfig['localPort'], logger);
+    if (dbConfig.localPid != null) {
+        killDaemon(dbConfig.localPid, dbConfig.localPort, logger);
     }
 
     // Build our args and cwd
-    let args = [
-        `-sessionId=${configService.sessionId()}`,
+    const baseArgs = getBaseDaemonArgs(configService);
+    const pluginArgs = [
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
         `-targetId=${dbTarget.id}`,
-        `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
-        `-authHeader="${configService.getAuthHeader()}"`,
-        `-configPath=${configService.configPath()}`,
-        `-logPath="${loggerConfigService.daemonLogPath()}"`,
-        `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
         `-remotePort=${dbTarget.remotePort}`,
         `-remoteHost=${dbTarget.remoteHost}`,
         `-plugin="db"`
     ];
+    let args = baseArgs.concat(pluginArgs);
+
     let cwd = process.cwd();
 
     // Copy over our executable to a temp file
@@ -118,18 +90,12 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
             const daemonProcess = await spawn(finalDaemonPath, args, options);
 
             // Now save the Pid so we can kill the process next time we start it
-            dbConfig['localPid'] = daemonProcess.pid;
-            dbConfig['localPort'] = localPort;
-            dbConfig['localHost'] = localHost;
-
-            // Also save the name of the target to display
-            dbConfig['name'] = dbTarget.name;
+            dbConfig.localPid = daemonProcess.pid;
 
             // Wait for daemon HTTP server to be bound and running
-            await handleServerStart(loggerConfigService.daemonLogPath(), dbConfig['localPort'], dbConfig['localHost']);
+            await handleServerStart(loggerConfigService.daemonLogPath(), dbConfig.localPort, dbConfig.localHost);
 
             logger.info(`Started db daemon at ${localHost}:${localPort} for ${targetName}`);
-
 
             configService.setDbConfig(dbConfig);
             return 0;
