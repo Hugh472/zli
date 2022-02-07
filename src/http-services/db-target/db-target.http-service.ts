@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
-import { DbTargetSummary } from '../../../webshell-common-ts/http/v2/target/db/db-target-summary.types';
+import { DbTargetSummary } from '../../../webshell-common-ts/http/v2/target/db/types/db-target-summary.types';
 
 export class DbTargetService extends HttpService
 {

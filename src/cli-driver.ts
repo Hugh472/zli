@@ -83,7 +83,7 @@ import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.c
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetType } from '../we../webshell-common-ts/http/v2/target/db/types/db-target-summary.types
 import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/targetStatus.types';
 import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
 

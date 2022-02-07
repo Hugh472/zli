@@ -1,7 +1,7 @@
 import { ConfigService } from '../services/config/config.service';
 import { DbTargetService } from '../http-services/db-target/db-target.http-service';
 import { Logger } from '../services/logger/logger.service';
-import { DbTargetSummary } from '../../webshell-common-ts/http/v2/target/db/db-target-summary.types';
+import { DbTargetSummary } from '../../webshell-common-ts/http/v2/target/db/types/db-target-summary.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { WebTargetService } from '../http-services/web-target/web-target.http-service';
 import { WebTargetSummary } from '../../webshell-common-ts/http/v2/target/web/web-target-summary.types';
