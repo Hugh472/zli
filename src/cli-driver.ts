@@ -319,7 +319,6 @@ export class CliDriver
                     } else if (parsedTarget.type == TargetType.Web) {
                         exitCode = await webConnectHandler(argv, parsedTarget.name, this.webTargets, this.configService, this.logger, this.loggerConfigService);
                     }
-                    // Add handlers for each type of target
                     await cleanExit(exitCode, this.logger);
                 }
             )
