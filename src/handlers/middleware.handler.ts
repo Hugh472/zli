@@ -7,8 +7,8 @@ import { KeySplittingService } from '../../webshell-common-ts/keysplitting.servi
 import { TargetSummary } from '../../webshell-common-ts/http/v2/target/target.summary';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { BzeroAgentSummary } from '../http-services/bzero-agent/bzero-agent.types';
-import { BzeroAgentService } from '../http-services/bzero-agent/bzero-agent.service';
-import { WebTargetService } from '../http-services/web-target/web-target.service';
+import { BzeroAgentService } from '../http-services/bzero-agent/bzero-agent.http-service';
+import { WebTargetService } from '../http-services/web-target/web-target.http-service';
 import { DbTargetSummary } from '../../webshell-common-ts/http/v2/target/db/db-target-summary.types';
 import { WebTargetSummary } from '../../webshell-common-ts/http/v2/target/web/web-target.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
@@ -18,7 +18,7 @@ import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment
 import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
-import { DbTargetService } from '../http-services/db-target/db-target.service';
+import { DbTargetService } from '../http-services/db-target/db-target.http-service';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
