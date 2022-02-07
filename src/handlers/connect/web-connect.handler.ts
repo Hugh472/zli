@@ -2,9 +2,9 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
-import yargs, { config } from 'yargs';
+import yargs from 'yargs';
 import open from 'open';
-import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport } from '../../utils/daemon-utils';
+import { handleServerStart, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../../webshell-common-ts/http/v2/target/web/web-target-summary.types';
 import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
@@ -38,7 +38,7 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
     const webConfig = configService.getWebConfig();
 
     // Set our local host
-    const localHost = getOrDefaultLocalhost(webTarget.localHost)
+    const localHost = getOrDefaultLocalhost(webTarget.localHost);
 
     // Make sure we have set our local daemon port
     const localPort = await getOrDefaultLocalport(webTarget.localPort, webTarget.localPort, logger);
@@ -53,7 +53,7 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
         killDaemon(webConfig.localPid, webConfig.localPort, logger);
     }
     // Build our args and cwd
-    const baseArgs = getBaseDaemonArgs(configService)
+    const baseArgs = getBaseDaemonArgs(configService);
     const pluginArgs = [
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,

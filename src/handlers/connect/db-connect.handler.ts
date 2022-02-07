@@ -37,7 +37,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     const dbConfig = configService.getDbConfig();
 
     // Set our local host
-    const localHost = getOrDefaultLocalhost(dbTarget.localHost)
+    const localHost = getOrDefaultLocalhost(dbTarget.localHost);
 
     // Make sure we have set our local daemon port
     const localPort = await getOrDefaultLocalport(dbTarget.localPort, dbConfig.localPort, logger);

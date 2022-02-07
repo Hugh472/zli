@@ -6,7 +6,6 @@ import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
-import { BzeroAgentSummary } from '../../webshell-common-ts/http/v2/target/bzero/bzero-agent-summary.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -14,7 +13,6 @@ import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment
 import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
-import { DbTargetService } from '../http-services/db-target/db-target.http-service';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {

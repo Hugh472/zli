@@ -17,8 +17,8 @@ export const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
 export const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
 export const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
 
-const WAIT_UNTIL_USED_ON_HOST_TIMEOUT = 1000 * 5 
-const WAIT_UTIL_USED_ON_HOST_RETRY_TIME = 100
+const WAIT_UNTIL_USED_ON_HOST_TIMEOUT = 1000 * 5;
+const WAIT_UTIL_USED_ON_HOST_RETRY_TIME = 100;
 
 // Allow errors on early daemon startup to bubble up to the user
 export async function handleServerStart(logPath: string, localPort: number, localHost: string) {
@@ -320,8 +320,8 @@ export function getBaseDaemonArgs(configService: ConfigService): string[] {
  */
 export function getOrDefaultLocalhost(passedLocalhost: string): string {
     if (passedLocalhost == null) {
-        return 'localhost'
-    }; 
+        return 'localhost';
+    };
     return passedLocalhost;
 }
 

@@ -81,9 +81,6 @@ import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-build
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
-import { BzeroAgentSummary } from '../webshell-common-ts/http/v2/target/bzero/bzero-agent-summary.types';
-import { WebTargetSummary } from '../webshell-common-ts/http/v2/target/web/web-target-summary.types';
-import { DbTargetSummary } from '../webshell-common-ts/http/v2/target/db/db-target-summary.types';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
