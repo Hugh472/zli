@@ -569,7 +569,7 @@ export class CliDriver
                     const parsedTarget = await disambiguateTarget(TargetType.SsmTarget.toString(), targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.dbTargets, this.webTargets, this.clusterTargets, this.envs);
 
                     if (parsedTarget == undefined) {
-                        this.logger.error(`Unable to find target with given targetString: ${targetString}`);
+                        this.logger.error(`Unable to find target with given user/host values: ${argv.user}/${argv.host}`);
                         await cleanExit(1, this.logger);
                     }
 
