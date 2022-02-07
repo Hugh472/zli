@@ -3,6 +3,8 @@ import { KubernetesRequest } from '../../../webshell-common-ts/http/v2/policy-qu
 import { TargetPolicyQueryRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/target-policy-query.requests';
 import { GetKubernetesPoliciesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/get-kube-policies.responses';
 import { KubernetesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/kubernetes.responses';
+import { ProxyResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/proxy.response';
+import { ProxyRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/proxy.requests';
 import { TargetPolicyQueryResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/target-policy-query.responses';
 import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
 import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.types';
@@ -54,5 +56,22 @@ export class PolicyQueryHttpService extends HttpService
         };
 
         return this.FormPost('get-kube-policies', request);
+    }
+
+    public CheckProxy(
+        targetId: string,
+        remoteHost: string,
+        remotePort: number,
+        targetType: TargetType
+    ): Promise<ProxyResponse>
+    {
+        const request: ProxyRequest = {
+            targetId: targetId,
+            targetHost: remoteHost,
+            targetPort: remotePort,
+            targetType: targetType
+        };
+
+        return this.Post('proxy', request);
     }
 }

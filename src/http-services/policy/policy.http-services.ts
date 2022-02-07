@@ -1,3 +1,4 @@
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { KubernetesPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes/requests/kubernetes-policy-create.requests';
 import { KubernetesPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes/requests/kubernetes-policy-update.requests';
 import { KubernetesPolicySummary } from '../../../webshell-common-ts/http/v2/policy/kubernetes/types/kubernetes-policy-summary.types';

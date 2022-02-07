@@ -4,11 +4,11 @@ import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
 import { DbTargetSummary } from '../../services/db-target/db-target.types';
-import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.status';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
@@ -23,10 +23,10 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     }
 
     // Make our API client
-    const policyService = new PolicyQueryService(configService, logger);
+    const policyService = new PolicyQueryHttpService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.Proxy(dbTarget.id, dbTarget.remoteHost, dbTarget.remotePort, TargetType.Db);
+    const response = await policyService.CheckProxy(dbTarget.id, dbTarget.remoteHost, dbTarget.remotePort, TargetType.Db);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${dbTarget.name}!`);
         return 1;

@@ -6,10 +6,10 @@ import yargs from 'yargs';
 import open from 'open';
 import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
 import { WebTargetSummary } from '../../services/web-target/web-target.types';
-import { PolicyQueryService } from '../../services/v1/policy-query/policy-query.service';
 import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.status';
+import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 
 const { spawn } = require('child_process');
 const findPort = require('find-open-port');
@@ -24,10 +24,10 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
     }
 
     // Make our API client
-    const policyService = new PolicyQueryService(configService, logger);
+    const policyService = new PolicyQueryHttpService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.Proxy(webTarget.id, webTarget.remoteHost, webTarget.remotePort, TargetType.Web);
+    const response = await policyService.CheckProxy(webTarget.id, webTarget.remoteHost, webTarget.remotePort, TargetType.Web);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${webTarget.name}!`);
         return 1;

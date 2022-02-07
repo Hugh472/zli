@@ -21,23 +21,12 @@ export interface GetTargetPolicyRequest
 export interface KubeProxyResponse {
     allowed: boolean;
 }
-export interface ProxyResponse {
-    allowed: boolean;
-}
 
 export interface KubeProxyRequest {
     clusterId: string;
     targetUser: string;
     targetGroups: string[];
 }
-
-export interface ProxyRequest {
-    targetId: string;
-    targetHost: string;
-    targetPort: number;
-    targetType: TargetType;
-}
-
 export interface GetAllPoliciesForClusterIdResponse {
     policies: PolicySummary[]
 }

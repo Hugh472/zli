@@ -40,23 +40,6 @@ export class PolicyQueryService extends HttpService
         return this.Post('kube-tunnel', request);
     }
 
-    public Proxy(
-        targetId: string,
-        remoteHost: string,
-        remotePort: number,
-        targetType: TargetType
-    ): Promise<ProxyResponse>
-    {
-        const request: ProxyRequest = {
-            targetId: targetId,
-            targetHost: remoteHost,
-            targetPort: remotePort,
-            targetType: targetType
-        };
-
-        return this.Post('proxy', request);
-    }
-
     public GetAllPoliciesForClusterId(
         clusterId: string,
     ): Promise<GetAllPoliciesForClusterIdResponse>
