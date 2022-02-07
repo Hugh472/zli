@@ -3,7 +3,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon } from '../../utils/daemon-utils';
-import { DbTargetSummary } from '../../http-services/db-target/db-target.types';
+import { DbTargetSummary } from '../../../webshell-common-ts/http/v2/target/db/db-target-summary.types';
 import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';

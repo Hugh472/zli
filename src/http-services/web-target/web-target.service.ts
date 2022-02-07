@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
-import { WebTargetSummary } from './web-target.types';
+import { WebTargetSummary } from '../../../webshell-common-ts/http/v2/target/web/web-target.types';
 
 export class WebTargetService extends HttpService
 {
