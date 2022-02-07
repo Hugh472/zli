@@ -11,13 +11,6 @@ export enum IdP {
     Microsoft = 'Microsoft'
 }
 
-export interface TargetSummary extends TargetBase
-{
-    agentVersion: string;
-    targetUsers: string[];
-    type: TargetType;
-}
-
 export interface ParsedTargetString
 {
     type: TargetType;

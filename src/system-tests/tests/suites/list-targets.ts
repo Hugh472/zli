@@ -1,7 +1,7 @@
 import { testTargets } from '../system-test';
 import * as ListTargetsService from '../../../services/list-targets/list-targets.service';
 import { getMockResultValue } from '../utils/jest-utils';
-import { TargetSummary } from '../../../services/common.types';
+import { TargetSummary } from '../../../../webshell-common-ts/http/v2/target/target.summary';
 import { callZli } from '../utils/zli-utils';
 import { TargetType } from '../../../../webshell-common-ts/http/v2/target/types/target.types';
 

@@ -11,7 +11,7 @@ import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { TargetSummary } from './services/common.types';
+import { TargetSummary } from '../webshell-common-ts/http/v2/target/target.summary';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/v1/policy/policy.types';
 

@@ -1,5 +1,5 @@
 import { dynamicConfigToTargetSummary, parseTargetStatus, ssmTargetToTargetSummary } from '../../utils/utils';
-import { TargetSummary } from '../common.types';
+import { TargetSummary } from '../../../webshell-common-ts/http/v2/target/target.summary';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 import { BzeroAgentService } from '../../http-services/bzero-agent/bzero-agent.service';

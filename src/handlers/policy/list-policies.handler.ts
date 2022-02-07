@@ -4,7 +4,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { parsePolicyType } from '../../utils/utils';
 import _ from 'lodash';
 import { ApiKeyDetails } from '../../services/v1/api-key/api-key.types';
-import { TargetSummary } from '../../services/common.types';
+import { TargetSummary } from '../../../webshell-common-ts/http/v2/target/target.summary';
 import { GroupSummary } from '../../services/v1/groups/groups.types';
 import { PolicyService } from '../../services/v1/policy/policy.service';
 import { UserSummary } from '../../services/v1/user/user.types';
