@@ -5,12 +5,12 @@ import { LoggerConfigService } from '../../services/logger/logger-config.service
 import yargs from 'yargs';
 import open from 'open';
 import { handleServerStart, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport } from '../../utils/daemon-utils';
-import { WebTargetSummary } from '../../../webshell-common-ts/http/v2/target/web/web-target-summary.types';
 import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 import { listWebTargets } from '../../utils/list-utils';
+import { WebTargetSummary } from '../../../webshell-common-ts/http/v2/target/web/types/web-target-summary.types';
 
 const { spawn } = require('child_process');
 

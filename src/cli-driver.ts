@@ -14,7 +14,10 @@ import { cleanExit } from './handlers/clean-exit.handler';
 import { TargetSummary } from '../webshell-common-ts/http/v2/target/targetSummary.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/v1/policy/policy.types';
-
+import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 
 // Handlers
 import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
@@ -26,7 +29,7 @@ import { listTargetsHandler } from './handlers/list-targets/list-targets.handler
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/connect/kube-connect.handler';
-import { dbConnectHandler } from './handlers/connect/db-connect.handler';
+import { dbConnectHandler } from './handlers/connect/db-connect.handler'
 import { webConnectHandler } from './handlers/connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
@@ -81,10 +84,6 @@ import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-build
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
-import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
-import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { TargetType } from '../we../webshell-common-ts/http/v2/target/db/types/db-target-summary.types
-import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/targetStatus.types';
 import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
 
 export type EnvMap = Readonly<{
