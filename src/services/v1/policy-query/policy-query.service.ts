@@ -10,7 +10,7 @@ export class PolicyQueryService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v2/policy-query/', logger); // TODO: This needs to change once thanos merges in his pr
+        super(configService, 'api/v1/policy-query/', logger);
     }
 
     public ListTargetOSUsers(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<GetTargetPolicyResponse>
