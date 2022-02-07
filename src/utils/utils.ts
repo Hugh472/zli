@@ -11,8 +11,8 @@ import { TargetSummary } from '../../webshell-common-ts/http/v2/target/target.su
 import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
-import { TargetStatus } from '../../webshell-common-ts/http/v2/target/types/target.status';
-import { TargetBase } from '../../webshell-common-ts/http/v2/target/types/target.base';
+import { TargetStatus } from '../../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { TargetBase } from '../../webshell-common-ts/http/v2/target/types/targetBase.types';
 import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { UserSummary } from '../../webshell-common-ts/http/v2/user/types/user-summary.types';

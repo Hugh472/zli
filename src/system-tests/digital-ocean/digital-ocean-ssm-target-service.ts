@@ -7,7 +7,7 @@ import axios from 'axios';
 import { checkAllSettledPromise } from '../tests/utils/utils';
 import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
-import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.status';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 
 export class DigitalOceanSSMTargetService {
     private doClient: DigitalOcean;

@@ -8,7 +8,7 @@ import { getAppExecPath, handleServerStart, getAppEntrypoint, startDaemonInDebug
 import { WebTargetSummary } from '../../http-services/web-target/web-target.types';
 import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
-import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.status';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 
 const { spawn } = require('child_process');

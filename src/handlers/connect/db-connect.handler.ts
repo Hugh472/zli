@@ -7,7 +7,7 @@ import { DbTargetSummary } from '../../http-services/db-target/db-target.types';
 import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
-import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/target.status';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 
 const { spawn } = require('child_process');

@@ -1,5 +1,5 @@
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
-import { TargetBase } from '../../webshell-common-ts/http/v2/target/types/target.base';
+import { TargetBase } from '../../webshell-common-ts/http/v2/target/types/targetBase.types';
 
 export interface TargetUser
 {
