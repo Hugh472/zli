@@ -38,11 +38,11 @@ async function webStatusHandler(
         // Always ensure nothing is using the localport
         await killPortProcess(webConfig['localPort']);
 
-        logger.warn('No Web daemon running');
+        logger.warn('No web daemon running');
     } else {
         // Check if the pid is still alive
         if (!require('is-running')(webConfig['localPid'])) {
-            logger.error('The Web Daemon has quit unexpectedly.');
+            logger.error('The web daemon has quit unexpectedly.');
             webConfig['localPid'] = null;
 
             // Always ensure nothing is using the localport
@@ -69,11 +69,11 @@ async function dbStatusHandler(
         // Always ensure nothing is using the localport
         await killPortProcess(dbConfig['localPort']);
 
-        logger.warn('No Db daemon running');
+        logger.warn('No db daemon running');
     } else {
         // Check if the pid is still alive
         if (!require('is-running')(dbConfig['localPid'])) {
-            logger.error('The Web Daemon has quit unexpectedly.');
+            logger.error('The db daemon has quit unexpectedly.');
             dbConfig['localPid'] = null;
 
             // Always ensure nothing is using the localport
@@ -100,11 +100,11 @@ async function kubeStatusHandler(
         // Always ensure nothing is using the localport
         await killPortProcess(kubeConfig['localPort']);
 
-        logger.warn('No Kube daemon running');
+        logger.warn('No kube daemon running');
     } else {
         // Check if the pid is still alive
         if (!require('is-running')(kubeConfig['localPid'])) {
-            logger.error('The Kube Daemon has quit unexpectedly.');
+            logger.error('The kube daemon has quit unexpectedly.');
             kubeConfig['localPid'] = null;
 
             // Always ensure nothing is using the localport
