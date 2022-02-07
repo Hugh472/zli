@@ -6,7 +6,6 @@ import { getTableOfDbStatus, getTableOfKubeStatus, getTableOfWebStatus } from '.
 import { statusArgs } from './status.command-builder';
 import yargs from 'yargs';
 import { killPortProcess } from '../../utils/daemon-utils';
-import { StatusResponse } from '../../services/v1/kube/kube.types';
 
 export async function statusHandler(
     argv: yargs.Arguments<statusArgs>,
@@ -129,4 +128,8 @@ async function kubeStatusHandler(
             logger.error(`Error contacting Kube Daemon. Please try logging in again and restarting the daemon. Error: ${err}`);
         }
     }
+}
+
+interface StatusResponse {
+    ExitMessage: string;
 }
