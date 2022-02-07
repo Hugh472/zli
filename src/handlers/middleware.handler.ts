@@ -4,7 +4,7 @@ import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
-import { TargetSummary } from '../../webshell-common-ts/http/v2/target/target.summary';
+import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { BzeroAgentSummary } from '../../webshell-common-ts/http/v2/target/bzero/bzero-agent-summary.types';
 import { BzeroAgentService } from '../http-services/bzero-agent/bzero-agent.http-service';

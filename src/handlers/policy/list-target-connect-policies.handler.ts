@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { TargetSummary } from '../../../webshell-common-ts/http/v2/target/target.summary';
+import { TargetSummary } from '../../../webshell-common-ts/http/v2/target/targetSummary.types';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';

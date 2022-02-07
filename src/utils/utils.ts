@@ -7,7 +7,7 @@ import util from 'util';
 import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.types';
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { ParsedTargetString } from '../services/common.types';
-import { TargetSummary } from '../../webshell-common-ts/http/v2/target/target.summary';
+import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
