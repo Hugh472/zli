@@ -1,6 +1,6 @@
-import { ConfigService } from '../config/config.service';
-import { HttpService } from '../http/http.service';
-import { Logger } from '../logger/logger.service';
+import { ConfigService } from '../../services/config/config.service';
+import { HttpService } from '../../services/http/http.service';
+import { Logger } from '../../services/logger/logger.service';
 import { WebTargetSummary } from './web-target.types';
 
 export class WebTargetService extends HttpService

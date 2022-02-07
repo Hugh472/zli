@@ -6,11 +6,11 @@ import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { TargetSummary } from '../services/common.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
-import { BzeroAgentSummary } from '../../src/services/bzero-agent/bzero-agent.types';
-import { BzeroAgentService } from '../../src/services/bzero-agent/bzero-agent.service';
-import { WebTargetService } from '../services/web-target/web-target.service';
-import { DbTargetSummary } from '../services/db-target/db-target.types';
-import { WebTargetSummary } from '../services/web-target/web-target.types';
+import { BzeroAgentSummary } from '../http-services/bzero-agent/bzero-agent.types';
+import { BzeroAgentService } from '../http-services/bzero-agent/bzero-agent.service';
+import { WebTargetService } from '../http-services/web-target/web-target.service';
+import { DbTargetSummary } from '../http-services/db-target/db-target.types';
+import { WebTargetSummary } from '../http-services/web-target/web-target.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -18,7 +18,7 @@ import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment
 import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
-import { DbTargetService } from '../services/db-target/db-target.service';
+import { DbTargetService } from '../http-services/db-target/db-target.service';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {

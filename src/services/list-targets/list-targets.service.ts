@@ -2,15 +2,15 @@ import { dynamicConfigToTargetSummary, parseTargetStatus, ssmTargetToTargetSumma
 import { TargetSummary } from '../common.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
-import { BzeroAgentService } from '../bzero-agent/bzero-agent.service';
-import { WebTargetService } from '../web-target/web-target.service';
+import { BzeroAgentService } from '../../http-services/bzero-agent/bzero-agent.service';
+import { WebTargetService } from '../../http-services/web-target/web-target.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { DynamicAccessConfigHttpService } from '../../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
-import { DbTargetService } from '../db-target/db-target.service';
+import { DbTargetService } from '../../http-services/db-target/db-target.service';
 
 export async function listTargets(
     configService: ConfigService,
