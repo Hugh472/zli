@@ -97,7 +97,7 @@ export function mixpanelTrackingMiddleware(configService: ConfigService, argv: a
     // does not matter as that is handled by which mixpanel token is used
     // TODO: capture options and flags
     mixpanelService.TrackCliCommand(version, argv._[0], argv._.slice(1));
-
+    
     return mixpanelService;
 }
 
