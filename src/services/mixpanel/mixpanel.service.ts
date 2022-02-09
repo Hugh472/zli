@@ -47,17 +47,18 @@ export class MixpanelService
 
 
         this.mixpanelClient.track(eventName, properties);
+    }
 
-        this.visitor.event("zli-command", properties.args, (err: any) => {
+    public TrackCliCommand(version: string, command: string, args: string[]) {
+        this.visitor.event("zli-command", args.toString(), (err: any) => {
             if (err) {
                 console.log(err);
             } else {
                 console.log("Successfully tracked event");
             }
         });
-    }
 
-    public TrackCliCommand(version: string, command: string, args: string[]) {
+
         this.TrackCliCall(
             'CliCommand',
             {
