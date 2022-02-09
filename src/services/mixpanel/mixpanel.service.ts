@@ -3,13 +3,14 @@ import { Dictionary } from 'lodash';
 import mixpanel, { Mixpanel } from 'mixpanel';
 import { ConfigService } from '../config/config.service';
 import { TrackNewConnection } from './mixpanel.service.types';
-
+const ua = require('universal-analytics');
 
 export class MixpanelService
 {
     private mixpanelClient: Mixpanel;
     private userId: string;
     private sessionId: string;
+    private visitor: any;
 
     constructor(private configService: ConfigService)
     {
@@ -19,6 +20,9 @@ export class MixpanelService
 
         this.userId = this.configService.me().id;
         this.sessionId = this.configService.sessionId();
+        this.visitor = ua('UA-216204125-3', {uid: this.userId});
+        this.visitor.set("cd1", process.platform);
+        
     }
 
 
@@ -42,7 +46,16 @@ export class MixpanelService
         properties.client_type = 'CLI';
         properties.UserSessionId = this.sessionId;
 
+
         this.mixpanelClient.track(eventName, properties);
+
+        this.visitor.event("zli-commandtest", "generate kubeYaml test", (err: any) => {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log("Successfully tracked event");
+            }
+        });
     }
 
     public TrackCliCommand(version: string, command: string, args: string[]) {
