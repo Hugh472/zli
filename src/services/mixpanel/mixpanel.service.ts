@@ -22,7 +22,6 @@ export class MixpanelService
         this.sessionId = this.configService.sessionId();
         this.visitor = ua('UA-216204125-3', {uid: this.userId});
         this.visitor.set("cd1", process.platform);
-        
     }
 
 
@@ -49,7 +48,7 @@ export class MixpanelService
 
         this.mixpanelClient.track(eventName, properties);
 
-        this.visitor.event("zli-commandtest", "generate kubeYaml test", (err: any) => {
+        this.visitor.event("zli-command", properties.args, (err: any) => {
             if (err) {
                 console.log(err);
             } else {
