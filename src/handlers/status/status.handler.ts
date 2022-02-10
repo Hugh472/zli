@@ -117,7 +117,7 @@ async function kubeStatusHandler(
             const statusResponse: StatusResponse = await got.get(`https://localhost:${kubeConfig['localPort']}/bastionzero-status`,  {https: { rejectUnauthorized: false }}).json();
             // Check if there is an exit message to show the user
             if (statusResponse.ExitMessage != '') {
-                logger.error(`The Kube Deamon has gotten an exit message from Bastion. Please try logging in again and re-connect with 'zli tunnel'.\nExit Message: ${statusResponse.ExitMessage}`);
+                logger.error(`The Kube Deamon has gotten an exit message from Bastion. Please try logging in again and re-connect with 'zli connect'.\nExit Message: ${statusResponse.ExitMessage}`);
             } else {
                 // If there is no exist message, pull the info from the config and show it to the user
                 logger.info(`Kube Daemon running:`);
