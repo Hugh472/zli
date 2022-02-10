@@ -18,7 +18,7 @@ export const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
 export const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
 export const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
 
-const WAIT_UNTIL_USED_ON_HOST_TIMEOUT = 1000 * 5;
+const WAIT_UNTIL_USED_ON_HOST_TIMEOUT = 1000 * 30;
 const WAIT_UTIL_USED_ON_HOST_RETRY_TIME = 100;
 
 // Allow errors on early daemon startup to bubble up to the user
@@ -26,13 +26,13 @@ export async function handleServerStart(logPath: string, localPort: number, loca
     await new Promise<void>(async (resolve, reject) => {
         await waitUntilUsedOnHost(localPort, localHost, WAIT_UTIL_USED_ON_HOST_RETRY_TIME, WAIT_UNTIL_USED_ON_HOST_TIMEOUT).then(function() {
             resolve();
-        }, function() {
+        }, function(err) {
             if (fs.existsSync(logPath)) {
                 readLastLines.read(logPath, 1)
                     .then((line: string) => {
                         try {
                             const lastLog = JSON.parse(line);
-                            reject(`Error kept daemon from starting up correctly\nLast log entry: ${lastLog.message}`);
+                            reject(`Error kept daemon from starting up correctly\n. waitUntilUsedOnHost error: ${err}. Last daemon log entry: ${lastLog.message}`);
                         }
                         catch(e) {
                             reject(`Error parsing last line in log: ${e}`);
@@ -252,11 +252,30 @@ export async function killDaemon(localPid: number, localPort: number, logger: Lo
             logger.debug(`Error: ${err}`);
         }
     }
-    // Always ensure nothing is using the localport
-    await killPortProcess(localPort);
 }
 
-export async function killPortProcess(port: number) {
+/**
+ * Helper function to check if we have saved a local pid for a daemon and attempts to kill
+ * This function will also alert a user if a local port is in use
+ * @param {number} savedPid Saved pid in our config
+ * @param {number} localPort Local port we are trying to use
+ * @param {Logger} logger Logger
+ */
+export async function killLocalPortAndPid(savedPid: number, localPort: number, logger: Logger) {
+    // Check if we've already started a process
+    if (savedPid != null) {
+        killDaemon(savedPid, localPort, logger);
+    }
+
+    // Also check if anything is using that local port
+    const portPids = await getPidForPort(localPort);
+    if (portPids.length != 0) {
+        logger.error(`It looks like an application is using port: ${localPort}`);
+        await cleanExit(1, logger);
+    }
+}
+
+export async function killPortProcess(port: number, logger: Logger) {
     if(port == null) return;
 
     // Helper function to kill a process running on a given port (if it exists)
@@ -267,8 +286,9 @@ export async function killPortProcess(port: number) {
         portPids.forEach( (portPid: number) => {
             killPid(portPid.toString());
         });
-    } catch {
+    } catch(err) {
         // Don't try to capture any errors incase the process has already been killed
+        logger.debug(`Error killing process on port ${port}: ${err}`);
     }
 }
 
@@ -285,13 +305,15 @@ async function getPidForPort(port: number): Promise<number[]> {
 function killPid(pid: string) {
     // Helper function to kill a process for a given pid
     // Ignore output and do not show that to the user
+    // For unix based os we kill all processes based on group id by using kill -{signal} -{pid}
+    // https://stackoverflow.com/a/49842576/9186330
     const options = { stdio: ['ignore', 'ignore', 'ignore'] };
     if (process.platform === 'win32') {
         exec(`taskkill /F /T /PID ${pid}`, options);
     } else if (process.platform === 'linux') {
-        exec(`pkill -s ${pid}`, options);
+        exec(`kill -9 -${pid}`, options);
     } else {
-        exec(`kill -9 ${pid}`, options);
+        exec(`kill -9 -${pid}`, options);
     }
 }
 

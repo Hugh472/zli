@@ -24,8 +24,12 @@ export function connectCmdBuilder (yargs : yargs.Argv<{}>,targetTypeChoices : st
             type: 'array',
             default: [],
             demandOption: false
+        }).option('openBrowser', {
+            type: 'boolean',
+            default: true,
+            demandOption: false
         })
         .example('$0 connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
         .example('$0 connect --targetType dynamic ssm-user@my-dat-config', 'DAT connect example with a DAT configuration whose name is my-dat-config')
-        .example('$0 tunnel admin@neat-cluster --targetGroup system:masters', 'Connect to neat-cluster as the admin Kube RBAC user in the system:masters group');
+        .example('$0 connect admin@neat-cluster --targetGroup system:masters', 'Connect to neat-cluster as the admin Kube RBAC user in the system:masters group');
 }

@@ -3,6 +3,8 @@ import { callZli } from '../utils/zli-utils';
 import { HttpError } from '@kubernetes/client-node';
 import { clusterVersionsToRun, testClusters } from '../system-test';
 
+export const KubeTestUserName = 'foo';
+
 export const kubeSuite = () => {
     describe('kube suite', () => {
         beforeEach(() => {
@@ -30,7 +32,7 @@ export const kubeSuite = () => {
             const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
             // Start tunnel
-            await callZli(['tunnel', `foo@${doCluster.bzeroClusterTargetSummary.name}`, '--targetGroup', 'system:masters']);
+            await callZli(['connect', `${KubeTestUserName}@${doCluster.bzeroClusterTargetSummary.name}`, '--targetGroup', 'system:masters']);
 
             // Attempt to list namespaces using agent
             try {

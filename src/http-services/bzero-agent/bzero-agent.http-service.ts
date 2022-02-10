@@ -14,6 +14,10 @@ export class BzeroAgentService extends HttpService
         return this.Get('', {});
     }
 
+    public GetBzeroAgent(targetId: string): Promise<BzeroAgentSummary> {
+        return this.Get(targetId);
+    }
+
     public DeleteBzeroAgent(targetId: string): Promise<void> {
         return this.Delete(targetId);
     }

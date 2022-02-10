@@ -35,7 +35,7 @@ async function webStatusHandler(
 
     if (webConfig['localPid'] == null) {
         // Always ensure nothing is using the localport
-        await killPortProcess(webConfig['localPort']);
+        await killPortProcess(webConfig['localPort'], logger);
 
         logger.warn('No web daemon running');
     } else {
@@ -45,7 +45,7 @@ async function webStatusHandler(
             webConfig['localPid'] = null;
 
             // Always ensure nothing is using the localport
-            await killPortProcess(webConfig['localPort']);
+            await killPortProcess(webConfig['localPort'], logger);
 
             configService.setWebConfig(webConfig);
             return;
@@ -66,7 +66,7 @@ async function dbStatusHandler(
 
     if (dbConfig['localPid'] == null) {
         // Always ensure nothing is using the localport
-        await killPortProcess(dbConfig['localPort']);
+        await killPortProcess(dbConfig['localPort'], logger);
 
         logger.warn('No db daemon running');
     } else {
@@ -76,7 +76,7 @@ async function dbStatusHandler(
             dbConfig['localPid'] = null;
 
             // Always ensure nothing is using the localport
-            await killPortProcess(dbConfig['localPort']);
+            await killPortProcess(dbConfig['localPort'], logger);
 
             configService.setDbConfig(dbConfig);
             return;
@@ -97,7 +97,7 @@ async function kubeStatusHandler(
 
     if (kubeConfig['localPid'] == null) {
         // Always ensure nothing is using the localport
-        await killPortProcess(kubeConfig['localPort']);
+        await killPortProcess(kubeConfig['localPort'], logger);
 
         logger.warn('No kube daemon running');
     } else {
@@ -107,7 +107,7 @@ async function kubeStatusHandler(
             kubeConfig['localPid'] = null;
 
             // Always ensure nothing is using the localport
-            await killPortProcess(kubeConfig['localPort']);
+            await killPortProcess(kubeConfig['localPort'], logger);
 
             configService.setKubeConfig(kubeConfig);
             return;

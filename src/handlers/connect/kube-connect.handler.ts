@@ -8,7 +8,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { connectArgs } from './connect.command-builder';
-import { startDaemonInDebugMode, killDaemon, copyExecutableToLocalDir, handleServerStart, getBaseDaemonArgs } from '../../utils/daemon-utils';
+import { startDaemonInDebugMode, copyExecutableToLocalDir, handleServerStart, getBaseDaemonArgs, killLocalPortAndPid } from '../../utils/daemon-utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
@@ -47,9 +47,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
     }
 
     // Check if we've already started a process
-    if (kubeConfig.localPid != null) {
-        killDaemon(kubeConfig.localPid, kubeConfig.localPort, logger);
-    }
+    await killLocalPortAndPid(kubeConfig.localPid, kubeConfig.localPort, logger);
 
     // See if the user passed in a custom port
     let daemonPort = kubeConfig.localPort.toString();

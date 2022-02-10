@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
-import {  handleServerStart, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport } from '../../utils/daemon-utils';
+import {  handleServerStart, startDaemonInDebugMode, copyExecutableToLocalDir, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport, killLocalPortAndPid } from '../../utils/daemon-utils';
 import { DbTargetSummary } from '../../../webshell-common-ts/http/v2/target/db/types/db-target-summary.types';
 import { connectArgs } from './connect.command-builder';
 import yargs from 'yargs';
@@ -47,10 +47,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     dbConfig.localHost = localHost;
     dbConfig.name = dbTarget.name;
 
-    // Check if we've already started a process
-    if (dbConfig.localPid != null) {
-        killDaemon(dbConfig.localPid, dbConfig.localPort, logger);
-    }
+    await killLocalPortAndPid(dbConfig.localPid, dbConfig.localPort, logger);
 
     // Build our args and cwd
     const baseArgs = getBaseDaemonArgs(configService, loggerConfigService);

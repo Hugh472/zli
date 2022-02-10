@@ -19,17 +19,31 @@ export const listTargetsSuite = () => {
             expect(listTargetsSpy).toHaveBeenCalledTimes(1);
             const returnedTargetSummaries = (await getMockResultValue(listTargetsSpy.mock.results[0]));
 
-            const expectedSSMTargetSummaries = Array.from(testTargets.values()).map<TargetSummary>(t => ({
-                type: TargetType.SsmTarget,
-                id: t.ssmTarget.id,
-                name: t.ssmTarget.name,
-                environmentId: t.ssmTarget.environmentId,
-                agentVersion: t.ssmTarget.agentVersion,
-                agentId: t.ssmTarget.agentId,
-                status: t.ssmTarget.status,
-                targetUsers: expect.anything(),
-                region: t.ssmTarget.region
-            }));
+            const expectedSSMTargetSummaries = Array.from(testTargets.values()).map<TargetSummary>(t => {
+                if(t.type === 'ssm') {
+                    return {
+                        type: TargetType.SsmTarget,
+                        id: t.ssmTarget.id,
+                        name: t.ssmTarget.name,
+                        environmentId: t.ssmTarget.environmentId,
+                        agentVersion: t.ssmTarget.agentVersion,
+                        status: t.ssmTarget.status,
+                        targetUsers: expect.anything(),
+                        region: t.ssmTarget.region
+                    };
+                } else if(t.type === 'bzero') {
+                    return {
+                        type: TargetType.Bzero,
+                        id: t.bzeroTarget.id,
+                        name: t.bzeroTarget.name,
+                        environmentId: t.bzeroTarget.environmentId,
+                        agentVersion: t.bzeroTarget.agentVersion,
+                        status: t.bzeroTarget.status,
+                        targetUsers: expect.anything(),
+                        region: t.bzeroTarget.region
+                    };
+                }
+            });
 
             for (const target of expectedSSMTargetSummaries) {
                 const foundObject = returnedTargetSummaries.find(t => t.id === target.id);

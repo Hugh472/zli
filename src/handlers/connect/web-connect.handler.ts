@@ -4,7 +4,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import yargs from 'yargs';
 import open from 'open';
-import { handleServerStart, startDaemonInDebugMode, copyExecutableToLocalDir, killDaemon, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport } from '../../utils/daemon-utils';
+import { handleServerStart, startDaemonInDebugMode, copyExecutableToLocalDir, getBaseDaemonArgs, getOrDefaultLocalhost, getOrDefaultLocalport, killLocalPortAndPid } from '../../utils/daemon-utils';
 import { connectArgs } from './connect.command-builder';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
@@ -48,10 +48,8 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
     webConfig.localHost = localHost;
     webConfig.name = webTarget.name;
 
-    // Check if we've already started a process
-    if (webConfig.localPid != null) {
-        killDaemon(webConfig.localPid, webConfig.localPort, logger);
-    }
+    await killLocalPortAndPid(webConfig.localPid, webConfig.localPort, logger);
+
     // Build our args and cwd
     const baseArgs = getBaseDaemonArgs(configService, loggerConfigService);
     const pluginArgs = [
@@ -104,7 +102,9 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
             logger.info(`Started web daemon at ${localHost}:${localPort} for ${targetName}`);
 
             // Open our browser window
-            await open(`http://localhost:${localPort}`);
+            if(argv.openBrowser) {
+                await open(`http://localhost:${localPort}`);
+            }
 
             return 0;
         } else {

@@ -262,7 +262,7 @@ export class DigitalOceanKubeService {
      * @returns The environment name
      */
     private getHelmClusterEnvName(clusterName: string): string {
-        return `${clusterName}-Env`;
+        return `${clusterName}-env`;
     }
 
     /**

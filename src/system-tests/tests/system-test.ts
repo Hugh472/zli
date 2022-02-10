@@ -1,5 +1,5 @@
 import { envMap } from '../../cli-driver';
-import { DigitalOceanDistroImage, DigitalOceanSSMTarget, getDOImageName, getPackageManagerType, SsmTargetStatusPollError } from '../digital-ocean/digital-ocean-ssm-target.service.types';
+import { BzeroTargetStatusPollError, DigitalOceanBZeroTarget, DigitalOceanDistroImage, DigitalOceanSSMTarget, getDOImageName, getPackageManagerType, SsmTargetStatusPollError } from '../digital-ocean/digital-ocean-ssm-target.service.types';
 import { DigitalOceanSSMTargetService } from '../digital-ocean/digital-ocean-ssm-target-service';
 import { LoggerConfigService } from '../../services/logger/logger-config.service';
 import { Logger } from '../../services/logger/logger.service';
@@ -19,10 +19,12 @@ import { addRepo, install, MultiStringValue, SingleStringValue } from './utils/h
 import { checkAllSettledPromise, stripTrailingSlash } from './utils/utils';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
 import { NewApiKeyResponse } from '../../../webshell-common-ts/http/v2/api-key/responses/new-api-key.responses';
-import { SSMTestTarget, SSMTestTargetSelfRegistrationAutoDiscovery } from './system-test.types';
+import { SSMTestTargetSelfRegistrationAutoDiscovery, TestTarget, VTTestTarget } from './system-test.types';
 import { getAutodiscoveryScript } from '../../http-services/auto-discovery-script/auto-discovery-script.http-services';
 import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { vtSuite } from './suites/vt';
+import { KubeTestUserName } from './suites/kube';
 
 // Uses config name from ZLI_CONFIG_NAME environment variable (defaults to prod
 // if unset) This can be run against dev/stage/prod when running system tests
@@ -33,7 +35,7 @@ const configName = envMap.configName;
 
 // Setup services used for running system tests
 const loggerConfigService = new LoggerConfigService(configName, envMap.configDir);
-const logger = new Logger(loggerConfigService, false, false, true);
+export const logger = new Logger(loggerConfigService, false, false, true);
 export const configService = new ConfigService(configName, logger, envMap.configDir);
 const oauthService = new OAuthService(configService, logger);
 const doApiKey = process.env.DO_API_KEY;
@@ -43,12 +45,18 @@ if (!doApiKey) {
 const doService = new DigitalOceanSSMTargetService(doApiKey, configService, logger);
 const doKubeService = new DigitalOceanKubeService(doApiKey, configService, logger);
 
-const agentVersion = process.env.KUBE_AGENT_VERSION;
-if(! agentVersion) {
-    throw new Error('Must set the KUBE_AGENT_VERSION environment variable');
+const bzeroAgentVersion = process.env.BZERO_AGENT_VERSION;
+if(! bzeroAgentVersion) {
+    throw new Error('Must set the BZERO_AGENT_VERSION environment variable');
+}
+
+const bctlQuickstartVersion = process.env.BCTL_QUICKSTART_VERSION;
+if (! bctlQuickstartVersion) {
+    throw new Error('Must set the BCTL_QUICKSTART_VERSION environment variable');
 }
 
 const KUBE_ENABLED = process.env.KUBE_ENABLED ? (process.env.KUBE_ENABLED === 'true') : true;
+const VT_ENABLED = process.env.VT_ENABLED ? (process.env.VT_ENABLED === 'true') : true;
 const SSM_ENABLED =  process.env.SSM_ENABLED ? (process.env.SSM_ENABLED === 'true') : true;
 
 // Create a new API Key to be used for cluster registration
@@ -58,14 +66,14 @@ let systemTestRESTApiKey: NewApiKeyResponse;
 let systemTestRegistrationApiKey: NewApiKeyResponse;
 
 // Global mapping of system test targets
-export const testTargets = new Map<SSMTestTarget, DigitalOceanSSMTarget>();
+export const testTargets = new Map<TestTarget, DigitalOceanSSMTarget | DigitalOceanBZeroTarget >();
 
 const defaultAwsRegion = 'us-east-1';
 const defaultDigitalOceanRegion = convertAwsRegionToDigitalOceanRegion(defaultAwsRegion);
 
 // Different types of SSM test targets to create. Each object corresponds to a
 // new droplet.
-export const ssmTestTargetsToRun: SSMTestTarget[] = [
+export const ssmTestTargetsToRun: TestTarget[] = [
     // old autodiscovery script (all-in-bash)
     { installType: 'ad', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
     // { type: 'autodiscovery', dropletImage: DigitalOceanDistroImage.CentOS8 },
@@ -76,8 +84,27 @@ export const ssmTestTargetsToRun: SSMTestTarget[] = [
     { installType: 'pm', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
 ];
 
+// Different types of vt targets to create for each type of operating system
+export const vtTestTargetsToRun: TestTarget[] = [
+    { installType: 'pm-vt', dropletImage: DigitalOceanDistroImage.BzeroVTAL2TestImage, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion},
+    { installType: 'pm-vt', dropletImage: DigitalOceanDistroImage.BzeroVTUbuntuTestImage, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion}
+];
+
 // Add extra targets to test config based on EXTRA_REGIONS env var
 initRegionalSSMTargetsTestConfig();
+
+export let allTargets: TestTarget[] = [];
+if(SSM_ENABLED) {
+    allTargets = allTargets.concat(ssmTestTargetsToRun);
+} else {
+    logger.info(`Skipping adding ssm targets because SSM_ENABLED is false`);
+}
+
+if(VT_ENABLED) {
+    allTargets = allTargets.concat(vtTestTargetsToRun);
+} else {
+    logger.info(`Skipping adding vt targets because SSM_ENABLED is false`);
+}
 
 // Global mapping of Kubernetes cluster targets
 export const testClusters = new Map<DigitalOceanKubernetesClusterVersion, RegisteredDigitalOceanKubernetesCluster>();
@@ -170,12 +197,13 @@ async function createDOTestClusters() {
         const helmVariables: { [key: string]: SingleStringValue | MultiStringValue } = {
             // helm chart expects the service to not cannot contain a
             // trailing slash and our config service includes the slash
+            'image.tag' : { value: bctlQuickstartVersion, type: 'single'},
             'serviceUrl': { value: stripTrailingSlash(configService.serviceUrl()), type: 'single' },
-            'image.agentTag': { value: agentVersion, type: 'single'},
+            'image.agentTag': { value: bzeroAgentVersion, type: 'single'},
             'apiKey': { value: systemTestRESTApiKey.secret, type: 'single' },
             'clusterName': { value: cluster.name, type: 'single' },
             'users': { value: [configService.me().email], type: 'multi' },
-            'targetUsers': { value: ['foo'], type: 'multi' },
+            'targetUsers': { value: [KubeTestUserName], type: 'multi' },
             'targetGroups': { value: ['system:masters'], type: 'multi' },
             'namespace': { value: 'bastionzero', type: 'single' },
             'agentResources.limits.cpu': { value: '500m', type: 'single' },
@@ -227,7 +255,7 @@ async function createDOTestClusters() {
     await checkAllSettledPromise(allClusterCreationResults);
 }
 
-function getPackageManagerRegistrationScript(testTarget: SSMTestTargetSelfRegistrationAutoDiscovery, envId: string, registrationApiKeySecret: string): string {
+function getPackageManagerRegistrationScript(packageName: string, testTarget: SSMTestTargetSelfRegistrationAutoDiscovery | VTTestTarget, envId: string, registrationApiKeySecret: string): string {
     let installBlock : string;
     const packageManager = getPackageManagerType(testTarget.dropletImage);
     // Install agent using the beta repo
@@ -238,13 +266,13 @@ sudo apt update -y
 sudo apt install -y software-properties-common
 sudo add-apt-repository 'deb https://download-apt.bastionzero.com/beta/apt-repo stable main'
 sudo apt update -y
-sudo apt install bzero-ssm-agent -y
+sudo apt install ${packageName} -y
 `;
         break;
     case 'yum':
         installBlock = String.raw`sudo yum-config-manager --add-repo https://download-yum.bastionzero.com/bastionzero-beta.repo
 sudo yum update -y
-sudo yum install bzero-ssm-agent -y 
+sudo yum install ${packageName} -y
 `;
         break;
     default:
@@ -253,22 +281,59 @@ sudo yum install bzero-ssm-agent -y
         return _exhaustiveCheck;
     }
 
+    let registerCommand: string;
+    let initBlock: string = '';
+    switch(testTarget.installType) {
+    case 'pm':
+        registerCommand = `${packageName} --serviceUrl ${configService.serviceUrl()} -registrationKey "${registrationApiKeySecret}" -envID "${envId}"`;
+        break;
+    case 'pm-vt':
+        registerCommand = `${packageName} --serviceUrl ${configService.serviceUrl()} -registrationKey "${registrationApiKeySecret}" -environmentId "${envId}"`;
+
+        // Initialization for virtual targets
+        // Common code start python server
+        initBlock = String.raw`nohup python3 -m http.server > python-server.out 2> python-server.err < /dev/null &
+`;
+
+        switch (packageManager) {
+        // Start python web server and postgres database
+        case 'apt':
+            initBlock += String.raw`sudo sed 's/peer/trust/' /etc/postgresql/12/main/pg_hba.conf -i
+sudo sed 's/md5/trust/' /etc/postgresql/12/main/pg_hba.conf -i
+sudo systemctl restart postgresql
+`;
+            break;
+        case 'yum':
+            initBlock += String.raw`sudo /usr/pgsql-12/bin/postgresql-12-setup initdb
+sudo sed 's/peer/trust/' /var/lib/pgsql/12/data/pg_hba.conf -i
+sudo sed 's/ident/trust/' /var/lib/pgsql/12/data/pg_hba.conf -i
+sudo systemctl restart postgresql-12
+`;
+            break;
+        default:
+            // Compile-time exhaustive check
+            const _exhaustiveCheck: never = packageManager;
+            return _exhaustiveCheck;
+        }
+
+        break;
+    default:
+        // Compile-time exhaustive check
+        const _exhaustiveCheck: never = testTarget;
+        return _exhaustiveCheck;
+    }
+
     return String.raw`#!/bin/bash
 set -Ee
 ${installBlock}
-bzero-ssm-agent --serviceUrl ${configService.serviceUrl()} -registrationKey "${registrationApiKeySecret}" -envID "${envId}"
+${initBlock}
+${registerCommand}
 `;
 }
 
 async function createDOTestTargets() {
-    // Skip creating ssm do targets
-    if(! SSM_ENABLED) {
-        logger.info(`Skipping ssm targets creation because SSM_ENABLED is false`);
-        return;
-    }
-
-    // Create a droplet for various types of SSM test targets
-    const createDroplet = async (testTarget: SSMTestTarget) => {
+    // Create a droplet for various types of test targets
+    const createDroplet = async (testTarget: TestTarget) => {
         const targetName = `st-${systemTestUniqueId}-${getDOImageName(testTarget.dropletImage)}-${testTarget.installType}-${randomAlphaNumericString(15)}`;
 
         // Get default env
@@ -284,7 +349,10 @@ async function createDOTestTargets() {
             autoDiscoveryScript = await getAutodiscoveryScript(logger, configService, envId, ScriptTargetNameOption.DigitalOceanMetadata, 'staging');
             break;
         case 'pm':
-            autoDiscoveryScript = getPackageManagerRegistrationScript(testTarget, envId, systemTestRegistrationApiKey.secret);
+            autoDiscoveryScript = getPackageManagerRegistrationScript('bzero-ssm-agent', testTarget, envId, systemTestRegistrationApiKey.secret);
+            break;
+        case 'pm-vt':
+            autoDiscoveryScript = getPackageManagerRegistrationScript('bzero-beta', testTarget, envId, systemTestRegistrationApiKey.secret);
             break;
         default:
             // Compile-time exhaustive check
@@ -304,42 +372,80 @@ async function createDOTestTargets() {
         }, autoDiscoveryScript);
 
         // Add the digital ocean droplet to test targets mapping so that we can clean it up in afterAll
-        const digitalOceanSsmTarget: DigitalOceanSSMTarget = { droplet: droplet, ssmTarget: undefined };
-        testTargets.set(testTarget, digitalOceanSsmTarget);
+        if(testTarget.installType === 'pm' || testTarget.installType == 'ad') {
+            const digitalOceanSsmTarget: DigitalOceanSSMTarget = { type: 'ssm', droplet: droplet, ssmTarget: undefined};
+            testTargets.set(testTarget, digitalOceanSsmTarget);
 
-        try {
-            const ssmTarget = await doService.pollSsmTargetOnline(targetName);
-            // Set the ssmTarget associated with this digital ocean droplet
-            digitalOceanSsmTarget.ssmTarget = ssmTarget;
-        } catch (err) {
-            // Catch special exception so that we can save ssmTarget reference
-            // for cleanup.
-            //
-            // SsmTargetStatusPollError is thrown if target reaches 'Error'
-            // state, or if target is known but does not come online within the
-            // specified timeout.
-            if (err instanceof SsmTargetStatusPollError) {
-                digitalOceanSsmTarget.ssmTarget = err.ssmTarget;
+            try {
+                const ssmTarget = await doService.pollSsmTargetOnline(targetName);
+                // Set the ssmTarget associated with this digital ocean droplet
+                digitalOceanSsmTarget.ssmTarget = ssmTarget;
+            } catch (err) {
+                // Catch special exception so that we can save ssmTarget reference
+                // for cleanup.
+                //
+                // SsmTargetStatusPollError is thrown if target reaches 'Error'
+                // state, or if target is known but does not come online within the
+                // specified timeout.
+                if (err instanceof SsmTargetStatusPollError) {
+                    digitalOceanSsmTarget.ssmTarget = err.ssmTarget;
+                }
+
+                // Still throw the error because something failed. No other system
+                // tests should continue if one target fails to become Online.
+                throw err;
             }
 
-            // Still throw the error because something failed. No other system
-            // tests should continue if one target fails to become Online.
-            throw err;
-        }
+            console.log(
+                `Successfully created DigitalOceanTarget:
+                \tAWS region: ${testTarget.awsRegion}
+                \tDigitalOcean region: ${testTarget.doRegion}
+                \tInstall Type: ${testTarget.installType}
+                \tDroplet ID: ${digitalOceanSsmTarget.droplet.id}
+                \tDroplet Image: ${getDOImageName(testTarget.dropletImage)}
+                \tSSM Target ID: ${digitalOceanSsmTarget.ssmTarget.id}`
+            );
 
-        console.log(
-            `Successfully created DigitalOceanSSMTarget:
-            \tAWS region: ${testTarget.awsRegion}
-            \tDigitalOcean region: ${testTarget.doRegion}
-            \tInstall Type: ${testTarget.installType}
-            \tDroplet ID: ${digitalOceanSsmTarget.droplet.id}
-            \tDroplet Image: ${getDOImageName(testTarget.dropletImage)}
-            \tTarget ID: ${digitalOceanSsmTarget.ssmTarget.id}`
-        );
+        } else if(testTarget.installType === 'pm-vt') {
+            const digitalOceanBZeroTarget: DigitalOceanBZeroTarget = {  type: 'bzero', droplet: droplet, bzeroTarget: undefined};
+            testTargets.set(testTarget, digitalOceanBZeroTarget);
+
+            try {
+                const bzeroTarget = await doService.pollBZeroTargetOnline(targetName);
+
+                // Set the bzeroTarget associated with this digital ocean droplet
+                digitalOceanBZeroTarget.bzeroTarget = bzeroTarget;
+            } catch (err) {
+                // Catch special exception so that we can save ssmTarget reference
+                // for cleanup.
+                //
+                // SsmTargetStatusPollError is thrown if target reaches 'Error'
+                // state, or if target is known but does not come online within the
+                // specified timeout.
+                if (err instanceof BzeroTargetStatusPollError) {
+                    digitalOceanBZeroTarget.bzeroTarget = err.bzeroTarget;
+                }
+
+                // Still throw the error because something failed. No other system
+                // tests should continue if one target fails to become Online.
+                throw err;
+            }
+
+            console.log(
+                `Successfully created DigitalOceanSSMTarget:
+                \tAWS region: ${testTarget.awsRegion}
+                \tDigitalOcean region: ${testTarget.doRegion}
+                \tInstall Type: ${testTarget.installType}
+                \tDroplet ID: ${digitalOceanBZeroTarget.droplet.id}
+                \tDroplet Name: ${digitalOceanBZeroTarget.droplet.name}
+                \tDroplet Image: ${getDOImageName(testTarget.dropletImage)}
+                \tBZero Target ID: ${digitalOceanBZeroTarget.bzeroTarget.id}`
+            );
+        }
     };
 
     // Issue create droplet requests concurrently
-    const allDropletCreationResults = Promise.allSettled(ssmTestTargetsToRun.map(img => createDroplet(img)));
+    const allDropletCreationResults = Promise.allSettled(allTargets.map(img => createDroplet(img)));
     await checkAllSettledPromise(allDropletCreationResults);
 }
 
@@ -353,7 +459,7 @@ async function cleanupDOTestClusters() {
 
 async function cleanupDOTestTargets() {
     const allTargetsCleanup = Promise.allSettled(Array.from(testTargets.values()).map((doTarget) => {
-        return doService.deleteDigitalOceanSSMTarget(doTarget);
+        return doService.deleteDigitalOceanTarget(doTarget);
     }));
 
     await checkAllSettledPromise(allTargetsCleanup);
@@ -413,4 +519,8 @@ if(SSM_ENABLED) {
 
 if(KUBE_ENABLED) {
     kubeSuite();
+}
+
+if(VT_ENABLED) {
+    vtSuite();
 }
