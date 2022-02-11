@@ -14,9 +14,7 @@ const readLastLines = require('read-last-lines');
 const randtoken = require('rand-token');
 const findPort = require('find-open-port');
 
-export const WINDOWS_DAEMON_PATH : string = 'bzero/bctl/daemon/daemon-windows';
-export const LINUX_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-linux';
-export const MACOS_DAEMON_PATH   : string = 'bzero/bctl/daemon/daemon-macos';
+export const DAEMON_PATH : string = 'bzero/bctl/daemon/daemon';
 
 const WAIT_UNTIL_USED_ON_HOST_TIMEOUT = 1000 * 30;
 const WAIT_UTIL_USED_ON_HOST_RETRY_TIME = 100;
@@ -199,16 +197,12 @@ export async function copyExecutableToLocalDir(logger: Logger, configPath: strin
     let daemonExecPath = undefined;
     let finalDaemonPath = undefined;
     if (process.platform === 'win32') {
-        daemonExecPath = path.join(prefix, WINDOWS_DAEMON_PATH);
+        daemonExecPath = path.join(prefix, DAEMON_PATH);
 
-        finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe');
+        finalDaemonPath = path.join(configFileDir, 'daemon.exe');
     }
     else if (process.platform === 'linux' || process.platform === 'darwin') {
-        if (process.platform === 'linux') {
-            daemonExecPath = path.join(prefix, LINUX_DAEMON_PATH);
-        } else {
-            daemonExecPath = path.join(prefix, MACOS_DAEMON_PATH);
-        }
+        daemonExecPath = path.join(prefix, DAEMON_PATH);
 
         finalDaemonPath = path.join(configFileDir, 'daemon');
     } else {

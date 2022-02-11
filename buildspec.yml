@@ -40,7 +40,7 @@ phases:
       - echo "Running eslint linter"
       - npm run lint
       - echo "Building zli"
-      - npm run build
+      - npm run release-prod
       - echo "Checking VERSION is incremented"
       - MASTER_VERSION=$(git show master:package.json | jq -r .version)
       - BRANCH_VERSION=$(cat package.json| jq -r .version)
