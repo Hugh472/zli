@@ -469,11 +469,11 @@ function initRegionalSSMTargetsTestConfig() {
     const enabledExtraRegionsEnvVar = process.env.EXTRA_REGIONS;
     const enabledExtraRegions = [];
 
-    if (!enabledExtraRegionsEnvVar) {
+    if (enabledExtraRegionsEnvVar === undefined) {
         // If not set, add Tokyo as a default extra region
         enabledExtraRegions.push('ap-northeast-1');
     } else {
-        const enabledExtraRegionsEnvVarSplitAwsRegions = enabledExtraRegionsEnvVar.split(',');
+        const enabledExtraRegionsEnvVarSplitAwsRegions = enabledExtraRegionsEnvVar.split(',').filter(r => r != "");
         enabledExtraRegions.push(...enabledExtraRegionsEnvVarSplitAwsRegions);
     }
 
