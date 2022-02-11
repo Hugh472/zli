@@ -16,7 +16,7 @@ const findPort = require('find-open-port');
 
 export const DAEMON_PATH : string = 'bzero/bctl/daemon/daemon';
 
-const WAIT_UNTIL_USED_ON_HOST_TIMEOUT = 1000 * 30;
+const WAIT_UNTIL_USED_ON_HOST_TIMEOUT = 1000 * 60;
 const WAIT_UTIL_USED_ON_HOST_RETRY_TIME = 100;
 
 // Allow errors on early daemon startup to bubble up to the user
