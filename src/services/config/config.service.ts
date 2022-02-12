@@ -4,6 +4,8 @@ import { Logger } from '../logger/logger.service';
 import { KeySplittingConfigSchema, ConfigInterface, getDefaultKeysplittingConfig } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
 import { Observable, Subject } from 'rxjs';
+import { DbConfig, getDefaultDbConfig } from '../db/db.service';
+import { WebConfig, getDefaultWebConfig } from '../web/web.service';
 import { TokenService } from '../v1/token/token.service';
 import { UserSummary } from '../v1/user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../v1/kube/kube.service';
@@ -26,6 +28,8 @@ type BastionZeroConfigSchema = {
     sshKeyPath: string
     keySplitting: KeySplittingConfigSchema,
     kubeConfig: KubeConfig
+    dbConfig: DbConfig,
+    webConfig: WebConfig
 }
 
 export class ConfigService implements ConfigInterface {
@@ -68,7 +72,9 @@ export class ConfigService implements ConfigInterface {
                 whoami: undefined,
                 sshKeyPath: undefined,
                 keySplitting: getDefaultKeysplittingConfig(),
-                kubeConfig: getDefaultKubeConfig()
+                kubeConfig: getDefaultKubeConfig(),
+                dbConfig: getDefaultDbConfig(),
+                webConfig: getDefaultWebConfig()
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete
@@ -247,12 +253,28 @@ export class ConfigService implements ConfigInterface {
         return this.config.get('kubeConfig');
     }
 
+    public getDbConfig() {
+        return this.config.get('dbConfig');
+    }
+
+    public getWebConfig() {
+        return this.config.get('webConfig');
+    }
+
     public getBastionUrl() {
         return this.config.get('serviceUrl');
     }
 
     public setKubeConfig(kubeConfig: KubeConfig) {
         this.config.set('kubeConfig', kubeConfig);
+    }
+
+    public setDbConfig(dbConfig: DbConfig) {
+        this.config.set('dbConfig', dbConfig);
+    }
+
+    public setWebConfig(webConfig: WebConfig) {
+        this.config.set('webConfig', webConfig);
     }
 
     private getAppName(configName: string) {

@@ -20,7 +20,7 @@ export async function deleteTargetUserHandler(targetUserName: string, policyName
     }
 
     switch (policy.type) {
-    case PolicyType.KubernetesTunnel:
+    case PolicyType.Kubernetes:
         // Now check if the targetUser exists
         const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
         if (kubernetesPolicyContext.clusterUsers[targetUserName] === undefined) {

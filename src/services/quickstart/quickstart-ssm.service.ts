@@ -1,7 +1,6 @@
 import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, RegistrableSSHHost, RegisteredSSHHost } from './quickstart-ssm.service.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
-import { TargetStatus } from '../common.types';
 import { readFile } from '../../utils/utils';
 
 import SSHConnection from 'ssh2-promise/lib/sshConnection';
@@ -26,6 +25,7 @@ import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/
 import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
 import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 
 export class QuickstartSsmService {
     constructor(

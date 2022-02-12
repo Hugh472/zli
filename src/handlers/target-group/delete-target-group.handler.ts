@@ -19,7 +19,7 @@ export async function deleteTargetGroupHandler(targetGroupName: string, policyNa
     }
 
     switch (policy.type) {
-    case PolicyType.KubernetesTunnel:
+    case PolicyType.Kubernetes:
         // Now check if the group exists
         const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
         if (kubernetesPolicyContext.clusterGroups[targetGroupName] === undefined) {

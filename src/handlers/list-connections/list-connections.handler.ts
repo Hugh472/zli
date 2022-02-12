@@ -3,12 +3,12 @@ import { Logger } from '../../services/logger/logger.service';
 import { getTableOfConnections } from '../../utils/utils';
 import { cleanExit } from '../clean-exit.handler';
 import { getCliSpace } from '../../utils/shell-utils';
-import { TargetSummary } from '../../services/common.types';
-import yargs from 'yargs';
+import { TargetSummary } from '../../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { listConnectionsArgs } from './list-connections.command-builder';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { ConnectionSummary } from '../../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { ConnectionState } from '../../../webshell-common-ts/http/v2/connection/types/connection-state.types';
+import yargs from 'yargs';
 
 export async function listConnectionsHandler(
     argv: yargs.Arguments<listConnectionsArgs>,

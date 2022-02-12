@@ -27,7 +27,7 @@ export async function deleteGroupFromPolicyHandler(groupName: string, policyName
         await cleanExit(1, logger);
     }
 
-    if (policy.type !== PolicyType.KubernetesTunnel && policy.type !== PolicyType.TargetConnect){
+    if (policy.type !== PolicyType.Kubernetes && policy.type !== PolicyType.TargetConnect){
         logger.error(`Deleting group from policy ${policyName} failed. Deleting groups from ${policy.type} policies is not currently supported.`);
         await cleanExit(1, logger);
     }

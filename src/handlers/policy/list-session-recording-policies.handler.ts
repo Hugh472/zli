@@ -1,6 +1,5 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { cleanExit } from '../clean-exit.handler';
 import yargs from 'yargs';
 import { policyArgs } from './policy.command-builder';
 import { ApiKeyHttpService } from '../../http-services/api-key/api-key.http-services';
@@ -51,12 +50,12 @@ export async function listSessionRecordingPoliciesHandler(
     } else {
         if (sessionRecordingPolicies.length === 0){
             logger.info('There are no available Session Recording policies');
-            await cleanExit(0, logger);
+        } else {
+            // regular table output
+            const tableString = getTableOfSessionRecordingPolicies(sessionRecordingPolicies, userMap, apiKeyMap, groupMap);
+            logger.warn('Session Recording Policies:\n');
+            console.log(tableString);
+            console.log('\n\n');
         }
-        // regular table output
-        const tableString = getTableOfSessionRecordingPolicies(sessionRecordingPolicies, userMap, apiKeyMap, groupMap);
-        logger.warn('Session Recording Policies:\n');
-        console.log(tableString);
-        console.log('\n\n');
     }
 }

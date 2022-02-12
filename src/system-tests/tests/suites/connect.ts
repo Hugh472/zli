@@ -6,6 +6,7 @@ import { ssmTestTargetsToRun, testTargets } from '../system-test';
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
 import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
+import { DigitalOceanSSMTarget } from '../../digital-ocean/digital-ocean-ssm-target.service.types';
 
 export const connectSuite = () => {
     describe('connect suite', () => {
@@ -30,7 +31,7 @@ export const connectSuite = () => {
         });
 
         test.each(ssmTestTargetsToRun)('zli connect %p', async (testTarget) => {
-            const doTarget = testTargets.get(testTarget);
+            const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
 
             // Spy on result Bastion gives for shell auth details. This spy is
             // used at the end of the test to assert the correct regional

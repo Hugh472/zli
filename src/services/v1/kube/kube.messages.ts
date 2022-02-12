@@ -3,7 +3,7 @@ export interface GetKubeUnregisteredAgentYamlResponse {
 }
 
 export interface GetKubeUnregisteredAgentYamlRequest {
-    clusterName: string;
+    name: string;
     labels: { [index: string ]: string };
     namespace: string;
     environmentId: string;
