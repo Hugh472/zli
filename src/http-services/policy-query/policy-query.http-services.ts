@@ -1,11 +1,11 @@
 import { GetKubePoliciesRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/get-kube-policies.requests';
 import { KubernetesRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/kubernetes.requests';
-import { TargetPolicyQueryRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/target-policy-query.requests';
+import { TargetPolicyQueryBatchRequest, TargetPolicyQueryRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/target-policy-query.requests';
 import { GetKubernetesPoliciesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/get-kube-policies.responses';
 import { KubernetesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/kubernetes.responses';
 import { ProxyResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/proxy.response';
 import { ProxyRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/proxy.requests';
-import { TargetPolicyQueryResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/target-policy-query.responses';
+import { TargetPolicyQueryBatchResponse, TargetPolicyQueryResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/target-policy-query.responses';
 import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
 import { Verb } from '../../../webshell-common-ts/http/v2/policy/types/verb.types';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
@@ -30,6 +30,11 @@ export class PolicyQueryHttpService extends HttpService
         };
 
         return this.Post('target-connect', request);
+    }
+
+    public GetTargetPolicyBatch(request: TargetPolicyQueryBatchRequest): Promise<TargetPolicyQueryBatchResponse>
+    {
+        return this.Post('target-connect/batch', request)
     }
 
     public CheckKubernetes(

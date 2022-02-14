@@ -88,10 +88,24 @@ export async function listTargets(
     let allTargets = [...ssmTargets.map(ssmTargetToTargetSummary), ...dynamicConfigs.map(dynamicConfigToTargetSummary)];
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
 
-    for (const t of allTargets) {
-        const users = (await policyQueryHttpService.GetTargetPolicy(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
-        t.targetUsers = users.map(u => u.userName);
-    }
+    // for (const t of allTargets) {
+    //     const users = (await policyQueryHttpService.GetTargetPolicy(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
+    //     t.targetUsers = users.map(u => u.userName);
+    // }
+
+    const batchedTargetUsers = (await policyQueryHttpService.GetTargetPolicyBatch({
+        requests: allTargets.map(t =>
+        ({
+            targetId: t.id,
+            targetType: t.type,
+            verb: { type: VerbType.Shell },
+            targetUser: undefined
+        }))
+    })).responses
+
+    allTargets.forEach((target, index) => {
+        target.targetUsers = batchedTargetUsers[index].allowedTargetUsers.map(u => u.userName);
+    });
 
     // Concat all the different types of targets we have
     allTargets = allTargets.concat(clusterTargets);
