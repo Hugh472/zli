@@ -20,7 +20,7 @@ export async function listTargetsHandler(
     logger: Logger,
     argv: yargs.Arguments<listTargetsArgs>
 ) {
-    let allTargets = await listTargets(configService, logger);
+    let allTargets = await listTargets(configService, logger, argv.detail);
 
     const envHttpService = new EnvironmentHttpService(configService, logger);
     const envs = await envHttpService.ListEnvironments();

@@ -894,9 +894,9 @@ export function randomAlphaNumericString(length: number) : string {
 
 
 export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
-    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
+    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: [], region: ssm.region};
 }
 
 export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
-    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A'};
+    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: [], region: 'N/A'};
 }

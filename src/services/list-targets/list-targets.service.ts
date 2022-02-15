@@ -14,7 +14,8 @@ import { DbTargetService } from '../../http-services/db-target/db-target.http-se
 
 export async function listTargets(
     configService: ConfigService,
-    logger: Logger
+    logger: Logger,
+    loadDetailData: boolean
 ) : Promise<TargetSummary[]>
 {
     const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
@@ -88,9 +89,14 @@ export async function listTargets(
     let allTargets = [...ssmTargets.map(ssmTargetToTargetSummary), ...dynamicConfigs.map(dynamicConfigToTargetSummary)];
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
 
-    for (const t of allTargets) {
-        const users = (await policyQueryHttpService.GetTargetPolicy(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
-        t.targetUsers = users.map(u => u.userName);
+
+    // Temporary fix to only query for allowed target users when detail flag is
+    // passed because this is linear is size of targets
+    if(loadDetailData) {
+        for (const t of allTargets) {
+            const users = (await policyQueryHttpService.GetTargetPolicy(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
+            t.targetUsers = users.map(u => u.userName);
+        }
     }
 
     // Concat all the different types of targets we have
