@@ -89,9 +89,9 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     };
 }
 
-export function mixpanelTrackingMiddleware(configService: ConfigService, argv: any) {
+export function mixpanelTrackingMiddleware(configService: ConfigService, argv: any, logger: Logger) {
     // Mixpanel tracking
-    const mixpanelService = new MixpanelService(configService);
+    const mixpanelService = new MixpanelService(configService, logger);
 
     // Only captures args, not options at the moment. Capturing configName flag
     // does not matter as that is handled by which mixpanel token is used

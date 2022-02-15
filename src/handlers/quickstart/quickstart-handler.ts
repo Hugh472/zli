@@ -214,7 +214,7 @@ export async function quickstartHandler(
         // Fetch the mixpanel token in case it is not set (first time user)
         await configService.fetchMixpanelToken();
     }
-    const mixpanelService = new MixpanelService(configService);
+    const mixpanelService = new MixpanelService(configService, logger);
     mixpanelService.TrackCliCommand(version, 'quickstart', []);
 
     // Parse SSH config file

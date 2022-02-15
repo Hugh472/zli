@@ -3,6 +3,7 @@ import { Dictionary } from 'lodash';
 import mixpanel, { Mixpanel } from 'mixpanel';
 import { ConfigService } from '../config/config.service';
 import { TrackNewConnection } from './mixpanel.service.types';
+import { Logger } from '../logger/logger.service';
 const ua = require('universal-analytics');
 
 export class MixpanelService
@@ -12,7 +13,7 @@ export class MixpanelService
     private sessionId: string;
     private visitor: any;
 
-    constructor(private configService: ConfigService)
+    constructor(private configService: ConfigService, private logger: Logger)
     {
         this.mixpanelClient = mixpanel.init(this.configService.mixpanelToken(), {
             protocol: 'https',
@@ -51,9 +52,11 @@ export class MixpanelService
 
         this.visitor.event("zli-commandtest", "generate kubeYaml test", (err: any) => {
             if (err) {
-                console.log(err);
+                // console.log(err);
+                this.logger.debug(err);
             } else {
-                console.log("Successfully tracked event");
+                // console.log("Successfully tracked event");
+                this.logger.debug("Succesfully tracked event")
             }
         });
     }
