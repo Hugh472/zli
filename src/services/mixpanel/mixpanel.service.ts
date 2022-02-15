@@ -51,13 +51,14 @@ export class MixpanelService
     }
 
     public TrackCliCommand(version: string, command: string, args: string[]) {
-        this.visitor.event("zli-command", args.toString(), (err: any) => {
+        // this.visitor.event("zli-command", args.toString(), (err: any) => {
+            this.visitor.event("zli-command", command, (err: any) => {
             if (err) {
                 // console.log(err);
-                this.logger.debug(err);
+                this.logger.error(`Error sending GA event: ${err}`);
             } else {
                 // console.log("Successfully tracked event");
-                this.logger.debug("Succesfully tracked event")
+                this.logger.debug('Succesfully tracked event')
             }
         });
 
