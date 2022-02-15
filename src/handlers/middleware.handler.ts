@@ -5,7 +5,7 @@ import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { TargetSummary } from '../services/common.types';
-import { MixpanelService } from '../services/mixpanel/mixpanel.service';
+import { GAService } from '../services/mixpanel/mixpanel.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -91,7 +91,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
 export function mixpanelTrackingMiddleware(configService: ConfigService, argv: any, logger: Logger) {
     // Mixpanel tracking
-    const mixpanelService = new MixpanelService(configService, logger);
+    const mixpanelService = new GAService(configService, logger);
 
     // Only captures args, not options at the moment. Capturing configName flag
     // does not matter as that is handled by which mixpanel token is used

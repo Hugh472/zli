@@ -6,7 +6,7 @@ import { targetStringExample } from '../../utils/utils';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
-import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
+import { GAService } from '../../services/mixpanel/mixpanel.service';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
@@ -16,7 +16,7 @@ import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-
 export async function connectHandler(
     configService: ConfigService,
     logger: Logger,
-    mixpanelService: MixpanelService,
+    mixpanelService: GAService,
     parsedTarget: ParsedTargetString
 ) {
     if(! parsedTarget) {

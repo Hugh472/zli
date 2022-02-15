@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
+import { GAService } from '../../services/mixpanel/mixpanel.service';
 import { readFile } from '../../utils/utils';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';
@@ -214,7 +214,7 @@ export async function quickstartHandler(
         // Fetch the mixpanel token in case it is not set (first time user)
         await configService.fetchMixpanelToken();
     }
-    const mixpanelService = new MixpanelService(configService, logger);
+    const mixpanelService = new GAService(configService, logger);
     mixpanelService.TrackCliCommand(version, 'quickstart', []);
 
     // Parse SSH config file

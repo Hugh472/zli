@@ -12,7 +12,7 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { TargetSummary, TargetStatus } from './services/common.types';
-import { MixpanelService } from './services/mixpanel/mixpanel.service';
+import { GAService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/v1/policy/policy.types';
 
 
@@ -103,7 +103,7 @@ export class CliDriver
     private loggerConfigService: LoggerConfigService;
     private logger: Logger;
 
-    private mixpanelService: MixpanelService;
+    private mixpanelService: GAService;
 
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
