@@ -9,7 +9,8 @@ env:
   parameter-store:
     # The SSH RSA Key used by our machine user
     build_ssh_key: "/cwc/ssh/rolandfrank"
-    KUBE_AGENT_VERSION: /webshell/development/kube-agent-version
+    BZERO_AGENT_VERSION: /webshell/development/bzero-agent-version
+    BCTL_QUICKSTART_VERSION: /development/infra/bctl-quickstart-version
   secrets-manager:
     DO_API_KEY: development/infra/system-test-secret:DO_API_KEY
   git-credential-helper: yes
@@ -44,9 +45,14 @@ phases:
       - pip3 install -e /cwc-infra/Bzero-Common/. && pip3 install -e /cwc-infra/Bzero-QA/.
       # Install npm dependencies
       - apt-get update -y && apt-get install build-essential cmake -y
+      # We need to 1.16 and this isnt in yum
+      - wget https://dl.google.com/go/go1.16.4.linux-amd64.tar.gz
+      - tar -C /usr/local -xzf go1.16.4.linux-amd64.tar.gz
+      - echo 'export PATH=/usr/local/go/bin:$PATH' >>~/.bash_profile
+      - export PATH=/usr/local/go/bin:$PATH
       - npm ci
-      # Build golang daemon
-      - npm run release
+      # Build golang daemon, only run the linux release as we dont want to build all binaries
+      - npm run release-linux
       - # Install system-test dependencies
       - # Install helm (ref: https://helm.sh/docs/intro/install/#from-apt-debianubuntu)
       - curl https://baltocdn.com/helm/signing.asc | apt-key add -

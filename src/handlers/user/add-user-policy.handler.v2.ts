@@ -22,7 +22,7 @@ export async function addUserToPolicyHandler(userEmail: string, policyName: stri
 
     // Get the existing policy
     const policyHttpService = new PolicyHttpService(configService, logger);
-    const kubePolicies = await policyHttpService.ListKubeTunnelPolicies();
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
     const targetPolicies = await policyHttpService.ListTargetConnectPolicies();
 
     // Loop till we find the one we are looking for
@@ -51,7 +51,7 @@ export async function addUserToPolicyHandler(userEmail: string, policyName: stri
         // And finally update the policy
         kubePolicy.subjects.push(subjectToAdd);
 
-        await policyHttpService.EditKubeTunnelPolicy(kubePolicy);
+        await policyHttpService.EditKubernetesPolicy(kubePolicy);
     } else if (targetPolicy) {
         // If this user exists already
         if (targetPolicy.subjects.find(s => s.type === SubjectType.User && s.id === userSummary.id)) {

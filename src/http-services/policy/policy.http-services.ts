@@ -1,9 +1,10 @@
-import { KubeTunnelPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/requests/kube-tunnel-policy-create.requests';
-import { KubeTunnelPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/requests/kube-tunnel-policy-update.requests';
-import { KubeTunnelPolicySummary } from '../../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/types/kube-tunnel-policy-summary.types';
+import { KubernetesPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes/requests/kubernetes-policy-create.requests';
+import { KubernetesPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/kubernetes/requests/kubernetes-policy-update.requests';
+import { KubernetesPolicySummary } from '../../../webshell-common-ts/http/v2/policy/kubernetes/types/kubernetes-policy-summary.types';
 import { OrganizationControlsPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/organization-controls/requests/organization-controls-policy-create.requests';
 import { OrganizationControlsPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/organization-controls/requests/organization-controls-policy-update.requests';
 import { OrganizationControlsPolicySummary } from '../../../webshell-common-ts/http/v2/policy/organization-controls/types/organization-controls-policy-summary.types';
+import { ProxyPolicySummary } from '../../../webshell-common-ts/http/v2/policy/proxy/types/proxy-policy-summary.types';
 import { SessionRecordingPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/session-recording/requests/session-recording-create.requests';
 import { SessionRecordingPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/session-recording/requests/session-recording-policy-update.requests';
 import { SessionRecordingPolicySummary } from '../../../webshell-common-ts/http/v2/policy/session-recording/types/session-recording-policy-summary.types';
@@ -14,10 +15,11 @@ import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
 
-const KUBE: string = 'kubernetes-tunnel';
+const KUBE: string = 'kubernetes';
 const ORG: string = 'organization-controls';
 const SESSION: string = 'session-recording';
 const TARGET: string = 'target-connect';
+const PROXY: string = 'proxy';
 
 export class PolicyHttpService extends HttpService
 {
@@ -26,7 +28,7 @@ export class PolicyHttpService extends HttpService
         super(configService, 'api/v2/policies', logger);
     }
 
-    public ListKubeTunnelPolicies(subjects?: string, groups?: string): Promise<KubeTunnelPolicySummary[]>
+    public ListKubernetesPolicies(subjects?: string, groups?: string): Promise<KubernetesPolicySummary[]>
     {
         return this.Get(KUBE, {subjects: subjects, groups: groups });
     }
@@ -34,6 +36,11 @@ export class PolicyHttpService extends HttpService
     public ListOrganizationControlPolicies(): Promise<OrganizationControlsPolicySummary[]>
     {
         return this.Get(ORG);
+    }
+
+    public ListProxyPolicies(): Promise<ProxyPolicySummary[]>
+    {
+        return this.Get(PROXY);
     }
 
     public ListSessionRecordingPolicies(): Promise<SessionRecordingPolicySummary[]>
@@ -47,10 +54,10 @@ export class PolicyHttpService extends HttpService
     }
 
 
-    public EditKubeTunnelPolicy(
-        policy: KubeTunnelPolicySummary
-    ): Promise<KubeTunnelPolicySummary> {
-        const request: KubeTunnelPolicyUpdateRequest = {
+    public EditKubernetesPolicy(
+        policy: KubernetesPolicySummary
+    ): Promise<KubernetesPolicySummary> {
+        const request: KubernetesPolicyUpdateRequest = {
             name: policy.name,
             subjects: policy.subjects,
             groups: policy.groups,
@@ -106,7 +113,7 @@ export class PolicyHttpService extends HttpService
     }
 
 
-    public AddKubeTunnelPolicy(request: KubeTunnelPolicyCreateRequest): Promise<KubeTunnelPolicySummary> {
+    public AddKubernetesPolicy(request: KubernetesPolicyCreateRequest): Promise<KubernetesPolicySummary> {
         return this.Post(KUBE, request);
     }
 
@@ -122,7 +129,7 @@ export class PolicyHttpService extends HttpService
         return this.Post(TARGET, request);
     }
 
-    public DeleteKubeTunnelPolicy(policyId: string): Promise<void> {
+    public DeleteKubernetesPolicy(policyId: string): Promise<void> {
         return this.Delete(`${KUBE}/${policyId}`);
     }
 

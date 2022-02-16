@@ -13,14 +13,14 @@ export class KubeHttpService extends HttpService
     }
 
     public CreateNewAgentToken(
-        clusterName: string,
+        name: string,
         labels: { [index: string ]: string },
         namespace: string,
         environmentId: string,
     ): Promise<KubeGetAgentYamlResponse>
     {
         const request: AddNewAgentRequest = {
-            clusterName: clusterName,
+            name: name,
             labels: labels,
             namespace: namespace,
             environmentId: environmentId,

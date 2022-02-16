@@ -1,17 +1,22 @@
 import Table from 'cli-table3';
 import fs from 'fs';
 import { concat, filter, map, max } from 'lodash';
+import { WebTargetSummary } from '../../webshell-common-ts/http/v2/target/web/types/web-target-summary.types';
+import { DbTargetSummary } from '../../webshell-common-ts/http/v2/target/db/types/db-target-summary.types';
 import util from 'util';
 import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.types';
 import { cleanExit } from '../handlers/clean-exit.handler';
-import { ParsedTargetString, TargetStatus, TargetSummary } from '../services/common.types';
+import { ParsedTargetString } from '../services/common.types';
+import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { TargetBase } from '../../webshell-common-ts/http/v2/target/types/targetBase.types';
 import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { UserSummary } from '../../webshell-common-ts/http/v2/user/types/user-summary.types';
-import { KubeTunnelPolicySummary } from '../../webshell-common-ts/http/v2/policy/kubernetes-tunnel/types/kube-tunnel-policy-summary.types';
+import { KubernetesPolicySummary } from '../../webshell-common-ts/http/v2/policy/kubernetes/types/kubernetes-policy-summary.types';
 import { TargetConnectPolicySummary } from '../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
 import { OrganizationControlsPolicySummary } from '../../webshell-common-ts/http/v2/policy/organization-controls/types/organization-controls-policy-summary.types';
 import { SessionRecordingPolicySummary } from '../../webshell-common-ts/http/v2/policy/session-recording/types/session-recording-policy-summary.types';
@@ -21,6 +26,13 @@ import { GroupSummary } from '../../webshell-common-ts/http/v2/organization/type
 import { SsmTargetSummary } from '../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 import { DynamicAccessConfigSummary } from '../../webshell-common-ts/http/v2/target/dynamic/types/dynamic-access-config-summary.types';
 import { ApiKeySummary } from '../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
+import { WebConfig } from '../services/web/web.service';
+import { DbConfig } from '../services/db/db.service';
+import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { ProxyPolicySummary } from '../../webshell-common-ts/http/v2/policy/proxy/types/proxy-policy-summary.types';
+import { Group } from '../../webshell-common-ts/http/v2/policy/types/group.types';
+import { ConfigService } from '../services/config/config.service';
+import { listDbTargets, listWebTargets } from './list-utils';
 
 
 // case insensitive substring search, 'find targetString in searchString'
@@ -52,20 +64,22 @@ export function parseTargetType(targetType: string) : TargetType
 
 export function parsePolicyType(policyType: string) : PolicyType
 {
-    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetestunnel)$/i; // case insensitive check for policyType
+    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetes|proxy)$/i; // case insensitive check for policyType
 
     if(! policyTypePattern.test(policyType))
         return undefined;
 
     switch (policyType.toLowerCase()) {
-    case PolicyType.KubernetesTunnel.toLowerCase():
-        return PolicyType.KubernetesTunnel;
+    case PolicyType.Kubernetes.toLowerCase():
+        return PolicyType.Kubernetes;
     case PolicyType.OrganizationControls.toLowerCase():
         return PolicyType.OrganizationControls;
     case PolicyType.SessionRecording.toLowerCase():
         return PolicyType.SessionRecording;
     case PolicyType.TargetConnect.toLowerCase():
         return PolicyType.TargetConnect;
+    case PolicyType.Proxy.toLowerCase():
+        return PolicyType.Proxy;
     default:
         return undefined;
     }
@@ -156,15 +170,16 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
     // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
     const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16; // || 16 here means that when there are no targets default the length to 16
     const envNameLength = max(envs.map(e => e.name.length)) + 2 < 16 ? 16 : max(envs.map(e => e.name.length));
+    const targetTypeLength = max(targets.map(t => t.type.length)) + 2;
 
     const header: string[] = ['Type', 'Name', 'Environment'];
     const columnWidths = [];
     if (!showDetail) {
-        columnWidths.push(15);
+        columnWidths.push(targetTypeLength);
         columnWidths.push(targetNameLength > 44 ? 44 : targetNameLength);
         columnWidths.push(envNameLength > 47 ? 47 : envNameLength);
     } else {
-        columnWidths.push(15);
+        columnWidths.push(targetTypeLength);
         columnWidths.push(targetNameLength > 32 ? 32 : targetNameLength);
         columnWidths.push(envNameLength > 31 ? 31 : envNameLength);
     }
@@ -185,7 +200,12 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
     const table = new Table({ head: header, colWidths: columnWidths });
 
     targets.forEach(target => {
-        const row = [target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name];
+        let env = target.environmentId;
+        if (env != 'N/A') {
+            env = envs.filter(e => e.id == target.environmentId).pop().name;
+        }
+
+        const row = [target.type, target.name, env];
 
         if(showGuid) {
             row.push(target.id);
@@ -300,20 +320,58 @@ export function getTableOfKubeStatus(kubeConfig: KubeConfig) : string
     return table.toString();
 }
 
-export function getTableOfDescribeCluster(kubernetesTunnelPolicies: KubeTunnelPolicySummary[]) : string {
+export function getTableOfWebStatus(webConfig: WebConfig) : string
+{
+    const title: string = 'Web Daemon Running';
+    const values = [`Target Name: ${webConfig['name']}`, `Local URL: ${webConfig['localHost']}:${webConfig['localPort']}`];
+
+    const valuesLength = max(values.map(s => s.length).concat(16));
+
+    // If the title's length is bigger than the longer user use that as the row length (0 index is the longest header)
+    const rowLength = valuesLength > title.length ? valuesLength : title.length;
+    const columnWidths = [rowLength + 2];
+
+    const table = new Table({ head: [title], colWidths: columnWidths });
+    values.forEach( value => {
+        table.push([value]);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfDbStatus(dbConfig: DbConfig) : string
+{
+    const title: string = 'Db Daemon Running';
+    const values = [`Target Name: ${dbConfig['name']}`, `Local URL: ${dbConfig['localHost']}:${dbConfig['localPort']}`];
+
+    const valuesLength = max(values.map(s => s.length).concat(16));
+
+    // If the title's length is bigger than the longer user use that as the row length (0 index is the longest header)
+    const rowLength = valuesLength > title.length ? valuesLength : title.length;
+    const columnWidths = [rowLength + 2];
+
+    const table = new Table({ head: [title], colWidths: columnWidths });
+    values.forEach( value => {
+        table.push([value]);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfDescribeCluster(kubernetesPolicies: KubernetesPolicySummary[]) : string {
     const header: string[] = ['Policy', 'Target Users', 'Target Group'];
 
-    const policyLength = max(kubernetesTunnelPolicies.map(p => p.name.length).concat(16));
-    const targetUserLength = max(kubernetesTunnelPolicies.map(p => p.clusterUsers.length).concat(16));
-    const targetGroupLength = max(kubernetesTunnelPolicies.map(p => p.clusterGroups.length).concat(16));
+    const policyLength = max(kubernetesPolicies.map(p => p.name.length).concat(16));
+    const targetUserLength = max(kubernetesPolicies.map(p => p.clusterUsers.length).concat(16));
+    const targetGroupLength = max(kubernetesPolicies.map(p => p.clusterGroups.length).concat(16));
 
     const columnWidths = [policyLength + 2, targetUserLength + 4, targetGroupLength + 4];
 
 
     const table = new Table({ head: header, colWidths: columnWidths });
-    kubernetesTunnelPolicies.forEach(p => {
-        const formattedTargetUsers = p.clusterUsers.map(u => u.name).join(', \n');
-        const formattedTargetGroups = p.clusterGroups.map(g => g.name).join(', \n');
+    kubernetesPolicies.forEach(p => {
+        const formattedTargetUsers = p.clusterUsers.map((u: any) => u.name).join(', \n');
+        const formattedTargetGroups = p.clusterGroups.map((g: any) => g.name).join(', \n');
         const row = [p.name, formattedTargetUsers, formattedTargetGroups];
         table.push(row);
     });
@@ -321,8 +379,8 @@ export function getTableOfDescribeCluster(kubernetesTunnelPolicies: KubeTunnelPo
     return table.toString();
 }
 
-export function getTableOfKubeTunnelPolicies(
-    kubeTunnelPolicies: KubeTunnelPolicySummary[],
+export function getTableOfKubernetesPolicies(
+    kubernetesPolicies: KubernetesPolicySummary[],
     userMap: {[id: string]: UserSummary},
     apiKeyMap: {[id: string]: ApiKeySummary},
     environmentMap: {[id: string]: EnvironmentSummary},
@@ -334,17 +392,17 @@ export function getTableOfKubeTunnelPolicies(
     const columnWidths = [24, 19, 26, 28, 29];
 
     const table = new Table({ head: header, colWidths: columnWidths });
-    kubeTunnelPolicies.forEach(p => {
+    kubernetesPolicies.forEach(p => {
 
         // Translate the policy subject ids to human readable subjects
         const groupNames : string [] = [];
-        p.groups.forEach(group => {
+        p.groups.forEach((group: any) => {
             groupNames.push(getGroupName(group.id, groupMap));
         });
         const formattedGroups = !! groupNames.length ? 'Groups: ' + groupNames.join( ', \n') : '';
 
         const subjectNames : string [] = [];
-        p.subjects.forEach(subject => {
+        p.subjects.forEach((subject: any) => {
             switch (subject.type) {
             case SubjectType.ApiKey:
                 subjectNames.push('ApiKey:' + getApiKeyName(subject.id, apiKeyMap));
@@ -370,13 +428,13 @@ export function getTableOfKubeTunnelPolicies(
         if (p.environments) {
             const environmentNames : string [] = [];
             p.environments.forEach(
-                env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
+                (env: any) => environmentNames.push(getEnvironmentName(env.id, environmentMap))
             );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
         } else if (p.clusters) { // Alternatively if this policy gets applied straight on some clusters
             const clusterNames : string [] = [];
             p.clusters.forEach(
-                c => clusterNames.push(getTargetName(c.id, targetMap))
+                (c: any) => clusterNames.push(getTargetName(c.id, targetMap))
             );
             formattedResource = 'Clusters: ' + clusterNames.join( ', \n');
         }
@@ -384,7 +442,7 @@ export function getTableOfKubeTunnelPolicies(
         if (p.clusterUsers) {
             const clusterUsersNames : string [] = [];
             p.clusterUsers.forEach(
-                cu => clusterUsersNames.push(cu.name)
+                (cu: any) => clusterUsersNames.push(cu.name)
             );
             formattedTargetUsers = 'Cluster Users: ' + clusterUsersNames.join(', \n');
         }
@@ -392,7 +450,7 @@ export function getTableOfKubeTunnelPolicies(
         if (p.clusterGroups) {
             const clusterGroupsName: string[] = [];
             p.clusterGroups.forEach(
-                cg => clusterGroupsName.push(cg.name)
+                (cg: any) => clusterGroupsName.push(cg.name)
             );
             formattedTargetGroup = 'Cluster Groups: ' + clusterGroupsName.join(', \n');
         }
@@ -546,6 +604,56 @@ export function getTableOfOrganizationControlPolicies(
     return table.toString();
 }
 
+export function getTableOfProxyPolicies(
+    proxyPolicies: ProxyPolicySummary[],
+    userMap: {[id: string]: UserSummary},
+    apiKeyMap: {[id: string]: ApiKeySummary},
+    groupMap : {[id: string]: GroupSummary}
+) : string
+{
+    const header: string[] = ['Name', 'Type', 'Subject'];
+    const columnWidths = [24, 19, 26];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    proxyPolicies.forEach(p => {
+
+        // Translate the policy subject ids to human readable subjects
+        const groupNames : string [] = [];
+        p.groups.forEach((group: Group) => {
+            groupNames.push(getGroupName(group.id, groupMap));
+        });
+        const formattedGroups = !! groupNames.length ? 'Groups: ' + groupNames.join( ', \n') : '';
+
+        const subjectNames : string [] = [];
+        p.subjects.forEach(subject => {
+            switch (subject.type) {
+            case SubjectType.ApiKey:
+                subjectNames.push('ApiKey:' + getApiKeyName(subject.id, apiKeyMap));
+                break;
+            case SubjectType.User:
+                subjectNames.push(getUserName(subject.id, userMap));
+                break;
+            default:
+                break;
+            }
+        });
+        let formattedSubjects = subjectNames.join( ', \n');
+        if (subjectNames.length > 0 && !!formattedGroups) {
+            formattedSubjects += '\n';
+        }
+        formattedSubjects += formattedGroups;
+
+        const row = [
+            p.name,
+            p.type,
+            formattedSubjects || 'N/A',
+        ];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
 export function getTableOfSessionRecordingPolicies(
     sessionRecordingPolicies: SessionRecordingPolicySummary[],
     userMap: {[id: string]: UserSummary},
@@ -629,6 +737,11 @@ function getGroupName(groupId: string, groupMap: {[id: string]: GroupSummary}) :
         : 'GROUP DELETED';
 }
 
+// Interface that we can use to compare target info between TargetsSummary, DbTargetSummary, WebTargetSummary
+interface CommonTargetInfo extends TargetBase {
+    type: TargetType;
+}
+
 // Figure out target id based on target name and target type.
 // Also preforms error checking on target type and target string passed in
 export async function disambiguateTarget(
@@ -637,7 +750,13 @@ export async function disambiguateTarget(
     logger: Logger,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
-    envs: Promise<EnvironmentSummary[]>): Promise<ParsedTargetString> {
+    clusterTargets: Promise<KubeClusterSummary[]>,
+    envs: Promise<EnvironmentSummary[]>,
+    configService: ConfigService): Promise<ParsedTargetString> {
+
+    // First query for our web + db targets as we no longer pre-fetch
+    const dbTargets = await listDbTargets(logger, configService);
+    const webTargets = await listWebTargets(logger, configService);
 
     const parsedTarget = parseTargetString(targetString);
 
@@ -645,17 +764,81 @@ export async function disambiguateTarget(
         return undefined;
     }
 
-    let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
+    let zippedShellTargetsUnformatted = concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
-    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SsmTarget || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
+    zippedShellTargetsUnformatted = filter(zippedShellTargetsUnformatted, t => t.type !== TargetType.SsmTarget || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
+
+    // Now cast everything to a common target info object
+    const zippedTargetsShell: CommonTargetInfo[] = [];
+    zippedShellTargetsUnformatted.forEach((targetSummary: TargetSummary) => {
+        const newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id,
+            type: targetSummary.type,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
+        };
+        zippedTargetsShell.push(newVal);
+    });
+
+    // Now create similar lists for the other types of targets, db, web
+    const zippedTargetsDb: CommonTargetInfo[] = [];
+    const awaitedDbTarget = await dbTargets;
+    awaitedDbTarget.forEach((targetSummary: DbTargetSummary) => {
+        const newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id,
+            type: TargetType.Db,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
+        };
+        zippedTargetsDb.push(newVal);
+    });
+
+    const zippedTargetsWeb: CommonTargetInfo[] = [];
+    const awaitedWebTarget = await webTargets;
+    awaitedWebTarget.forEach((targetSummary: WebTargetSummary) => {
+        const newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id,
+            type: TargetType.Web,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
+        };
+        zippedTargetsWeb.push(newVal);
+    });
+
+    const zippedTargetsKube: CommonTargetInfo[] = [];
+    const awaitedKubeTarget = await clusterTargets;
+    awaitedKubeTarget.forEach((targetSummary: KubeClusterSummary) => {
+        const newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id,
+            type: TargetType.Cluster,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
+        };
+        zippedTargetsKube.push(newVal);
+    });
+
+    // Now concat all the types of targets
+    let zippedTargets = concat (zippedTargetsShell, zippedTargetsDb, zippedTargetsWeb, zippedTargetsKube);
 
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);
         zippedTargets = filter(zippedTargets,t => t.type == targetType);
     }
 
-    let matchedTargets: TargetSummary[];
+    let matchedTargets: CommonTargetInfo[];
 
     if(!! parsedTarget.id) {
         matchedTargets = filter(zippedTargets,t => t.id == parsedTarget.id);
@@ -673,7 +856,13 @@ export async function disambiguateTarget(
         parsedTarget.envName = filter(await envs, e => e.id == parsedTarget.envId)[0].name;
     } else {
         logger.warn('More than one target found with the same targetName');
-        logger.info(`Please specify the targetId instead of the targetName (zli lt -n ${parsedTarget.name} -d)`);
+
+        // Print the targets we have found so the user can easily type the next command
+        logger.info(`Matched ${matchedTargets.length} targets:`);
+        matchedTargets.forEach((matchedTarget: CommonTargetInfo) => {
+            logger.warn(`    * ${matchedTarget.name} (${matchedTarget.id}): ${matchedTarget.type}`);
+        });
+        logger.info(`Please connect using targetId instead of the targetName (zli connect test@1234)`);
         await cleanExit(1, logger);
     }
 
@@ -705,9 +894,9 @@ export function randomAlphaNumericString(length: number) : string {
 
 
 export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
-    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
+    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: [], region: ssm.region};
 }
 
 export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
-    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A'};
+    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: [], region: 'N/A'};
 }

@@ -1,5 +1,6 @@
 import { Droplet } from 'digitalocean-js';
 import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
+import { BzeroAgentSummary } from '../../../webshell-common-ts/http/v2/target/bzero/types/bzero-agent-summary.types';
 import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.types';
 
 /**
@@ -16,7 +17,12 @@ export const DigitalOceanDistroImage = {
     // This is a custom DigitalOcean image that exists on our account.
     // The image is built from al2_20211005.0-x86_64.
     // Find the image ID of custom images using: doctl compute image list-user
-    AmazonLinux2: 95598425
+    AmazonLinux2: 95598425,
+    // This is a custom DigitalOcean droplet snapshot that exists on our
+    // account. This image is built from AL2 and it contains custom packages,
+    // such as postgres and python3, for usage in virtual target tests.
+    BzeroVTAL2TestImage: 101611622,
+    BzeroVTUbuntuTestImage: 101596484
 } as const;
 export type DigitalOceanDistroImage = typeof DigitalOceanDistroImage[keyof typeof DigitalOceanDistroImage];
 
@@ -25,11 +31,13 @@ export function getPackageManagerType(image: DigitalOceanDistroImage) : 'yum' | 
     case DigitalOceanDistroImage.CentOS7:
     case DigitalOceanDistroImage.CentOS8:
     case DigitalOceanDistroImage.AmazonLinux2:
+    case DigitalOceanDistroImage.BzeroVTAL2TestImage:
         return 'yum';
     case DigitalOceanDistroImage.Debian10:
     case DigitalOceanDistroImage.Debian11:
     case DigitalOceanDistroImage.Ubuntu18:
     case DigitalOceanDistroImage.Ubuntu20:
+    case DigitalOceanDistroImage.BzeroVTUbuntuTestImage:
         return 'apt';
     default:
         // Compile-time exhaustive check
@@ -54,6 +62,10 @@ export function getDOImageName(image: DigitalOceanDistroImage) {
         return 'ubuntu20';
     case DigitalOceanDistroImage.AmazonLinux2:
         return 'al2';
+    case DigitalOceanDistroImage.BzeroVTAL2TestImage:
+        return 'bz-al2';
+    case DigitalOceanDistroImage.BzeroVTUbuntuTestImage:
+        return 'bz-ubuntu';
     default:
         // Compile-time exhaustive check
         const _exhaustiveCheck: never = image;
@@ -65,8 +77,18 @@ export function getDOImageName(image: DigitalOceanDistroImage) {
  * Represents an SSM target hosted on a specific droplet
  */
 export type DigitalOceanSSMTarget = {
+    type: 'ssm';
     droplet: Droplet;
     ssmTarget: SsmTargetSummary;
+};
+
+/**
+ * Represents a BZero target hosted on a specific droplet
+ */
+export type DigitalOceanBZeroTarget = {
+    type: 'bzero';
+    droplet: Droplet;
+    bzeroTarget: BzeroAgentSummary;
 };
 
 /**
@@ -100,5 +122,19 @@ export class SsmTargetStatusPollError extends Error {
         message?: string) {
         super(message);
         this.name = 'SsmTargetStatusPollError';
+    }
+}
+
+/**
+ * This error is thrown when the SSM target status poller sees that the watched
+ * target has entered the "Error" state, or if the poller times out before the
+ * target can reach "Online"
+ */
+export class BzeroTargetStatusPollError extends Error {
+    constructor(
+        public bzeroTarget: BzeroAgentSummary,
+        message?: string) {
+        super(message);
+        this.name = 'BzeroTargetStatusPollError';
     }
 }

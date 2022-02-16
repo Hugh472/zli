@@ -25,4 +25,14 @@ export type SSMTestTargetSelfRegistrationAutoDiscovery = {
     awsRegion: string;
 }
 
-export type SSMTestTarget = SSMTestTargetAutoDiscovery | SSMTestTargetSelfRegistrationAutoDiscovery
+/**
+ * VTTestTarget represents an virtual target test that uses our new agent
+ */
+export type VTTestTarget = {
+    installType: 'pm-vt';
+    dropletImage: DigitalOceanDistroImage;
+    doRegion: DigitalOceanRegion;
+    awsRegion: string;
+}
+
+export type TestTarget = SSMTestTargetAutoDiscovery | SSMTestTargetSelfRegistrationAutoDiscovery | VTTestTarget

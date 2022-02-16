@@ -35,7 +35,7 @@ export class LoggerConfigService {
         if(! this.config.get('logPath'))
             this.config.set('logPath', this.generateLogPath(configName, 'zli'));
         if (!this.config.get('daemonLogPath'))
-            this.config.set('daemonLogPath', this.generateLogPath(configName, 'kube-daemon'));
+            this.config.set('daemonLogPath', this.generateLogPath(configName, 'daemon'));
     }
 
     private generateLogPath(configName: string, configType: string): string {

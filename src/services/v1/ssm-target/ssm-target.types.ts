@@ -1,4 +1,4 @@
-import { TargetStatus } from '../../common.types';
+import { TargetStatus } from '../../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 
 export interface SsmTargetSummary {
     id: string;

@@ -8,11 +8,11 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { includes, map, uniq } from 'lodash';
 import { ConfigService } from '../../services/config/config.service';
-import { TargetStatus } from '../../services/common.types';
 import yargs from 'yargs';
 import { listTargetsArgs } from './list-targets.command-builder';
 import { listTargets } from '../../services/list-targets/list-targets.service';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
+import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 
 export async function listTargetsHandler(
@@ -20,7 +20,7 @@ export async function listTargetsHandler(
     logger: Logger,
     argv: yargs.Arguments<listTargetsArgs>
 ) {
-    let allTargets = await listTargets(configService, logger);
+    let allTargets = await listTargets(configService, logger, argv.detail);
 
     const envHttpService = new EnvironmentHttpService(configService, logger);
     const envs = await envHttpService.ListEnvironments();

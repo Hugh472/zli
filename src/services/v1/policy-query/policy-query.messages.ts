@@ -27,7 +27,6 @@ export interface KubeProxyRequest {
     targetUser: string;
     targetGroups: string[];
 }
-
 export interface GetAllPoliciesForClusterIdResponse {
     policies: PolicySummary[]
 }

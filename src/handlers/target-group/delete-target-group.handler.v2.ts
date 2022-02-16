@@ -6,7 +6,7 @@ import { PolicyHttpService } from '../../../src/http-services/policy/policy.http
 export async function deleteTargetGroupHandler(targetGroupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy
     const policyHttpService = new PolicyHttpService(configService, logger);
-    const kubePolicies = await policyHttpService.ListKubeTunnelPolicies();
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
 
     // Loop till we find the one we are looking for
     const kubePolicy = kubePolicies.find(p => p.name == policyName);
@@ -26,7 +26,7 @@ export async function deleteTargetGroupHandler(targetGroupName: string, policyNa
     // And finally update the policy
     kubePolicy.clusterGroups = kubePolicy.clusterGroups.filter(u => u.name !== targetGroupName);
 
-    await policyHttpService.EditKubeTunnelPolicy(kubePolicy);
+    await policyHttpService.EditKubernetesPolicy(kubePolicy);
 
     logger.info(`Deleted ${targetGroupName} from ${policyName} policy!`);
     await cleanExit(0, logger);

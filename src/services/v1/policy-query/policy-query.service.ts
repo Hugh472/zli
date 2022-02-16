@@ -3,7 +3,7 @@ import { TargetUser } from '../../common.types';
 import { ConfigService } from '../../config/config.service';
 import { HttpService } from '../../http/http.service';
 import { Logger } from '../../logger/logger.service';
-import { GetTargetPolicyResponse, GetTargetPolicyRequest, KubeProxyResponse, KubeProxyRequest, GetAllPoliciesForClusterIdResponse, GetAllPoliciesForClusterIdRequest } from './policy-query.messages';
+import { GetTargetPolicyResponse, GetTargetPolicyRequest, KubeProxyResponse as KubernetesResponse, KubeProxyRequest as KubernetesRequest, GetAllPoliciesForClusterIdResponse, GetAllPoliciesForClusterIdRequest } from './policy-query.messages';
 import { Verb } from './policy-query.types';
 
 export class PolicyQueryService extends HttpService
@@ -25,13 +25,13 @@ export class PolicyQueryService extends HttpService
         return this.Post('target-connect', request);
     }
 
-    public CheckKubeProxy(
+    public CheckKubernetes(
         targetUser: string,
         clusterId: string,
         targetGroups: string[],
-    ): Promise<KubeProxyResponse>
+    ): Promise<KubernetesResponse>
     {
-        const request: KubeProxyRequest = {
+        const request: KubernetesRequest = {
             clusterId: clusterId,
             targetUser: targetUser,
             targetGroups: targetGroups,

@@ -1,6 +1,6 @@
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 import { ClientSecretResponse } from '../../../webshell-common-ts/http/v2/token/responses/client-secret.responses';
-import { GATokenResponse } from '../../../webshell-common-ts/http/v2/token/responses/GA-token.responses';
+// import { GATokenResponse } from '../../../webshell-common-ts/http/v2/token/responses/GA-token.responses';
 import { OktaClientResponse } from '../../../webshell-common-ts/http/v2/token/responses/okta-client.responses';
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
@@ -13,10 +13,10 @@ export class TokenHttpService extends HttpService
         super(configService, 'api/v2/token/', logger, false);
     }
 
-    public getGAToken(): Promise<GATokenResponse>
-    {
-        return this.Get('GA-token', {});
-    }
+    // public getGAToken(): Promise<GATokenResponse>
+    // {
+    //     return this.Get('GA-token', {});
+    // }
 
     public getClientIdAndSecretForProvider(idp: IdentityProvider) : Promise<ClientSecretResponse>
     {

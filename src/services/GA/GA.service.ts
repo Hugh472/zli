@@ -23,6 +23,7 @@ export class GAService
 
 
         this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);
+        this.visitor.set(this.customDimensionMapper['user-id'], this.userId);
     }
 
 

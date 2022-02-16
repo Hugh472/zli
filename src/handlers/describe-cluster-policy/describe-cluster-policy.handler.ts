@@ -15,7 +15,7 @@ export async function describeClusterPolicyHandler(
     // First determine if the name passed is valid
     let clusterSummary: KubeClusterSummary = null;
     for (const cluster of await clusterTargets) {
-        if (cluster.clusterName == clusterName) {
+        if (cluster.name == clusterName) {
             clusterSummary = cluster;
             break;
         }
@@ -28,14 +28,14 @@ export async function describeClusterPolicyHandler(
 
     // Now make a query to see all policies associated with this cluster
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
-    const kubernetesTunnelPolicies = (await policyQueryHttpService.GetKubePolicies(clusterSummary.id)).kubeTunnelPolicies;
+    const kubernetesPolicies = (await policyQueryHttpService.GetKubePolicies(clusterSummary.id)).kubernetesPolicies;
 
-    if (kubernetesTunnelPolicies.length === 0){
+    if (kubernetesPolicies.length === 0){
         logger.info('There are no available policies for this cluster.');
         await cleanExit(0, logger);
     }
 
     // regular table output
-    const tableString = getTableOfDescribeCluster(kubernetesTunnelPolicies);
+    const tableString = getTableOfDescribeCluster(kubernetesPolicies);
     console.log(tableString);
 }

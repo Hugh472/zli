@@ -11,10 +11,13 @@ import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { TargetSummary, TargetStatus } from './services/common.types';
 import { GAService } from './services/GA/GA.service';
 import { PolicyType } from './services/v1/policy/policy.types';
-
+import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { TargetSummary } from '../webshell-common-ts/http/v2/target/targetSummary.types';
+import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
+import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 
 // Handlers
 import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, GATrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
@@ -25,14 +28,16 @@ import { connectHandler } from './handlers/connect/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets/list-targets.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
-import { startKubeDaemonHandler } from './handlers/tunnel/tunnel.handler';
+import { startKubeDaemonHandler } from './handlers/connect/kube-connect.handler';
+import { dbConnectHandler } from './handlers/connect/db-connect.handler';
+import { webConnectHandler } from './handlers/connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kube/generate-kubeconfig.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect/disconnect.handler';
-import { kubeStatusHandler } from './handlers/tunnel/status.handler';
+import { statusHandler } from './handlers/status/status.handler';
 import { bctlHandler } from './handlers/bctl.handler';
 import { fetchGroupsHandler } from './handlers/group/fetch-groups.handler';
 import { generateBashHandler } from './handlers/generate-bash/generate-bash.handler';
@@ -50,7 +55,7 @@ import { listTargetUsersHandler } from './handlers/target-user/list-target-users
 import { addTargetGroupHandler } from './handlers/target-group/add-target-group.handler.v2';
 import { deleteTargetGroupHandler } from './handlers/target-group/delete-target-group.handler.v2';
 import { listTargetGroupHandler } from './handlers/target-group/list-target-group.handler.v2';
-import { listKubeTunnelPoliciesHandler } from './handlers/policy/list-kube-tunnel-policies.handler';
+import { listKubernetesPoliciesHandler } from './handlers/policy/list-kubernetes-policies.handler';
 import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-connect-policies.handler';
 import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
 import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-controls-policies.handler';
@@ -63,7 +68,7 @@ import yargs from 'yargs';
 // Cmd builders
 import { loginCmdBuilder } from './handlers/login/login.command-builder';
 import { connectCmdBuilder } from './handlers/connect/connect.command-builder';
-import { tunnelCmdBuilder } from './handlers/tunnel/tunnel.command-builder';
+import { statusCmdBuilder } from './handlers/status/status.command-builder';
 import { policyCmdBuilder } from './handlers/policy/policy.command-builder';
 import { describeClusterPolicyCmdBuilder } from './handlers/describe-cluster-policy/describe-cluster-policy.command-builder';
 import { disconnectCmdBuilder } from './handlers/disconnect/disconnect.command-builder';
@@ -79,9 +84,7 @@ import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-build
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
-import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
-import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
+import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -166,6 +169,8 @@ export class CliDriver
     private fetchCommands: string[] = [
         'connect',
         'tunnel',
+        'db-connect',
+        'web-connect',
         'user',
         'targetUser',
         'targetGroup',
@@ -256,7 +261,6 @@ export class CliDriver
             .middleware((argv) => {
                 if(!includes(this.fetchCommands, argv._[0]))
                     return;
-
                 const fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
                 this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
                 this.clusterTargets = fetchDataResponse.clusterTargets;
@@ -289,26 +293,43 @@ export class CliDriver
                     return connectCmdBuilder(yargs, this.targetTypeChoices);
                 },
                 async (argv) => {
-                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.clusterTargets, this.envs, this.configService);
 
-                    const exitCode = await connectHandler(this.configService, this.logger, this.GAService, parsedTarget);
+                    if (parsedTarget == undefined) {
+                        this.logger.error(`No target was able to be parsed from the name ${argv.targetString}`);
+                        await cleanExit(1, this.logger);
+                    }
+                    let exitCode = 1;
+                    if (parsedTarget.type == TargetType.SsmTarget || parsedTarget.type == TargetType.DynamicAccessConfig) {
+                        exitCode = await connectHandler(this.configService, this.logger, undefined, parsedTarget);
+                    } else if (parsedTarget.type == TargetType.Cluster) {
+                        exitCode = await startKubeDaemonHandler(argv, parsedTarget.user, argv.targetGroup, parsedTarget.name, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
+                    } else if (parsedTarget.type == TargetType.Db) {
+                        exitCode = await dbConnectHandler(argv, parsedTarget.name, this.configService, this.logger, this.loggerConfigService);
+                    } else if (parsedTarget.type == TargetType.Web) {
+                        exitCode = await webConnectHandler(argv, parsedTarget.name, this.configService, this.logger, this.loggerConfigService);
+                    }
                     await cleanExit(exitCode, this.logger);
                 }
             )
             .command(
-                'tunnel [tunnelString]',
-                'Tunnel to a cluster',
+                'status [targetType]',
+                'Get status of a running daemon',
                 (yargs) => {
-                    return tunnelCmdBuilder(yargs);
+                    return statusCmdBuilder(yargs);
                 },
                 async (argv) => {
-                    if (argv.tunnelString) {
-                        const [connectUser, connectCluster] = argv.tunnelString.split('@');
-
-                        await startKubeDaemonHandler(argv, connectUser, argv.targetGroup, connectCluster, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
-                    } else {
-                        await kubeStatusHandler(this.configService, this.logger);
-                    }
+                    await statusHandler(argv, this.configService, this.logger);
+                }
+            )
+            .command(
+                'disconnect [targetType]',
+                'Disconnect a zli daemon (db, web or kube)',
+                (yargs) => {
+                    return disconnectCmdBuilder(yargs);
+                },
+                async (argv) => {
+                    await disconnectHandler(argv, this.configService, this.logger);
                 }
             )
             .command(
@@ -333,23 +354,28 @@ export class CliDriver
                     if(!! argv.type) {
                         policyType = parsePolicyType(argv.type);
                     }
+
                     switch (policyType) {
                     case PolicyType.TargetConnect:
                         await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
                         break;
-                    case PolicyType.KubernetesTunnel:
-                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
+                    case PolicyType.Kubernetes:
+                        await listKubernetesPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         break;
                     case PolicyType.SessionRecording:
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                        break;
+                    case PolicyType.Proxy:
+                        await listProxyPoliciesHandler(argv, this.configService, this.logger);
                         break;
                     case PolicyType.OrganizationControls:
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;
                     default:
                         await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
-                        await listKubeTunnelPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
+                        await listKubernetesPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
+                        await listProxyPoliciesHandler(argv, this.configService, this.logger);
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;
                     }
@@ -364,16 +390,6 @@ export class CliDriver
                 },
                 async (argv) => {
                     await describeClusterPolicyHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets);
-                }
-            )
-            .command(
-                'disconnect',
-                'Disconnect a Zli Daemon',
-                (yargs) => {
-                    return disconnectCmdBuilder(yargs);
-                },
-                async (_) => {
-                    await disconnectHandler(this.configService, this.logger);
                 }
             )
             .command(
@@ -540,7 +556,17 @@ export class CliDriver
 
                     // modify argv to have the targetString and targetType params
                     const targetString = argv.user + '@' + argv.host.substr(prefix.length);
-                    const parsedTarget = await disambiguateTarget(TargetType.SsmTarget, targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(TargetType.SsmTarget.toString(), targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.clusterTargets, this.envs, this.configService);
+
+                    if (parsedTarget == undefined) {
+                        this.logger.error(`Unable to find target with given user/host values: ${argv.user}/${argv.host}`);
+                        await cleanExit(1, this.logger);
+                    }
+
+                    if (parsedTarget.type != TargetType.SsmTarget && parsedTarget.type != TargetType.DynamicAccessConfig) {
+                        this.logger.warn(`ssh-proxy only available on ssh and dynamic targets`);
+                        await cleanExit(1, this.logger);
+                    }
 
                     if(argv.port < 1 || argv.port > 65535)
                     {

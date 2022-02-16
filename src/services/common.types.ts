@@ -10,26 +10,6 @@ export enum IdP {
     Microsoft = 'Microsoft'
 }
 
-export enum TargetStatus {
-    NotActivated = 'NotActivated',
-    Offline = 'Offline',
-    Online = 'Online',
-    Terminated = 'Terminated',
-    Error = 'Error'
-}
-
-export interface TargetSummary
-{
-    id: string;
-    name: string;
-    environmentId: string;
-    type: TargetType;
-    agentVersion: string;
-    status: TargetStatus;
-    targetUsers: string[];
-    region: string;
-}
-
 export interface ParsedTargetString
 {
     type: TargetType;

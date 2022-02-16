@@ -29,14 +29,14 @@ export class KubeService extends HttpService
     }
 
     public getKubeUnregisteredAgentYaml(
-        clusterName: string,
+        name: string,
         labels: { [index: string ]: string },
         namespace: string,
         environmentId: string,
     ): Promise<GetKubeUnregisteredAgentYamlResponse>
     {
         const request: GetKubeUnregisteredAgentYamlRequest = {
-            clusterName: clusterName,
+            name: name,
             labels: labels,
             namespace: namespace,
             environmentId: environmentId,

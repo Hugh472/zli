@@ -1,6 +1,6 @@
 {
   "name": "@bastionzero/zli",
-  "version": "5.4.0",
+  "version": "5.5.1",
   "description": "BastionZero cli",
   "repository": {
     "type": "git",
@@ -15,13 +15,22 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc && cd bzero/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o daemon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
+    "build-binaries-macos": "tsc && cd bzero/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon",
+    "build-binaries-windows": "tsc && cd bzero/bctl/daemon && GOOS=windows GOARCH=amd64 go build -o daemon",
+    "build-binaries-linux": "tsc && cd bzero/bctl/daemon && GOOS=linux GOARCH=amd64 go build -o daemon",
     "update-daemon-version": "replace '\\$DAEMON_VERSION' \"$(cat bzero/VERSION)\" bzero/bctl/daemon/daemon.go",
-    "package": "npm run copy-files && pkg .",
-    "release": "npm run build && npm run package",
-    "release-prod": "npm run update-daemon-version && npm run release",
     "release-dev": "tsc && npm run package",
+    "release": "run-script-os",
+    "release:win32": "npm run clean && npm run release-windows",
+    "release:linux": "npm run clean && npm run release-linux",
+    "release:macos": "npm run clean && npm run release-macos",
+    "release-all": "npm run clean && npm run release-macos && npm run release-linux && npm run release-windows",
+    "release-macos": "npm run build-binaries-macos && npm run copy-files && pkg . -t node14-macos-x64 -o bin/zli-macos",
+    "release-linux": "npm run build-binaries-linux && npm run copy-files && pkg . -t node14-linux-x64 -o bin/zli-linux",
+    "release-windows": "npm run build-binaries-windows && npm run copy-files && pkg . -t node14-win-x64 -o bin/zli-win.exe",
+    "release-prod": "npm run update-daemon-version && npm run release-all",
     "copy-files": "copyfiles src/**/*.html src/**/*.css bzero/bctl/daemon/* dist/",
+    "package": "npm run copy-files && pkg .",
     "clean": "rimraf dist/ && rimraf bin/",
     "test": "jest --config jest-config-unit-tests.js",
     "system-test": "jest --config src/system-tests/jest-config-system-tests.js --forceExit",
@@ -44,9 +53,11 @@
     "eslint-plugin-unused-imports": "^1.1.0",
     "jest": "^27.3.1",
     "mock-stdin": "^1.0.0",
+    "pgtools": "^0.3.2",
     "pkg": "^5.3.1",
     "replace": "^1.2.1",
     "rimraf": "^3.0.2",
+    "run-script-os": "^1.1.6",
     "ts-jest": "^27.0.7",
     "typescript": "^4.0.5",
     "wait-for-expect": "^3.0.2"
@@ -90,6 +101,7 @@
     "qrcode": "^1.3.2",
     "query-string": "^7.0.1",
     "rand-token": "^1.0.1",
+    "read-last-lines": "^1.8.0",
     "rxjs": "^6.6.3",
     "semver": "^7.3.2",
     "sha3": "^2.1.4",
@@ -112,9 +124,7 @@
     "scripts": [],
     "assets": [
       "node_modules/figlet/fonts/Standard.flf",
-      "bzero/bctl/daemon/daemon-windows",
-      "bzero/bctl/daemon/daemon-macos",
-      "bzero/bctl/daemon/daemon-linux"
+      "bzero/bctl/daemon/daemon"
     ],
     "outputPath": "bin",
     "targets": [

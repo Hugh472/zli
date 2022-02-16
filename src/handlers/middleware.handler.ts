@@ -4,8 +4,8 @@ import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
-import { TargetSummary } from '../services/common.types';
 import { GAService } from '../services/GA/GA.service';
+import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -60,7 +60,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await kubeHttpService.ListKubeClusters();
             const results = response.map<KubeClusterSummary>((cluster, _index, _array) => {
-                return { id: cluster.id, clusterName: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate };
+                return { type: TargetType.Cluster, id: cluster.id, name: cluster.name, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate, region: cluster.region };
             });
 
             res(results);
@@ -69,7 +69,6 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             res([]);
         }
     });
-
 
     const envs = new Promise<EnvironmentSummary[]>( async (res) => {
         try {
@@ -80,7 +79,6 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             res([]);
         }
     });
-
     return {
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
@@ -91,15 +89,15 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
 export function GATrackingMiddleware(configService: ConfigService, argv: any, logger: Logger) {
     // GA tracking
-    const GAService = new GAService(configService, logger);
+    const gaService: GAService = new GAService(configService, logger);
 
     // Only captures args, not options at the moment. Capturing configName flag
     // does not matter as that is handled by which GA token is used
     // TODO: capture options and flags
-    GAService.TrackCliCommand(version, argv._[0], argv._.slice(1));
+    gaService.TrackCliCommand(version, argv._[0], argv._.slice(1));
     // console.log(argv._[0]);
     // console.log(argv._.slice(1));
-    return GAService;
+    return gaService;
 }
 
 export async function oAuthMiddleware(configService: ConfigService, logger: Logger) {
