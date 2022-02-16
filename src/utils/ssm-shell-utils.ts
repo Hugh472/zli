@@ -2,10 +2,10 @@ import termsize from 'term-size';
 import readline from 'readline';
 import { ConfigService } from '../services/config/config.service';
 import { Logger } from '../services/logger/logger.service';
-import { ShellTerminal } from '../terminal/bzero-terminal';
+import { SsmShellTerminal } from '../terminal/terminal';
+import { SessionState } from '../services/v1/session/session.types';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { SpaceHttpService } from '../http-services/space/space.http-services';
-import { SpaceState } from '../../webshell-common-ts/http/v2/space/types/space-state.types';
 import { SpaceSummary } from '../../webshell-common-ts/http/v2/space/types/space-summary.types';
 
 export async function createAndRunShell(
@@ -15,7 +15,7 @@ export async function createAndRunShell(
     onOutput: (output: Uint8Array) => any
 ) {
     return new Promise<number>(async (resolve, _) => {
-        const terminal = new ShellTerminal(logger, configService, connectionSummary);
+        const terminal = new SsmShellTerminal(logger, configService, connectionSummary);
 
         // Subscribe first so we don't miss events
         terminal.terminalRunning.subscribe(
@@ -143,7 +143,7 @@ export async function getCliSpace(
     const listSpaces = await spaceHttpService.ListSpaces();
 
     // space names are not unique, make sure to find the latest active one
-    const cliSpace = listSpaces.filter(s => s.displayName === 'cli-space' && s.state == SpaceState.Active); // TODO: cli-space name can be changed in config
+    const cliSpace = listSpaces.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
 
     if (cliSpace.length === 0) {
         return undefined;

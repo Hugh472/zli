@@ -13,6 +13,8 @@ import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment
 import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
+import { BzeroTargetHttpService } from '../http-services/targets/bzero/bzero.http-services';
+import { BzeroAgentSummary } from '../../webshell-common-ts/http/v2/target/bzero/types/bzero-agent-summary.types';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
@@ -21,6 +23,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const kubeHttpService = new KubeHttpService(configService, logger);
     const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
     const envHttpService = new EnvironmentHttpService(configService, logger);
+    const bzeroHttpService = new BzeroTargetHttpService(configService, logger);
 
     const dynamicConfigs = new Promise<TargetSummary[]>( async (res) => {
         try
@@ -66,6 +69,20 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         }
     });
 
+    const bzeroTargets = new Promise<BzeroAgentSummary[]>( async (res) => {
+        try {
+            const response = await bzeroHttpService.ListBzeroTargets();
+            const results = response.map<BzeroAgentSummary>((agent, _index, _array) => {
+                return { type: TargetType.Bzero, id: agent.id, name: agent.name, status: agent.status, environmentId: agent.environmentId, targetUsers: undefined, agentVersion: agent.agentVersion, lastAgentUpdate: agent.lastAgentUpdate, region: agent.region };
+            });
+
+            res(results);
+        } catch (e: any) {
+            logger.error(`Failed to fetch bzero targets: ${e}`);
+            res([]);
+        }
+    });
+
     const envs = new Promise<EnvironmentSummary[]>( async (res) => {
         try {
             const response = await envHttpService.ListEnvironments();
@@ -79,6 +96,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
         clusterTargets: clusterTargets,
+        bzeroTargets: bzeroTargets,
         envs: envs
     };
 }
