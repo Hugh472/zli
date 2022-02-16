@@ -865,9 +865,6 @@ export async function disambiguateTarget(
 
     // Now cast everything to a common target info object
 
-    // Filter out Error and Terminated Bzero targets
-    //bzeroTargets = filter(bzeroTargets, t => t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated);
-
     const zippedTargetsBzero: CommonTargetInfo[] = [];
     const awaitedBzeroTargets = await bzeroTargets;
     awaitedBzeroTargets.forEach((targetSummary: BzeroAgentSummary) => {
@@ -878,7 +875,8 @@ export async function disambiguateTarget(
             status: targetSummary.status,
             environmentId: targetSummary.environmentId,
             region: targetSummary.region,
-            agentVersion: targetSummary.agentVersion
+            agentVersion: targetSummary.agentVersion,
+            agentPublicKey: targetSummary.agentPublicKey
         };
         zippedTargetsBzero.push(newVal);
     });
