@@ -12,12 +12,12 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { TargetSummary, TargetStatus } from './services/common.types';
-import { GAService } from './services/mixpanel/mixpanel.service';
+import { GAService } from './services/GA/GA.service';
 import { PolicyType } from './services/v1/policy/policy.types';
 
 
 // Handlers
-import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
+import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, GATrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy/ssh-proxy.handler';
 import { loginHandler } from './handlers/login/login.handler';
@@ -103,7 +103,7 @@ export class CliDriver
     private loggerConfigService: LoggerConfigService;
     private logger: Logger;
 
-    private mixpanelService: GAService;
+    private GAService: GAService;
 
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
@@ -137,7 +137,7 @@ export class CliDriver
         'generate-bash'
     ];
 
-    private mixpanelCommands: string[] = [
+    private GACommands: string[] = [
         'kube',
         'ssh-proxy-config',
         'connect',
@@ -246,12 +246,12 @@ export class CliDriver
                 }
             })
             .middleware(async (argv) => {
-                if(!includes(this.mixpanelCommands, argv._[0]))
+                if(!includes(this.GACommands, argv._[0]))
                     return;
-                if(! this.configService.mixpanelToken()) {
-                    await this.configService.fetchMixpanelToken();
+                if(! this.configService.GAToken()) {
+                    await this.configService.fetchGAToken();
                 }
-                this.mixpanelService = mixpanelTrackingMiddleware(this.configService, argv, this.logger);
+                this.GAService = GATrackingMiddleware(this.configService, argv, this.logger);
             })
             .middleware((argv) => {
                 if(!includes(this.fetchCommands, argv._[0]))
@@ -291,7 +291,7 @@ export class CliDriver
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
-                    const exitCode = await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                    const exitCode = await connectHandler(this.configService, this.logger, this.GAService, parsedTarget);
                     await cleanExit(exitCode, this.logger);
                 }
             )

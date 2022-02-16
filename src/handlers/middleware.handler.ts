@@ -5,7 +5,7 @@ import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { TargetSummary } from '../services/common.types';
-import { GAService } from '../services/mixpanel/mixpanel.service';
+import { GAService } from '../services/GA/GA.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -89,17 +89,17 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     };
 }
 
-export function mixpanelTrackingMiddleware(configService: ConfigService, argv: any, logger: Logger) {
-    // Mixpanel tracking
-    const mixpanelService = new GAService(configService, logger);
+export function GATrackingMiddleware(configService: ConfigService, argv: any, logger: Logger) {
+    // GA tracking
+    const GAService = new GAService(configService, logger);
 
     // Only captures args, not options at the moment. Capturing configName flag
-    // does not matter as that is handled by which mixpanel token is used
+    // does not matter as that is handled by which GA token is used
     // TODO: capture options and flags
-    mixpanelService.TrackCliCommand(version, argv._[0], argv._.slice(1));
+    GAService.TrackCliCommand(version, argv._[0], argv._.slice(1));
     // console.log(argv._[0]);
     // console.log(argv._.slice(1));
-    return mixpanelService;
+    return GAService;
 }
 
 export async function oAuthMiddleware(configService: ConfigService, logger: Logger) {

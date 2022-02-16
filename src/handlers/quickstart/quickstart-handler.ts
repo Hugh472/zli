@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { GAService } from '../../services/mixpanel/mixpanel.service';
+import { GAService } from '../../services/GA/GA.service';
 import { readFile } from '../../utils/utils';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';
@@ -209,13 +209,13 @@ export async function quickstartHandler(
     // New step so clear screen
     clearScreen();
 
-    // We cannot create the MixpanelService until the user has logged in
-    if (!configService.mixpanelToken()) {
-        // Fetch the mixpanel token in case it is not set (first time user)
-        await configService.fetchMixpanelToken();
+    // We cannot create the GAService until the user has logged in
+    if (!configService.GAToken()) {
+        // Fetch the GA token in case it is not set (first time user)
+        await configService.fetchGAToken();
     }
-    const mixpanelService = new GAService(configService, logger);
-    mixpanelService.TrackCliCommand(version, 'quickstart', []);
+    const GAService = new GAService(configService, logger);
+    GAService.TrackCliCommand(version, 'quickstart', []);
 
     // Parse SSH config file
     consoleWithTranscript.log(`Parsing SSH config file: ${argv.sshConfigFile}`);

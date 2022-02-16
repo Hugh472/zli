@@ -1,4 +1,4 @@
-export interface MixpanelTokenResponse
+export interface GATokenResponse
 {
     token: string;
 }

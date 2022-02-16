@@ -19,7 +19,7 @@ type BastionZeroConfigSchema = {
     serviceUrl: string,
     tokenSet: TokenSetParameters,
     callbackListenerPort: number,
-    mixpanelToken: string,
+    GAToken: string,
     idp: IdentityProvider,
     sessionId: string,
     whoami: UserSummary,
@@ -62,7 +62,7 @@ export class ConfigService implements ConfigInterface {
                 serviceUrl:  appName ? this.getServiceUrl(appName) : undefined,
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
                 callbackListenerPort: 0, // if the port is 0, the oauth.service will ask the OS for available port
-                mixpanelToken: undefined,
+                GAToken: undefined,
                 idp: undefined,
                 sessionId: undefined,
                 whoami: undefined,
@@ -118,8 +118,8 @@ export class ConfigService implements ConfigInterface {
         return this.config.path;
     }
 
-    public mixpanelToken(): string {
-        return this.config.get('mixpanelToken');
+    public GAToken(): string {
+        return this.config.get('GAToken');
     }
 
     public callbackListenerPort(): number {
@@ -206,10 +206,10 @@ export class ConfigService implements ConfigInterface {
         this.config.delete('keySplitting');
     }
 
-    public async fetchMixpanelToken() {
-        // fetch mixpanel token from backend
-        const mixpanelToken = await this.getMixpanelToken();
-        this.config.set('mixpanelToken', mixpanelToken);
+    public async fetchGAToken() {
+        // fetch GA token from backend
+        const GAToken = await this.getGAToken();
+        this.config.set('GAToken', GAToken);
     }
 
     public async loginSetup(idp: IdentityProvider, email?: string): Promise<void> {
@@ -301,7 +301,7 @@ export class ConfigService implements ConfigInterface {
         }
     }
 
-    private async getMixpanelToken(): Promise<string> {
-        return (await this.tokenHttpService.getMixpanelToken()).token;
+    private async getGAToken(): Promise<string> {
+        return (await this.tokenHttpService.getGAToken()).token;
     }
 }
