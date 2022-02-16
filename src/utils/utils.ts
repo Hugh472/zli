@@ -33,6 +33,7 @@ import { ProxyPolicySummary } from '../../webshell-common-ts/http/v2/policy/prox
 import { Group } from '../../webshell-common-ts/http/v2/policy/types/group.types';
 import { ConfigService } from '../services/config/config.service';
 import { listDbTargets, listWebTargets } from './list-utils';
+import { BzeroAgentSummary } from '../../webshell-common-ts/http/v2/target/bzero/types/bzero-agent-summary.types';
 
 
 // case insensitive substring search, 'find targetString in searchString'
@@ -752,9 +753,11 @@ export async function disambiguateTarget(
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
     clusterTargets: Promise<KubeClusterSummary[]>,
+    bzeroTargets: Promise<BzeroAgentSummary[]>,
     envs: Promise<EnvironmentSummary[]>,
     configService: ConfigService): Promise<ParsedTargetString> {
 
+    logger.info(`\ntargetTypeString: ${targetTypeString}\ntargetString: ${targetString}\n`)
     // First query for our web + db targets as we no longer pre-fetch
     const dbTargets = await listDbTargets(logger, configService);
     const webTargets = await listWebTargets(logger, configService);
@@ -771,7 +774,7 @@ export async function disambiguateTarget(
     zippedShellTargetsUnformatted = filter(zippedShellTargetsUnformatted, t => t.type !== TargetType.SsmTarget || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
 
     // Now cast everything to a common target info object
-    const zippedTargetsShell: CommonTargetInfo[] = [];
+    const zippedTargetsSsmShell: CommonTargetInfo[] = [];
     zippedShellTargetsUnformatted.forEach((targetSummary: TargetSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
@@ -783,7 +786,7 @@ export async function disambiguateTarget(
             region: targetSummary.region,
             agentVersion: targetSummary.agentVersion
         };
-        zippedTargetsShell.push(newVal);
+        zippedTargetsSsmShell.push(newVal);
     });
 
     // Now create similar lists for the other types of targets, db, web
@@ -835,8 +838,28 @@ export async function disambiguateTarget(
         zippedTargetsKube.push(newVal);
     });
 
+    // Now cast everything to a common target info object
+
+    // Filter out Error and Terminated Bzero targets
+    //bzeroTargets = filter(bzeroTargets, t => t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated);
+
+    const zippedTargetsBzero: CommonTargetInfo[] = [];
+    const awaitedBzeroTargets = await bzeroTargets;
+    awaitedBzeroTargets.forEach((targetSummary: BzeroAgentSummary) => {
+        const newVal: CommonTargetInfo = {
+            name: targetSummary.name,
+            id: targetSummary.id,
+            type: TargetType.Bzero,
+            status: targetSummary.status,
+            environmentId: targetSummary.environmentId,
+            region: targetSummary.region,
+            agentVersion: targetSummary.agentVersion
+        };
+        zippedTargetsBzero.push(newVal);
+    });
+
     // Now concat all the types of targets
-    let zippedTargets = concat (zippedTargetsShell, zippedTargetsDb, zippedTargetsWeb, zippedTargetsKube);
+    let zippedTargets = concat (zippedTargetsSsmShell, zippedTargetsDb, zippedTargetsWeb, zippedTargetsKube, zippedTargetsBzero);
 
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);

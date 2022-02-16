@@ -1,4 +1,4 @@
-import { CreateSsmShellConnectionRequest} from '../../../webshell-common-ts/http/v2/connection/requests/create-connection.request';
+import { CreateShellConnectionRequest } from '../../../webshell-common-ts/http/v2/connection/requests/create-connection.request';
 import { CreateConnectionResponse } from '../../../webshell-common-ts/http/v2/connection/responses/create-connection.responses';
 import { ConnectionSummary } from '../../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { ShellConnectionAuthDetails } from '../../../webshell-common-ts/http/v2/connection/types/shell-connection-auth-details.types';
@@ -7,7 +7,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
 
-export class ConnectionHttpService extends HttpService
+export class ShellConnectionHttpService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
     {
@@ -16,30 +16,31 @@ export class ConnectionHttpService extends HttpService
 
     public GetConnection(connectionId: string) : Promise<ConnectionSummary>
     {
-        return this.Get(connectionId);
+        return this.Get(`${connectionId}/shell`);
     }
 
     public async CreateConnection(targetType: TargetType, targetId: string, sessionId: string, targetUser: string) : Promise<string>
     {
-        const req : CreateSsmShellConnectionRequest = {
-            spaceId: sessionId,
+        this.logger.info("MAKING CONNECTION TO BZERO AGENT")
+        const req : CreateShellConnectionRequest = {
+            // spaceId: sessionId,
             targetId: targetId,
-            targetType: targetType,
+            // targetType: targetType,
             targetUser: targetUser
         };
 
-        const resp = await this.Post<CreateSsmShellConnectionRequest, CreateConnectionResponse>('', req);
+        const resp = await this.Post<CreateShellConnectionRequest, CreateConnectionResponse>('shell', req);
 
         return resp.connectionId;
     }
 
     public CloseConnection(connectionId: string) : Promise<void>
     {
-        return this.Patch(`${connectionId}/close`);
+        return this.Patch(`${connectionId}/close-shell`);
     }
 
     public async GetShellConnectionAuthDetails(connectionId: string) : Promise<ShellConnectionAuthDetails>
     {
-        return this.Get(`${connectionId}/auth-details`);
+        return this.Get(`${connectionId}/shell-auth-details`);
     }
 }

@@ -1,10 +1,10 @@
 import { Observable, Subject, Subscription } from 'rxjs';
-import { isAgentKeysplittingReady, ShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service';
+import { isAgentKeysplittingReady, SsmShellWebsocketService } from '../../webshell-common-ts/ssm-shell-websocket.service/ssm-shell-websocket.service';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import { ConfigService } from '../services/config/config.service';
-import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
+import { ISsmShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/ssm-shell-websocket.service/ssm-shell-websocket.service.types';
 import { ZliAuthConfigService } from '../services/config/zli-auth-config.service';
 import { Logger } from '../services/logger/logger.service';
 import { SsmTargetService } from '../services/v1/ssm-target/ssm-target.service';
@@ -14,9 +14,9 @@ import { ConnectionHttpService } from '../http-services/connection/connection.ht
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 
-export class ShellTerminal implements IDisposable
+export class SsmShellTerminal implements IDisposable
 {
-    private shellWebsocketService : IShellWebsocketService;
+    private shellWebsocketService : ISsmShellWebsocketService;
     private shellEventDataSubscription: Subscription;
     private currentTerminalSize: TerminalSize;
 
@@ -43,7 +43,7 @@ export class ShellTerminal implements IDisposable
     {
     }
 
-    private async createShellWebsocketService() : Promise<IShellWebsocketService> {
+    private async createShellWebsocketService() : Promise<ISsmShellWebsocketService> {
         const targetType = this.connectionSummary.targetType;
         const targetId = this.connectionSummary.targetId;
 
@@ -57,7 +57,7 @@ export class ShellTerminal implements IDisposable
             const connectionHttpService = new ConnectionHttpService(this.configService, this.logger);
             const shellConnectionAuthDetails = await connectionHttpService.GetShellConnectionAuthDetails(this.connectionSummary.id);
 
-            return new ShellWebsocketService(
+            return new SsmShellWebsocketService(
                 new KeySplittingService(this.configService, this.logger),
                 ssmTargetInfo,
                 this.logger,
