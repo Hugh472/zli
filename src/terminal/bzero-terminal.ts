@@ -93,10 +93,10 @@ export class ShellTerminal implements IDisposable
 
         // Handle writing to stdout
         // TODO: bring this up a level
-        this.shellWebsocketService.outputData.subscribe((data: string) => {
-            // Push to outputSubject which pushes to stdout at a higher level
-            this.outputSubject.next(Buffer.from(data, 'base64'));
-        });
+        // this.shellWebsocketService.outputData.subscribe((data: string) => {
+        //     // Push to outputSubject which pushes to stdout at a higher level
+        //     this.outputSubject.next(Buffer.from(data, 'base64'));
+        // });
 
         // // Replay the existing output if any and only then continue with the shell start flow
         // this.shellWebsocketService.replayData.subscribe(data => {// Maybe a "wait for only one input" should be used here instead of subscribe?
