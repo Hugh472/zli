@@ -267,8 +267,7 @@ export class CliDriver
 
                     if (loginResult) {
                         const me = loginResult.userSummary;
-                        const registerResponse = loginResult.userRegisterResponse;
-                        this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`);
+                        this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${this.configService.sessionId()}`);
                         await cleanExit(0, this.logger);
                     } else {
                         await cleanExit(1, this.logger);

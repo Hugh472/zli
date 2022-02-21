@@ -24,6 +24,7 @@ type BastionZeroConfigSchema = {
     mixpanelToken: string,
     idp: IdentityProvider,
     sessionId: string,
+    sessionToken: string,
     whoami: UserSummary,
     sshKeyPath: string
     keySplitting: KeySplittingConfigSchema,
@@ -69,6 +70,7 @@ export class ConfigService implements ConfigInterface {
                 mixpanelToken: undefined,
                 idp: undefined,
                 sessionId: undefined,
+                sessionToken: undefined,
                 whoami: undefined,
                 sshKeyPath: undefined,
                 keySplitting: getDefaultKeysplittingConfig(),
@@ -165,6 +167,18 @@ export class ConfigService implements ConfigInterface {
         return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`;
     }
 
+    public getIdToken(): string {
+        return this.tokenSet().id_token;
+    }
+
+    public getAccessToken(): string {
+        return this.tokenSet().access_token;
+    }
+
+    public getTokenExpiration(): number {
+        return this.tokenSet().expires_at;
+    }
+
     public getAuth(): string {
         return this.tokenSet().id_token;
     }
@@ -173,8 +187,16 @@ export class ConfigService implements ConfigInterface {
         return this.config.get('sessionId');
     }
 
+    public getSessionToken(): string {
+        return this.config.get('sessionToken');
+    }
+
     public setSessionId(sessionId: string): void {
         this.config.set('sessionId', sessionId);
+    }
+
+    public setSessionToken(sessionToken: string): void {
+        this.config.set('sessionToken', sessionToken);
     }
 
     public setTokenSet(tokenSet: TokenSet): void {
@@ -209,6 +231,7 @@ export class ConfigService implements ConfigInterface {
     {
         this.config.delete('tokenSet');
         this.config.delete('keySplitting');
+        this.config.delete('sessionToken');
     }
 
     public async fetchMixpanelToken() {
@@ -314,6 +337,7 @@ export class ConfigService implements ConfigInterface {
             return 'openid email profile';
         case IdentityProvider.Microsoft:
             // both openid and offline_access must be set for refresh token
+            // TODO : Will need to add scope here for online accT validation
             return 'offline_access openid email profile';
         case IdentityProvider.Okta:
             return 'offline_access openid email profile';
