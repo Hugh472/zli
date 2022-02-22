@@ -7,6 +7,7 @@ import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/t
 import { SpaceHttpService } from '../http-services/space/space.http-services';
 import { SpaceState } from '../../webshell-common-ts/http/v2/space/types/space-state.types';
 import { SpaceSummary } from '../../webshell-common-ts/http/v2/space/types/space-summary.types';
+import { SpaceState } from '../../webshell-common-ts/http/v2/space/types/space-state.types';
 
 export async function createAndRunShell(
     configService: ConfigService,

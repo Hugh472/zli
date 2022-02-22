@@ -19,8 +19,8 @@ export class ZliAuthConfigService implements AuthConfigService {
         return this.configService.serviceUrl() + 'api/v1/';
     }
 
-    getSessionId() {
-        return this.configService.sessionId();
+    getSessionToken() {
+        return this.configService.getSessionToken();
     }
 
     async getIdToken() {
