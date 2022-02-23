@@ -218,7 +218,14 @@ export class OAuthService implements IDisposable {
         if(tokenSet === undefined)
             return false;
 
-        return !tokenSet.expired();
+        return ! this.isIdTokenExpired(tokenSet);
+    }
+
+    private isIdTokenExpired(tokenSet: TokenSet): boolean
+    {
+        const nowUnixEpochTime = Math.floor(Date.now() / 1000);
+        const bufferMinutes = 5;
+        return nowUnixEpochTime + 60 * bufferMinutes >= tokenSet.claims().exp;
     }
 
     public async login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void> {
@@ -290,7 +297,7 @@ export class OAuthService implements IDisposable {
 
         // Refresh if the token exists and has expired
         if (tokenSet) {
-            if (this.configService.tokenSet().expired()) {
+            if (this.isIdTokenExpired(tokenSet)) {
                 this.logger.debug('Refreshing oauth token');
 
                 let newTokenSet: TokenSet;
