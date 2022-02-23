@@ -97,11 +97,11 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
 
             // Also save the name of the target to display
             webConfig.name = webTarget.name;
+            configService.setWebConfig(webConfig);
 
             // Wait for daemon HTTP server to be bound and running
             await handleServerStart(loggerConfigService.daemonLogPath(), webConfig.localPort, webConfig.localHost);
 
-            configService.setWebConfig(webConfig);
             logger.info(`Started web daemon at ${localHost}:${localPort} for ${targetName}`);
 
             // Open our browser window

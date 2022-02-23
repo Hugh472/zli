@@ -2,15 +2,56 @@ import { MockSTDIN, stdin } from 'mock-stdin';
 import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
-import { ssmTestTargetsToRun, testTargets } from '../system-test';
+import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets } from '../system-test';
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
 import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
 import { DigitalOceanSSMTarget } from '../../digital-ocean/digital-ocean-ssm-target.service.types';
+import { TestUtils } from '../utils/test-utils';
+import { VerbType } from '../../../../src/services/v1/policy-query/policy-query.types';
+import { SubjectType } from '../../../../webshell-common-ts/http/v2/common.types/subject.types';
+import { Subject } from '../../../../src/services/v1/policy/policy.types';
+import { Environment } from '../../../../webshell-common-ts/http/v2/policy/types/environment.types';
+import { ConnectionEventType } from '../../../../webshell-common-ts/http/v2/event/types/connection-event.types';
 
 export const connectSuite = () => {
     describe('connect suite', () => {
         let mockStdin: MockSTDIN;
+        const targetUser = 'ssm-user';
+        const testUtils = new TestUtils(configService, logger, loggerConfigService);
+
+        // Set up the policy before all the tests
+        beforeAll(async () => {
+            const currentUser: Subject = {
+                id: configService.me().id,
+                type: SubjectType.User
+            };
+            const environment: Environment = {
+                id: systemTestEnvId
+            };
+
+            // Then create our targetConnect policy
+            await policyService.AddTargetConnectPolicy({
+                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
+                subjects: [currentUser],
+                groups: [],
+                description: `Target connect policy created for system test: ${systemTestUniqueId}`,
+                environments: [environment],
+                targets: [],
+                targetUsers: [{userName: targetUser}],
+                verbs: [{type: VerbType.Shell}]
+            });
+        });
+
+        // Cleanup all policy after the tests
+        afterAll(async () => {
+            // Search and delete our target connect policy
+            const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
+            const targetConnectPolicy = targetConnectPolicies.find(policy =>
+                policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
+            );
+            policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
+        });
 
         // Called before each case
         beforeEach(() => {
@@ -46,7 +87,11 @@ export const connectSuite = () => {
                 });
 
             // Call "zli connect"
-            const connectPromise = callZli(['connect', `ssm-user@${doTarget.ssmTarget.name}`]);
+            const connectPromise = callZli(['connect', `${targetUser}@${doTarget.ssmTarget.name}`]);
+
+            // Ensure that the created and connect event exists
+            expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientConnect));
+            expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.Created));
 
             // Assert the output spy receives the same input sent to mock stdIn.
             // Keep sending input until the output spy says we've received what
@@ -99,6 +144,10 @@ export const connectSuite = () => {
             expect(shellConnectionAuthDetailsSpy).toHaveBeenCalled();
             const gotShellConnectionAuthDetails = await getMockResultValue(shellConnectionAuthDetailsSpy.mock.results[0]);
             expect(gotShellConnectionAuthDetails.region).toBe<string>(testTarget.awsRegion);
+
+            // Ensure that the client disconnect event is here
+            // Note, there is no close event since we do not close the connection, just disconnect from it
+            expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientDisconnect));
         }, 60 * 1000);
     });
 };

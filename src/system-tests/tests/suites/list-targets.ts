@@ -1,4 +1,4 @@
-import { testTargets } from '../system-test';
+import { systemTestEnvId, testTargets } from '../system-test';
 import * as ListTargetsService from '../../../services/list-targets/list-targets.service';
 import { getMockResultValue } from '../utils/jest-utils';
 import { TargetSummary } from '../../../../webshell-common-ts/http/v2/target/targetSummary.types';
@@ -25,7 +25,7 @@ export const listTargetsSuite = () => {
                         type: TargetType.SsmTarget,
                         id: t.ssmTarget.id,
                         name: t.ssmTarget.name,
-                        environmentId: t.ssmTarget.environmentId,
+                        environmentId: systemTestEnvId,
                         agentVersion: t.ssmTarget.agentVersion,
                         status: t.ssmTarget.status,
                         targetUsers: expect.anything(),
@@ -36,7 +36,7 @@ export const listTargetsSuite = () => {
                         type: TargetType.Bzero,
                         id: t.bzeroTarget.id,
                         name: t.bzeroTarget.name,
-                        environmentId: t.bzeroTarget.environmentId,
+                        environmentId: systemTestEnvId,
                         agentVersion: t.bzeroTarget.agentVersion,
                         status: t.bzeroTarget.status,
                         targetUsers: expect.anything(),

@@ -91,13 +91,13 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
 
             // Now save the Pid so we can kill the process next time we start it
             dbConfig.localPid = daemonProcess.pid;
+            configService.setDbConfig(dbConfig);
 
             // Wait for daemon HTTP server to be bound and running
             await handleServerStart(loggerConfigService.daemonLogPath(), dbConfig.localPort, dbConfig.localHost);
 
             logger.info(`Started db daemon at ${localHost}:${localPort} for ${targetName}`);
 
-            configService.setDbConfig(dbConfig);
             return 0;
         } else {
             logger.warn(`Started db daemon in debug mode at ${localHost}:${localPort} for ${targetName}`);
