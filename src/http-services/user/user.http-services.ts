@@ -19,9 +19,9 @@ export class UserHttpService extends HttpService
             'AccessToken': this.configService.getAccessToken(),
             'IdToken': this.configService.getIdToken(),
             'TokenExp': this.configService.getTokenExpiration().toString(),
-          }
+        };
         const resp = await this.Post<{}, UserRegisterResponse>('register', {}, requestHeaders);
-        
+
         // Store the session cookies in config
         const cookies = await this.cookieJar.getCookies(this.baseUrl + '/register');
         const cookiesDict: Dictionary<Cookie> = {};
