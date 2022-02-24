@@ -4,7 +4,7 @@ import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import { ConfigService } from '../services/config/config.service';
-import { IShellWebsocketService, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
+import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../services/config/zli-auth-config.service';
 import { Logger } from '../services/logger/logger.service';
 import { SsmTargetService } from '../services/v1/ssm-target/ssm-target.service';
@@ -17,7 +17,7 @@ import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target
 export class ShellTerminal implements IDisposable
 {
     private shellWebsocketService : IShellWebsocketService;
-    // private shellEventDataSubscription: Subscription;
+    private shellEventDataSubscription: Subscription;
     private currentTerminalSize: TerminalSize;
 
     // private refreshTargetInfoOnReady: boolean = false;
@@ -108,58 +108,60 @@ export class ShellTerminal implements IDisposable
         // // initial terminal size
         await this.shellWebsocketService.start();
 
-        // this.shellEventDataSubscription = this.shellWebsocketService.shellEventData.subscribe(
-        //     async (shellEvent: ShellEvent) => {
-        //         this.logger.debug(`Got new shell event: ${shellEvent.type}`);
+        this.shellEventDataSubscription = this.shellWebsocketService.shellEventData.subscribe(
+            async (shellEvent: ShellEvent) => {
+                this.logger.error(`Got new shell event: ${shellEvent.type}`);
 
-        //         switch(shellEvent.type) {
-        //         case ShellEventType.Ready:
-        //             if (this.refreshTargetInfoOnReady) {
-        //                 const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-        //                 const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.connectionSummary.targetId);
-        //                 this.shellWebsocketService.updateTargetInfo(ssmTargetInfo);
-        //             }
-        //             const replayOutput: boolean = true; // Maybe there is a better place for this endpoint versioning?
-        //             this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns, replayOutput);
-        //             break;
-        //         case ShellEventType.Start:
-        //             this.blockInput = false;
-        //             this.terminalRunningStream.next(true);
-        //             // Trigger resize to force the terminal to refresh the output
-        //             const tempTerminalSize : TerminalSize = {rows: this.currentTerminalSize.rows + 1, columns: this.currentTerminalSize.columns + 1};
-        //             this.resizeSubject.next({rows: tempTerminalSize.rows, columns: tempTerminalSize.columns});
-        //             // Send initial terminal dimensions
-        //             this.resize(this.currentTerminalSize);
-        //             break;
-        //         case ShellEventType.Unattached:
-        //             // When another client connects handle this by
-        //             // exiting this ZLI process without closing the
-        //             // connection and effectively transferring ownership of
-        //             // the connection to the other client
-        //             this.logger.error('Another client has attached to this connection.');
-        //             this.terminalRunningStream.complete();
-        //             break;
-        //         case ShellEventType.Disconnect:
-        //             this.terminalRunningStream.error('Target Disconnected.');
-        //             break;
-        //         case ShellEventType.Delete:
-        //             this.terminalRunningStream.error('Connection was closed.');
-        //             break;
-        //         case ShellEventType.BrokenWebsocket:
-        //             this.blockInput = true;
-        //             this.logger.warn('BastionZero: 503 service unavailable. Reconnecting...');
-        //             break;
-        //         default:
-        //             this.logger.warn(`Unhandled shell event type ${shellEvent.type}`);
-        //         }
-        //     },
-        //     (error: any) => {
-        //         this.terminalRunningStream.error(error);
-        //     },
-        //     () => {
-        //         this.terminalRunningStream.error('ShellEventData subscription completed prematurely');
-        //     }
-        // );
+                switch(shellEvent.type) {
+                // case ShellEventType.Ready:
+                //     if (this.refreshTargetInfoOnReady) {
+                //         const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+                //         const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.connectionSummary.targetId);
+                //         this.shellWebsocketService.updateTargetInfo(ssmTargetInfo);
+                //     }
+                //     const replayOutput: boolean = true; // Maybe there is a better place for this endpoint versioning?
+                //     this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns, replayOutput);
+                //     break;
+                case ShellEventType.Start:
+                    this.logger.error(`Got ShellEventType.Start`);
+
+                    this.blockInput = false;
+                    this.terminalRunningStream.next(true);
+                    // // Trigger resize to force the terminal to refresh the output
+                    // const tempTerminalSize : TerminalSize = {rows: this.currentTerminalSize.rows + 1, columns: this.currentTerminalSize.columns + 1};
+                    // this.resizeSubject.next({rows: tempTerminalSize.rows, columns: tempTerminalSize.columns});
+                    // // Send initial terminal dimensions
+                    // this.resize(this.currentTerminalSize);
+                    break;
+                // case ShellEventType.Unattached:
+                //     // When another client connects handle this by
+                //     // exiting this ZLI process without closing the
+                //     // connection and effectively transferring ownership of
+                //     // the connection to the other client
+                //     this.logger.error('Another client has attached to this connection.');
+                //     this.terminalRunningStream.complete();
+                //     break;
+                // case ShellEventType.Disconnect:
+                //     this.terminalRunningStream.error('Target Disconnected.');
+                //     break;
+                // case ShellEventType.Delete:
+                //     this.terminalRunningStream.error('Connection was closed.');
+                //     break;
+                // case ShellEventType.BrokenWebsocket:
+                //     this.blockInput = true;
+                //     this.logger.warn('BastionZero: 503 service unavailable. Reconnecting...');
+                //     break;
+                default:
+                    this.logger.warn(`Unhandled shell event type ${shellEvent.type}`);
+                }
+            },
+            (error: any) => {
+                this.terminalRunningStream.error(error);
+            },
+            () => {
+                this.terminalRunningStream.error('ShellEventData subscription completed prematurely');
+            }
+        );
     }
 
     public resize(terminalSize: TerminalSize): void
@@ -176,7 +178,19 @@ export class ShellTerminal implements IDisposable
     }
 
     public writeString(input: string) : void {
+        // this.logger.error("writeString: "+input);
+        if( input == "q" ){ 
+            this.terminalRunningStream.error('Terminal killed');
+            process.exit();
+        }
+        // this.logger.error("writeString: "+input);
+        if( input == "w" ){ 
+            this.shellWebsocketService.shellReplay();
+        }
+
         if(! this.blockInput) {
+            // this.logger.error("writeString this.blockInput: "+input);
+
             this.inputSubject.next(input);
         } else {
             // char code 3 is SIGINT
@@ -185,9 +199,9 @@ export class ShellTerminal implements IDisposable
         }
     }
 
-    // public writeBytes(input: Uint8Array) : void {
-    //     this.writeString(new TextDecoder('utf-8').decode(input));
-    // }
+    public writeBytes(input: Uint8Array) : void {
+        this.writeString(new TextDecoder('utf-8').decode(input));
+    }
 
     public dispose() : void
     {
