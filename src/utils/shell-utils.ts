@@ -85,6 +85,8 @@ export async function createAndRunShell(
             // Implement some custom logic for batching input
             // Ref: https://stackoverflow.com/questions/66755705/detect-pasted-input-with-readline-nodejs
 
+            // logger.error('keypress: '+key);
+
             // Add our input to our array of input
             inputBuffer.push(key.sequence);
 
