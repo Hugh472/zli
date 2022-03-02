@@ -73,7 +73,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         try {
             const response = await bzeroHttpService.ListBzeroTargets();
             const results = response.map<BzeroAgentSummary>((agent, _index, _array) => {
-                return { type: TargetType.Bzero, id: agent.id, name: agent.name, status: agent.status, environmentId: agent.environmentId, targetUsers: undefined, agentVersion: agent.agentVersion, lastAgentUpdate: agent.lastAgentUpdate, region: agent.region };
+                return { type: TargetType.Bzero, agentPublicKey: agent.agentPublicKey, id: agent.id, name: agent.name, status: agent.status, environmentId: agent.environmentId, targetUsers: undefined, agentVersion: agent.agentVersion, lastAgentUpdate: agent.lastAgentUpdate, region: agent.region };
             });
 
             res(results);

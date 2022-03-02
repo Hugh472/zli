@@ -848,6 +848,7 @@ export async function disambiguateTarget(
     awaitedBzeroTargets.forEach((targetSummary: BzeroAgentSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Bzero,
             status: targetSummary.status,

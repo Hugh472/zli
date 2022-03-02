@@ -3,7 +3,7 @@ import readline from 'readline';
 import { ConfigService } from '../services/config/config.service';
 import { Logger } from '../services/logger/logger.service';
 import { SsmShellTerminal } from '../terminal/terminal';
-import { SessionState } from '../services/v1/session/session.types';
+import { SpaceState } from '../../webshell-common-ts/http/v2/space/types/space-state.types';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { SpaceHttpService } from '../http-services/space/space.http-services';
 import { SpaceSummary } from '../../webshell-common-ts/http/v2/space/types/space-summary.types';
@@ -143,7 +143,7 @@ export async function getCliSpace(
     const listSpaces = await spaceHttpService.ListSpaces();
 
     // space names are not unique, make sure to find the latest active one
-    const cliSpace = listSpaces.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
+    const cliSpace = listSpaces.filter(s => s.displayName === 'cli-space' && s.state == SpaceState.Active); // TODO: cli-space name can be changed in config
 
     if (cliSpace.length === 0) {
         return undefined;
