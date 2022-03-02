@@ -57,7 +57,7 @@ export class HttpService {
     private setHeaders(extraHeaders? : Dictionary<string>) {
         const headers: Dictionary<string> = extraHeaders ?? {};
 
-        // This could eventually be transitioned to a cookie as well
+        //TODO : This could eventually be transitioned to a cookie as well
         if (this.authorized) headers['Authorization'] = this.configService.getAuthHeader();
 
         // append headers
