@@ -774,6 +774,7 @@ export async function disambiguateTarget(
     zippedShellTargetsUnformatted.forEach((targetSummary: TargetSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: targetSummary.type,
             status: targetSummary.status,
@@ -790,6 +791,7 @@ export async function disambiguateTarget(
     awaitedDbTarget.forEach((targetSummary: DbTargetSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Db,
             status: targetSummary.status,
@@ -805,6 +807,7 @@ export async function disambiguateTarget(
     awaitedWebTarget.forEach((targetSummary: WebTargetSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Web,
             status: targetSummary.status,
@@ -820,6 +823,7 @@ export async function disambiguateTarget(
     awaitedKubeTarget.forEach((targetSummary: KubeClusterSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Cluster,
             status: targetSummary.status,
@@ -894,9 +898,9 @@ export function randomAlphaNumericString(length: number) : string {
 
 
 export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
-    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: [], region: ssm.region};
+    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: [], region: ssm.region, agentPublicKey: ssm.agentPublicKey};
 }
 
 export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
-    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: [], region: 'N/A'};
+    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: [], region: 'N/A', agentPublicKey: 'N/A'};
 }

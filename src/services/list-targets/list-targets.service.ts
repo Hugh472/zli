@@ -37,6 +37,7 @@ export async function listTargets(
     const clusterTargets = clusters.map<TargetSummary>((cluster) => {
         return {
             type: TargetType.Cluster,
+            agentPublicKey: cluster.agentPublicKey,
             id: cluster.id,
             name: cluster.name,
             status: parseTargetStatus(cluster.status.toString()),
@@ -50,6 +51,7 @@ export async function listTargets(
     const bzeroAgentTargets = bzeroAgents.map<TargetSummary>((bzeroAgent) => {
         return {
             type: TargetType.Bzero,
+            agentPublicKey: bzeroAgent.agentPublicKey,
             id: bzeroAgent.id,
             name: bzeroAgent.name,
             status: parseTargetStatus(bzeroAgent.status.toString()),
@@ -63,6 +65,7 @@ export async function listTargets(
     const webTargets = webTargetsRaw.map<TargetSummary>((webTarget) => {
         return {
             type: TargetType.Web,
+            agentPublicKey: webTarget.agentPublicKey,
             id: webTarget.id,
             name: webTarget.name,
             status: parseTargetStatus(webTarget.status.toString()),
@@ -76,6 +79,7 @@ export async function listTargets(
     const dbTargets = dbTargetsRaw.map<TargetSummary>((dbTarget) => {
         return {
             type: TargetType.Db,
+            agentPublicKey: dbTarget.agentPublicKey,
             id: dbTarget.id,
             name: dbTarget.name,
             status: parseTargetStatus(dbTarget.status.toString()),

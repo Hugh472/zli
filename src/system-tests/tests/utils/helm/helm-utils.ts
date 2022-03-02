@@ -28,16 +28,30 @@ export interface MultiStringValue {
   type: 'multi'
 }
 
+export interface HelmNamespaceOptions {
+    namespace: string
+    shouldCreateNamespace: boolean
+}
+
 /**
  * This command installs a chart archive. https://helm.sh/docs/helm/helm_install/#helm-install
  *
  * @param name name of the chart to install
  * @param chart a path to a packaged chart, a path to an unpacked chart
  * directory, or a URL.
+ * @param kubeConfigFile Path to Kube config file.
  * @param variables A dictionary of key value strings to pass as value overrides
- * in the helm chart
+ * in the helm chart.
+ * @param namespaceOptions Configuration options related to namespace creation and namespace to install the chart in.
+ * @param timeout Optional timeout for the helm installation. Defaults to 10min.
  */
-export async function install(name: string, chart: string, kubeConfigFile: string, variables: { [key: string]: SingleStringValue | MultiStringValue }, timeout: string = '10m0s'): Promise<Release> {
+export async function install(
+    name: string,
+    chart: string,
+    kubeConfigFile: string,
+    variables: { [key: string]: SingleStringValue | MultiStringValue },
+    namespaceOptions?: HelmNamespaceOptions,
+    timeout: string = '10m0s'): Promise<Release> {
     let helmVariableString = '';
     for (const [key, values] of Object.entries(variables)) {
         if(values.type === 'single') {
@@ -48,7 +62,13 @@ export async function install(name: string, chart: string, kubeConfigFile: strin
             new Error('Unhandled variables type in helm install');
         }
     }
-    const installCommand = `helm --kubeconfig=${kubeConfigFile} install ${name} ${chart} ${helmVariableString} -o json --timeout ${timeout}`;
+    let installCommand = `helm --kubeconfig=${kubeConfigFile} install ${name} ${chart} ${helmVariableString} -o json --timeout ${timeout}`;
+    if (namespaceOptions) {
+        installCommand += ` --namespace=${namespaceOptions.namespace ? namespaceOptions.namespace : 'default'}`;
+        if (namespaceOptions.shouldCreateNamespace) {
+            installCommand += ' --create-namespace';
+        }
+    }
 
     const stdout = await runCommand(installCommand);
     return JSON.parse(stdout);

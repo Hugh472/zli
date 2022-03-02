@@ -58,6 +58,7 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
         `-targetId=${dbTarget.id}`,
+        `-agentPubKey=${dbTarget.agentPublicKey}`,
         `-remotePort=${dbTarget.remotePort}`,
         `-remoteHost=${dbTarget.remoteHost}`,
         `-plugin="db"`

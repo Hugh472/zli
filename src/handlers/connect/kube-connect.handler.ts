@@ -61,6 +61,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
         `-targetUser=${targetUser}`,
         `-targetGroups=${targetGroups}`,
         `-targetId=${clusterTarget.id}`,
+        `-agentPubKey=${clusterTarget.agentPublicKey}`,
         `-localPort=${daemonPort}`,
         `-localHost=localhost`, // Currently kube does not support editing localhost
         `-localhostToken="${kubeConfig.token}"`,

@@ -59,6 +59,7 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
         `-targetId=${webTarget.id}`,
+        `-agentPubKey=${webTarget.agentPublicKey}`,
         `-remotePort=${webTarget.remotePort}`,
         `-remoteHost=${webTarget.remoteHost}`,
         `-plugin="web"`

@@ -23,6 +23,7 @@ export const listTargetsSuite = () => {
                 if(t.type === 'ssm') {
                     return {
                         type: TargetType.SsmTarget,
+                        agentPublicKey: t.ssmTarget.agentPublicKey,
                         id: t.ssmTarget.id,
                         name: t.ssmTarget.name,
                         environmentId: systemTestEnvId,
@@ -34,6 +35,7 @@ export const listTargetsSuite = () => {
                 } else if(t.type === 'bzero') {
                     return {
                         type: TargetType.Bzero,
+                        agentPublicKey: t.bzeroTarget.agentPublicKey,
                         id: t.bzeroTarget.id,
                         name: t.bzeroTarget.name,
                         environmentId: systemTestEnvId,
