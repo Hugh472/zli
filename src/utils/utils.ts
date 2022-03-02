@@ -870,13 +870,13 @@ export async function disambiguateTarget(
     awaitedBzeroTargets.forEach((targetSummary: BzeroAgentSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Bzero,
             status: targetSummary.status,
             environmentId: targetSummary.environmentId,
             region: targetSummary.region,
-            agentVersion: targetSummary.agentVersion,
-            agentPublicKey: targetSummary.agentPublicKey
+            agentVersion: targetSummary.agentVersion
         };
         zippedTargetsBzero.push(newVal);
     });
