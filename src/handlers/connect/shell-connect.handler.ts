@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
-import { targetStringExample } from '../../utils/utils';
+import { connectCheckAllowedTargetUsers, targetStringExample } from '../../utils/utils';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
@@ -11,6 +11,8 @@ import { ShellConnectionHttpService } from '../../http-services/shell-connection
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { BzeroAgentService } from '../../../src/http-services/bzero-agent/bzero-agent.http-service';
 
 
 export async function shellConnectHandler(
@@ -25,21 +27,35 @@ export async function shellConnectHandler(
         await cleanExit(1, logger);
     }
 
-    // const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
-    // const response = await policyQueryHttpService.GetTargetPolicy(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
+    // If the user is an admin make sure they have a policy that allows access
+    // to the target. If they are a non-admin then they must have a policy that
+    // allows access to even be able to list and parse the target
+    const me = configService.me();
+    if(me.isAdmin) {
+        const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+        const response = await policyQueryHttpService.TargetConnectPolicyQuery([parsedTarget.id], parsedTarget.type, me.email);
+        if (response[parsedTarget.id].allowed != true) {
+            logger.error(`You do not have a TargetAccess policy setup to access ${parsedTarget.name}`);
+            await cleanExit(1, logger);
+        }
+    }
 
-    // if(! response.allowed)
-    // {
-    //     logger.error('You do not have sufficient permission to access the target');
-    //     await cleanExit(1, logger);
-    // }
+    // Check targetUser/Verb
+    let allowedTargetUsers: string[] = [];
+    let allowedVerbs: string[] = [];
+    if(parsedTarget.type == TargetType.Bzero) {
+        const bzeroAgentService = new BzeroAgentService(configService, logger);
+        const bzeroTarget = await bzeroAgentService.GetBzeroAgent(parsedTarget.id);
+        allowedTargetUsers = bzeroTarget.allowedTargetUsers.map(u => u.userName);
+        allowedVerbs = bzeroTarget.allowedVerbs.map(v => v.type);
+    }
 
-    // const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
-    // if(response.allowedTargetUsers && ! includes(allowedTargetUsers, parsedTarget.user)) {
-    //     logger.error(`You do not have permission to connect as targetUser: ${parsedTarget.user}`);
-    //     logger.info(`Current allowed users for you: ${allowedTargetUsers}`);
-    //     await cleanExit(1, logger);
-    // }
+    if(! allowedVerbs.includes(VerbType.Shell)) {
+        logger.error(`You do not have a TargetAccess policy that allows Shell access to target ${parsedTarget.name}`);
+        await cleanExit(1, logger);
+    }
+
+    const targetUser = await connectCheckAllowedTargetUsers(parsedTarget.name, parsedTarget.user, allowedTargetUsers, logger);
 
     // Get the existing if any or create a new cli space id
     const spaceHttpService = new SpaceHttpService(configService, logger);
@@ -51,8 +67,6 @@ export async function shellConnectHandler(
     } else {
         cliSpaceId = cliSpace.id;
     }
-
-    const targetUser = parsedTarget.user;
 
     // make a new connection
     const connectionHttpService = new ShellConnectionHttpService(configService, logger);
