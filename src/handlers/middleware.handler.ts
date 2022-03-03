@@ -59,11 +59,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const clusterTargets = new Promise<KubeClusterSummary[]>( async (res) => {
         try {
             const response = await kubeHttpService.ListKubeClusters();
-            const results = response.map<KubeClusterSummary>((cluster, _index, _array) => {
-                return { type: TargetType.Cluster, agentPublicKey: cluster.agentPublicKey, id: cluster.id, name: cluster.name, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate, region: cluster.region };
-            });
-
-            res(results);
+            res(response);
         } catch (e: any) {
             logger.error(`Failed to fetch cluster targets: ${e}`);
             res([]);

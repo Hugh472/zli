@@ -21,17 +21,22 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
     const webTarget = await getWebTargetInfoFromName(webTargets, targetName, logger);
     if (webTarget.status != TargetStatus.Online) {
         logger.error('Target is offline!');
-        return 1;
+        await cleanExit(1, logger);
     }
 
     // Make our API client
     const policyService = new PolicyQueryHttpService(configService, logger);
 
-    // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.CheckProxy(webTarget.id, webTarget.remoteHost, webTarget.remotePort, TargetType.Web);
-    if (response.allowed != true) {
-        logger.error(`You do not have the correct policy setup to access ${webTarget.name}!`);
-        return 1;
+    // If the user is an admin make sure they have a policy that allows access
+    // to the target. If they are a non-admin then they must have a policy that
+    // allows access to even be able to list and parse the target
+    const me = configService.me();
+    if(me.isAdmin) {
+        const response = await policyService.ProxyPolicyQuery([webTarget.id], TargetType.Web, me.email);
+        if (response[webTarget.id].allowed != true) {
+            logger.error(`You do not have a Proxy policy setup to access ${webTarget.name}!`);
+            await cleanExit(1, logger);
+        }
     }
 
     // Open up our zli dbConfig

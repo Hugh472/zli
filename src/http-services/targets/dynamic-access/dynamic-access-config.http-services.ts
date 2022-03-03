@@ -10,6 +10,10 @@ export class DynamicAccessConfigHttpService extends HttpService
         super(configService, 'api/v2/targets/dynamic-access/', logger);
     }
 
+    public GetDynamicAccessConfig(id: string): Promise<DynamicAccessConfigSummary> {
+        return this.Get(id);
+    }
+
     public ListDynamicAccessConfigs(): Promise<DynamicAccessConfigSummary[]>
     {
         return this.Get();

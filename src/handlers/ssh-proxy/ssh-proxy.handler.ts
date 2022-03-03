@@ -7,8 +7,8 @@ import { includes } from 'lodash';
 import { targetStringExample } from '../../utils/utils';
 import { ParsedTargetString } from '../../services/common.types';
 import { EnvMap } from '../../cli-driver';
-import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 
 
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: EnvMap) {
@@ -18,17 +18,18 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
         logger.error(targetStringExample);
         await cleanExit(1, logger);
     }
-    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
-    const response = await policyQueryHttpService.GetTargetPolicy(sshTunnelParameters.parsedTarget.id, sshTunnelParameters.parsedTarget.type, {type: VerbType.Tunnel}, undefined);
 
-    if(! response.allowed)
+    const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
+    const ssmTarget = await ssmTargetHttpService.GetSsmTarget(sshTunnelParameters.parsedTarget.id);
+
+    if(! ssmTarget.allowedVerbs.map(v => v.type).includes(VerbType.Tunnel))
     {
         logger.error('You do not have sufficient permission to open a ssh tunnel to the target');
         await cleanExit(1, logger);
     }
 
-    const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
-    if(response.allowedTargetUsers && ! includes(allowedTargetUsers, sshTunnelParameters.parsedTarget.user)) {
+    const allowedTargetUsers = ssmTarget.allowedTargetUsers.map(u => u.userName);
+    if(! includes(allowedTargetUsers, sshTunnelParameters.parsedTarget.user)) {
         logger.error(`You do not have permission to tunnel as targetUser: ${sshTunnelParameters.parsedTarget.user}. Current allowed users for you: ${allowedTargetUsers}`);
         await cleanExit(1, logger);
     }

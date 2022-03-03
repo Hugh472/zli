@@ -128,8 +128,6 @@ export class CliDriver
         'close',
         'list-targets',
         'lt',
-        'list-clusters',
-        'lk',
         'list-connections',
         'lc',
         'copy',
@@ -154,8 +152,6 @@ export class CliDriver
         'close',
         'list-targets',
         'lt',
-        'list-clusters',
-        'lk',
         'list-connections',
         'lc',
         'copy',
@@ -178,9 +174,6 @@ export class CliDriver
         'disconnect',
         'attach',
         'close',
-        'lt',
-        'list-clusters',
-        'lk',
         'list-connections',
         'lc',
         'copy',
@@ -197,6 +190,7 @@ export class CliDriver
         'targetUser',
         'targetGroup',
         'policy',
+        'describe-cluster-policy',
         'generate-bash'
     ];
 

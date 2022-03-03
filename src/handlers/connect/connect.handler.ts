@@ -2,14 +2,16 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
-import { targetStringExample } from '../../utils/utils';
+import { connectCheckAllowedTargetUsers, targetStringExample } from '../../utils/utils';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
-import { includes } from 'lodash';
 import { ParsedTargetString } from '../../services/common.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { DynamicAccessConfigHttpService } from '../../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 
 
@@ -25,21 +27,40 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
-    const response = await policyQueryHttpService.GetTargetPolicy(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
+    // If the user is an admin make sure they have a policy that allows access
+    // to the target. If they are a non-admin then they must have a policy that
+    // allows access to even be able to list and parse the target
+    const me = configService.me();
+    if(me.isAdmin) {
+        const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+        const response = await policyQueryHttpService.TargetConnectPolicyQuery([parsedTarget.id], parsedTarget.type, me.email);
+        if (response[parsedTarget.id].allowed != true) {
+            logger.error(`You do not have a TargetAccess policy setup to access ${parsedTarget.name}`);
+            await cleanExit(1, logger);
+        }
+    }
 
-    if(! response.allowed)
-    {
-        logger.error('You do not have sufficient permission to access the target');
+    // Check targetUser/Verb
+    let allowedTargetUsers: string[] = [];
+    let allowedVerbs: string[] = [];
+    if(parsedTarget.type == TargetType.SsmTarget) {
+        const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
+        const ssmTarget = await ssmTargetHttpService.GetSsmTarget(parsedTarget.id);
+        allowedTargetUsers = ssmTarget.allowedTargetUsers.map(u => u.userName);
+        allowedVerbs = ssmTarget.allowedVerbs.map(v => v.type);
+    } else if(parsedTarget.type == TargetType.DynamicAccessConfig) {
+        const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
+        const dynamicAccessTarget = await dynamicConfigHttpService.GetDynamicAccessConfig(parsedTarget.id);
+        allowedTargetUsers = dynamicAccessTarget.allowedTargetUsers.map(u => u.userName);
+        allowedVerbs = dynamicAccessTarget.allowedVerbs.map(v => v.type);
+    }
+
+    if(! allowedVerbs.includes(VerbType.Shell)) {
+        logger.error(`You do not have a TargetAccess policy that allows Shell access to target ${parsedTarget.name}`);
         await cleanExit(1, logger);
     }
 
-    const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
-    if(response.allowedTargetUsers && ! includes(allowedTargetUsers, parsedTarget.user)) {
-        logger.error(`You do not have permission to connect as targetUser: ${parsedTarget.user}`);
-        logger.info(`Current allowed users for you: ${allowedTargetUsers}`);
-        await cleanExit(1, logger);
-    }
+    const targetUser = await connectCheckAllowedTargetUsers(parsedTarget.name, parsedTarget.user, allowedTargetUsers, logger);
 
     // Get the existing if any or create a new cli space id
     const spaceHttpService = new SpaceHttpService(configService, logger);
@@ -51,8 +72,6 @@ export async function connectHandler(
     } else {
         cliSpaceId = cliSpace.id;
     }
-
-    const targetUser = parsedTarget.user;
 
     // make a new connection
     const connectionHttpService = new ConnectionHttpService(configService, logger);

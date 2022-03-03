@@ -20,17 +20,22 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     const dbTarget = await getDbTargetInfoFromName(dbTargets, targetName, logger);
     if (dbTarget.status != TargetStatus.Online) {
         logger.error('Target is offline!');
-        return 1;
+        await cleanExit(1, logger);
     }
 
     // Make our API client
     const policyService = new PolicyQueryHttpService(configService, logger);
 
-    // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyService.CheckProxy(dbTarget.id, dbTarget.remoteHost, dbTarget.remotePort, TargetType.Db);
-    if (response.allowed != true) {
-        logger.error(`You do not have the correct policy setup to access ${dbTarget.name}!`);
-        return 1;
+    // If the user is an admin make sure they have a policy that allows access
+    // to the target. If they are a non-admin then they must have a policy that
+    // allows access to even be able to list and parse the target
+    const me = configService.me();
+    if(me.isAdmin) {
+        const response = await policyService.ProxyPolicyQuery([dbTarget.id], TargetType.Db, me.email);
+        if (response[dbTarget.id].allowed != true) {
+            logger.error(`You do not have a Proxy policy setup to access ${dbTarget.name}!`);
+            await cleanExit(1, logger);
+        }
     }
 
     // Open up our zli dbConfig

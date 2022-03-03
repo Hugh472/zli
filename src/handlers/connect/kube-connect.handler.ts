@@ -12,6 +12,7 @@ import { startDaemonInDebugMode, copyExecutableToLocalDir, handleServerStart, ge
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { connectCheckAllowedTargetUsers } from '../../utils/utils';
 
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>, targetUser: string, targetGroups: string[], targetCluster: string, clusterTargets: Promise<KubeClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService): Promise<number> {
@@ -36,15 +37,27 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<connectArgs>,
         targetGroups = kubeConfig.defaultTargetGroups;
     }
 
-    // Make our API client
-    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
-
-    // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    const response = await policyQueryHttpService.CheckKubernetes(targetUser, clusterTarget.id, targetGroups);
-    if (response.allowed != true) {
-        logger.error(`You do not have the correct policy setup to access ${targetCluster} as ${targetUser} in the group(s): ${targetGroups}`);
-        return 1;
+    // If the user is an admin make sure they have a policy that allows access
+    // to the cluster. If they are a non-admin then they must have a policy that
+    // allows access to even be able to list and parse the cluster
+    const me = configService.me();
+    if(me.isAdmin) {
+        const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+        const response = await policyQueryHttpService.KubePolicyQuery([clusterTarget.id], me.email);
+        if (response[clusterTarget.id].allowed != true) {
+            logger.error(`You do not have a Kubernetes policy setup to access ${targetCluster}`);
+            await cleanExit(1, logger);
+        }
     }
+
+    // Now check that the user has permission to impersonate the cluster user/group(s)
+    targetGroups.forEach(async clusterGroup => {
+        if(! clusterTarget.allowedClusterGroups.includes(clusterGroup)) {
+            logger.error(`You do not have a Kubernetes policy setup to access ${targetCluster} with group: ${clusterGroup}`);
+            await cleanExit(1, logger);
+        }
+    });
+    targetUser = await connectCheckAllowedTargetUsers(clusterTarget.name, targetUser, clusterTarget.allowedClusterUsers, logger);
 
     // Check if we've already started a process
     await killLocalPortAndPid(kubeConfig.localPid, kubeConfig.localPort, logger);
