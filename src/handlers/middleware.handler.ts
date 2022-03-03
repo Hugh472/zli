@@ -71,12 +71,8 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
     const bzeroTargets = new Promise<BzeroAgentSummary[]>( async (res) => {
         try {
-            const response = await bzeroHttpService.ListBzeroTargets();
-            const results = response.map<BzeroAgentSummary>((agent, _index, _array) => {
-                return { type: TargetType.Bzero, agentPublicKey: agent.agentPublicKey, id: agent.id, name: agent.name, status: agent.status, environmentId: agent.environmentId, targetUsers: undefined, agentVersion: agent.agentVersion, lastAgentUpdate: agent.lastAgentUpdate, region: agent.region };
-            });
-
-            res(results);
+            const response = await bzeroHttpService.ListBzeroTargets();            
+            res(response);
         } catch (e: any) {
             logger.error(`Failed to fetch bzero targets: ${e}`);
             res([]);
