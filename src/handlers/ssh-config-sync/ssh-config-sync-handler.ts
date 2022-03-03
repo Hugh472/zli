@@ -2,8 +2,26 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import prompts from 'prompts';
-// FIXME: absolute path?
+// FIXME: absolute paths?
+import util from 'util'
+import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services'
+
+export async function sshConfigSyncHandler(configService: ConfigService, logger: Logger) {
+    const { userConfigPath, bzConfigPath } = await getFilePaths();
+
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const policies = await policyHttpService.ListTargetConnectPolicies()
+    console.log(util.inspect(policies, false, null, true))
+    // TODO: needs to come from what we generate
+    // TODO: obviously we'll format policies
+    const bzConfigContentsFormatted = formatBzConfigContents(JSON.stringify(policies), "TODO:");
+
+    fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
+    linkNewConfigFile(userConfigPath, bzConfigPath);
+    logger.info("SSH configuration synced successfully!")
+}
 
 async function getFilePaths() {
 
@@ -30,27 +48,9 @@ async function getFilePaths() {
             message: `Where should the BZ config file be stored?`,
             initial: bzConfigPath
         },
-        {
-            type: 'text',
-            name: 'userIdentityPath',
-            message: 'Which identity (key) file should be referenced in your SSH config file? (enter a path)',
-            validate: userIdentityPath => userIdentityPath.length === 0 ? 'Must enter a filename' : true
-        }
     ]);
 
     return response
-}
-
-async function getBzConfigContents() {
-    // TODO: make an API call
-    return `Host iamlazy
-    HostName bzero-milano-postgres 
-    IdentityFile $IDENTITY_FILE
-    ProxyCommand zli ssh-proxy  -s %h %r %p /Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/bzero-temp-key
-    user postgres
-    LocalForward 6100 localhost:5432
-    LocalForward 8083 localhost:5001
-`
 }
 
 function formatBzConfigContents(bzConfigContents: string, userIdentityFile: string) {
@@ -76,14 +76,4 @@ function linkNewConfigFile(useConfigFile: string, bzConfigFile: string) {
     }
 }
 
-export async function sshConfigSyncHandler(logger: Logger) {
-    const { userConfigPath, bzConfigPath, userIdentityPath } = await getFilePaths();
 
-    const bzConfigContents = await getBzConfigContents();
-    const bzConfigContentsFormatted = formatBzConfigContents(bzConfigContents, userIdentityPath);
-
-    fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
-    linkNewConfigFile(userConfigPath, bzConfigPath);
-
-    logger.info("SSH configuration synced successfully!")
-}

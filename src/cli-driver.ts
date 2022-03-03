@@ -611,8 +611,9 @@ export class CliDriver {
             )
             .command(
                 'generate <typeOfConfig> [clusterName]',
-                'Generate a different types of configuration files',
+                'Generate different types of configuration files',
                 (yargs) => {
+                    // TODO: rename this builder?
                     return generateKubeCmdBuilder(yargs);
                 },
                 async (argv) => {
@@ -620,6 +621,9 @@ export class CliDriver {
                         await generateKubeconfigHandler(argv, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'kubeYaml') {
                         await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
+                    } else if (argv.typeOfConfig == 'ssh') {
+                        // FIXME: probably need to replace this function
+                        await sshConfigSyncHandler(this.configService, this.logger)
                     }
                 }
             )
@@ -647,9 +651,6 @@ export class CliDriver {
                     await oauth.getIdTokenAndExitOnError();
                 }
             )
-            .command('ssh-config-sync', 'TODO: add description', () => { }, async () => {
-                await sshConfigSyncHandler(this.logger)
-            })
             .option('configName', { type: 'string', choices: ['prod', 'stage', 'dev'], default: envMap.configName, hidden: true })
             // Overwrites the default directory used by conf. Used by
             // system-tests to use an isolated configuration file with a

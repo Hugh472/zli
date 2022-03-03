@@ -1,19 +1,19 @@
 import yargs from 'yargs';
 
-export type generateKubeArgs = {typeOfConfig: string} &
-{clusterName: string} &
-{namespace: string} &
-{labels: string[]} &
-{customPort: number} &
-{outputFile: string} &
-{environmentName: string } &
-{update: boolean}
+export type generateKubeArgs = { typeOfConfig: string } &
+{ clusterName: string } &
+{ namespace: string } &
+{ labels: string[] } &
+{ customPort: number } &
+{ outputFile: string } &
+{ environmentName: string } &
+{ update: boolean }
 
-export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
+export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<generateKubeArgs> {
     return yargs
         .positional('typeOfConfig', {
             type: 'string',
-            choices: ['kubeConfig', 'kubeYaml']
+            choices: ['kubeConfig', 'kubeYaml', 'ssh']
 
         }).positional('clusterName', {
             type: 'string',
@@ -47,5 +47,6 @@ export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<gener
         .example('$0 generate kubeYaml testcluster', '')
         .example('$0 generate kubeYaml --labels testkey:testvalue', '')
         .example('$0 generate kubeConfig', '')
-        .example('$0 generate kubeConfig --update', 'Update existing kube config (defaults KUBECONFIG to $HOME/.kube/config)');
+        .example('$0 generate kubeConfig --update', 'Update existing kube config (defaults KUBECONFIG to $HOME/.kube/config)')
+        .example('$0 generate ssh', "link an ssh config file based on your organization's policies");
 }
