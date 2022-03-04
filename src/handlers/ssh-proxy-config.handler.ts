@@ -4,9 +4,9 @@ import { Logger } from '../services/logger/logger.service';
 
 export function sshProxyConfigHandler(configService: ConfigService, logger: Logger, processName: string) {
 
-  const { allHosts, prefix } = buildSshConfigString(configService, processName);
+    const { allHosts, prefix } = buildSshConfigString(configService, processName);
 
-  logger.info(`
+    logger.info(`
 Add the following lines to your ssh config (~/.ssh/config) file:
 
 ${allHosts}
@@ -18,20 +18,20 @@ ssh <user>@${prefix}<ssm-target-id-or-name>
 }
 
 export function buildSshConfigString(configService: ConfigService, processName: string) {
-  const keyPath = configService.sshKeyPath();
-  const configName = configService.getConfigName();
-  let prefix = 'bzero-';
-  let configNameArg = '';
-  if (configName != 'prod') {
-    prefix = `${configName}-${prefix}`;
-    configNameArg = `--configName=${configName}`;
-  }
+    const keyPath = configService.sshKeyPath();
+    const configName = configService.getConfigName();
+    let prefix = 'bzero-';
+    let configNameArg = '';
+    if (configName != 'prod') {
+        prefix = `${configName}-${prefix}`;
+        configNameArg = `--configName=${configName}`;
+    }
 
-  const allHosts = `
+    const allHosts = `
 Host ${prefix}*
   IdentityFile ${keyPath}
   ProxyCommand ${processName} ssh-proxy ${configNameArg} -s %h %r %p ${keyPath}
 `;
-  return { allHosts, prefix };
+    return { allHosts, prefix };
 
 }

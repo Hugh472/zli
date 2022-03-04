@@ -48,5 +48,5 @@ export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<genera
         .example('$0 generate kubeYaml --labels testkey:testvalue', '')
         .example('$0 generate kubeConfig', '')
         .example('$0 generate kubeConfig --update', 'Update existing kube config (defaults KUBECONFIG to $HOME/.kube/config)')
-        .example('$0 generate sshConfig', "link an ssh config file based on your organization's policies");
+        .example('$0 generate sshConfig', 'link an ssh config file based on your organization\'s policies');
 }

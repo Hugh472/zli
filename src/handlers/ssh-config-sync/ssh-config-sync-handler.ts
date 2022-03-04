@@ -6,7 +6,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
-import { buildSshConfigString } from '../../handlers/ssh-proxy-config.handler'
+import { buildSshConfigString } from '../../handlers/ssh-proxy-config.handler';
 
 export async function sshConfigSyncHandler(configService: ConfigService, logger: Logger, processName: string) {
     const { userConfigPath, bzConfigPath } = await getFilePaths();
@@ -18,7 +18,7 @@ export async function sshConfigSyncHandler(configService: ConfigService, logger:
 
     fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
     linkNewConfigFile(userConfigPath, bzConfigPath);
-    logger.info("SSH configuration synced successfully!");
+    logger.info('SSH configuration synced successfully!');
 }
 
 async function getFilePaths() {
@@ -48,7 +48,7 @@ async function getFilePaths() {
         },
     ]);
 
-    return response
+    return response;
 }
 
 function formatBzConfigContents(tunnels: TunnelsResponse[], allHosts: string, prefix: string) {
@@ -58,11 +58,11 @@ function formatBzConfigContents(tunnels: TunnelsResponse[], allHosts: string, pr
     // add per-target configs
     for (const tunnel of tunnels) {
         // only add username if there is exactly one -- otherwise, user must specify user@host
-        const user = tunnel.targetUsers.length === 1 ? `User ${tunnel.targetUsers[0].userName}` : ``
+        const user = tunnel.targetUsers.length === 1 ? `User ${tunnel.targetUsers[0].userName}` : ``;
         contents += `
 Host ${prefix}${tunnel.targetName}
     ${user}
-`
+`;
     }
 
     return contents;
