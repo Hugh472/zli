@@ -603,6 +603,7 @@ export class CliDriver
                 'generate <typeOfConfig> [clusterName]',
                 'Generate a different types of configuration files',
                 (yargs) => {
+                    // TODO: should this function be renamed, since it handles SSH config as well?
                     return generateKubeCmdBuilder(yargs);
                 },
                 async (argv) => {
