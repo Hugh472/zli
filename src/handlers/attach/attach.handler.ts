@@ -1,7 +1,7 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/ssm-shell-utils';
+import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { ConnectionState } from '../../../webshell-common-ts/http/v2/connection/types/connection-state.types';

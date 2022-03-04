@@ -10,7 +10,7 @@ import { Logger } from '../services/logger/logger.service';
 import { SsmTargetService } from '../services/v1/ssm-target/ssm-target.service';
 import { SsmTargetSummary } from '../services/v1/ssm-target/ssm-target.types';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
-import { ShellConnectionHttpService } from '../http-services/shell-connection/shell-connection.http-services';
+import { ConnectionHttpService } from '../http-services/connection/connection.http-services';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 
@@ -54,7 +54,7 @@ export class ShellTerminal implements IDisposable
         //     // Check the agent version is keysplitting compatible
         //     this.checkAgentVersion(ssmTargetInfo);
 
-            const connectionHttpService = new ShellConnectionHttpService(this.configService, this.logger);
+            const connectionHttpService = new ConnectionHttpService(this.configService, this.logger);
             const shellConnectionAuthDetails = await connectionHttpService.GetShellConnectionAuthDetails(this.connectionSummary.id);
             this.logger.info("AUTH DETAILS: " + { authToken: shellConnectionAuthDetails.authToken, connectionServiceUrl: shellConnectionAuthDetails.connectionServiceUrl })
 

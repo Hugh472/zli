@@ -1,5 +1,5 @@
 import { MockSTDIN, stdin } from 'mock-stdin';
-import * as ShellUtils from '../../../utils/ssm-shell-utils';
+import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
 import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets, cleanupTargetConnectPolicies } from '../system-test';

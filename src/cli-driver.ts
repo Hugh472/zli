@@ -27,14 +27,13 @@ import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingM
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy/ssh-proxy.handler';
 import { loginHandler } from './handlers/login/login.handler';
-import { connectHandler } from './handlers/connect/connect.handler';
+import { shellConnectHandler } from './handlers/connect/shell-connect.handler';
 import { listTargetsHandler } from './handlers/list-targets/list-targets.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/connect/kube-connect.handler';
 import { dbConnectHandler } from './handlers/connect/db-connect.handler';
 import { webConnectHandler } from './handlers/connect/web-connect.handler';
-import { shellConnectHandler } from './handlers/connect/shell-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
@@ -293,16 +292,14 @@ export class CliDriver
                         await cleanExit(1, this.logger);
                     }
                     let exitCode = 1;
-                    if (parsedTarget.type == TargetType.SsmTarget || parsedTarget.type == TargetType.DynamicAccessConfig) {
-                        exitCode = await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                    if (parsedTarget.type == TargetType.SsmTarget || parsedTarget.type == TargetType.DynamicAccessConfig || parsedTarget.type == TargetType.Bzero) {
+                        exitCode = await shellConnectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                     } else if (parsedTarget.type == TargetType.Cluster) {
                         exitCode = await startKubeDaemonHandler(argv, parsedTarget.user, argv.targetGroup, parsedTarget.name, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
                     } else if (parsedTarget.type == TargetType.Db) {
                         exitCode = await dbConnectHandler(argv, parsedTarget.name, this.configService, this.logger, this.loggerConfigService);
                     } else if (parsedTarget.type == TargetType.Web) {
                         exitCode = await webConnectHandler(argv, parsedTarget.name, this.configService, this.logger, this.loggerConfigService);
-                    } else if (parsedTarget.type == TargetType.Bzero) {
-                        exitCode = await shellConnectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                     }
                     await cleanExit(exitCode, this.logger);
                 }
