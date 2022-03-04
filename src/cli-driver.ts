@@ -615,8 +615,8 @@ export class CliDriver {
                         await generateKubeconfigHandler(argv, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'kubeYaml') {
                         await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
-                    } else if (argv.typeOfConfig == 'ssh') {
-                        // FIXME: probably need to replace this function
+                    } else if (argv.typeOfConfig == 'sshConfig') {
+                        // TODO: refactor this processName cleaning?
                         // ref: https://nodejs.org/api/process.html#process_process_argv0
                         let processName = process.argv0;
 
