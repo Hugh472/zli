@@ -77,7 +77,7 @@ export const vtSuite = () => {
 
             const createDbTargetResponse = await dbTargetService.CreateDbTarget({
                 targetName: dbVtName,
-                bzeroAgentId: doTarget.bzeroTarget.id,
+                proxyTargetId: doTarget.bzeroTarget.id,
                 remoteHost: 'localhost',
                 remotePort: 5432,
                 localHost: 'localhost',
@@ -150,7 +150,7 @@ export const vtSuite = () => {
 
             const createWebTargetResponse = await webTargetService.CreateWebTarget({
                 targetName: webVtName,
-                bzeroAgentId: doTarget.bzeroTarget.id,
+                proxyTargetId: doTarget.bzeroTarget.id,
                 remoteHost: 'http://localhost',
                 remotePort: webserverRemotePort,
                 localHost: 'localhost',
