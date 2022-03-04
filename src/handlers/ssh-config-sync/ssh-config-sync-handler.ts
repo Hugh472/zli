@@ -2,25 +2,23 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import prompts from 'prompts';
-// FIXME: absolute paths?
-import util from 'util'
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { PolicyHttpService } from '../../http-services/policy/policy.http-services'
+import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
+import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
+import { buildSshConfigString } from '../../handlers/ssh-proxy-config.handler'
 
-export async function sshConfigSyncHandler(configService: ConfigService, logger: Logger) {
+export async function sshConfigSyncHandler(configService: ConfigService, logger: Logger, processName: string) {
     const { userConfigPath, bzConfigPath } = await getFilePaths();
 
-    const policyHttpService = new PolicyHttpService(configService, logger);
-    const policies = await policyHttpService.ListTargetConnectPolicies()
-    console.log(util.inspect(policies, false, null, true))
-    // TODO: needs to come from what we generate
-    // TODO: obviously we'll format policies
-    const bzConfigContentsFormatted = formatBzConfigContents(JSON.stringify(policies), "TODO:");
+    const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
+    const tunnels: TunnelsResponse[] = await policyQueryHttpService.GetTunnels();
+    const { allHosts, prefix } = buildSshConfigString(configService, processName);
+    const bzConfigContentsFormatted = formatBzConfigContents(tunnels, allHosts, prefix);
 
     fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
     linkNewConfigFile(userConfigPath, bzConfigPath);
-    logger.info("SSH configuration synced successfully!")
+    logger.info("SSH configuration synced successfully!");
 }
 
 async function getFilePaths() {
@@ -39,7 +37,7 @@ async function getFilePaths() {
         {
             type: 'text',
             name: 'userConfigPath',
-            message: `What is your primary SSH config file? `,
+            message: `Where is your primary SSH config file? `,
             initial: userConfigPath
         },
         {
@@ -53,8 +51,21 @@ async function getFilePaths() {
     return response
 }
 
-function formatBzConfigContents(bzConfigContents: string, userIdentityFile: string) {
-    return bzConfigContents.replace('$IDENTITY_FILE', userIdentityFile);
+function formatBzConfigContents(tunnels: TunnelsResponse[], allHosts: string, prefix: string) {
+    // initialize with wildcard config
+    let contents = allHosts;
+
+    // add per-target configs
+    for (const tunnel of tunnels) {
+        // only add username if there is exactly one -- otherwise, user must specify user@host
+        const user = tunnel.targetUsers.length === 1 ? `User ${tunnel.targetUsers[0].userName}` : ``
+        contents += `
+Host ${prefix}${tunnel.targetName}
+    ${user}
+`
+    }
+
+    return contents;
 }
 
 function linkNewConfigFile(useConfigFile: string, bzConfigFile: string) {
@@ -67,12 +78,7 @@ function linkNewConfigFile(useConfigFile: string, bzConfigFile: string) {
         const buffer = Buffer.from(`${includeStmt}\n\n`);
         fs.writeSync(fd, buffer, 0, buffer.length, 0);
         fs.writeSync(fd, configContents, 0, configContents.length, buffer.length);
-        fs.close(fd, (err) => {
-            // TODO: what's a good callback...
-            if (err) {
-                console.error('Failed to close file', err);
-            }
-        });
+        fs.close(fd, () => { });
     }
 }
 

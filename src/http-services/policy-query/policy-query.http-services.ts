@@ -4,6 +4,7 @@ import { TargetPolicyQueryRequest } from '../../../webshell-common-ts/http/v2/po
 import { GetKubernetesPoliciesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/get-kube-policies.responses';
 import { KubernetesResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/kubernetes.responses';
 import { ProxyResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/proxy.response';
+import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
 import { ProxyRequest } from '../../../webshell-common-ts/http/v2/policy-query/requests/proxy.requests';
 import { TargetPolicyQueryResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/target-policy-query.responses';
 import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
@@ -13,15 +14,12 @@ import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
 
-export class PolicyQueryHttpService extends HttpService
-{
-    constructor(configService: ConfigService, logger: Logger)
-    {
+export class PolicyQueryHttpService extends HttpService {
+    constructor(configService: ConfigService, logger: Logger) {
         super(configService, 'api/v2/policy-query/', logger);
     }
 
-    public GetTargetPolicy(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<TargetPolicyQueryResponse>
-    {
+    public GetTargetPolicy(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<TargetPolicyQueryResponse> {
         const request: TargetPolicyQueryRequest = {
             targetId: targetId,
             targetType: targetType,
@@ -36,8 +34,7 @@ export class PolicyQueryHttpService extends HttpService
         targetUser: string,
         clusterId: string,
         targetGroups: string[],
-    ): Promise<KubernetesResponse>
-    {
+    ): Promise<KubernetesResponse> {
         const request: KubernetesRequest = {
             clusterId: clusterId,
             targetUser: targetUser,
@@ -49,8 +46,7 @@ export class PolicyQueryHttpService extends HttpService
 
     public GetKubePolicies(
         clusterId: string,
-    ): Promise<GetKubernetesPoliciesResponse>
-    {
+    ): Promise<GetKubernetesPoliciesResponse> {
         const request: GetKubePoliciesRequest = {
             clusterId: clusterId,
         };
@@ -63,8 +59,7 @@ export class PolicyQueryHttpService extends HttpService
         remoteHost: string,
         remotePort: number,
         targetType: TargetType
-    ): Promise<ProxyResponse>
-    {
+    ): Promise<ProxyResponse> {
         const request: ProxyRequest = {
             targetId: targetId,
             targetHost: remoteHost,
@@ -73,5 +68,10 @@ export class PolicyQueryHttpService extends HttpService
         };
 
         return this.Post('proxy', request);
+    }
+
+    public GetTunnels(
+    ): Promise<TunnelsResponse[]> {
+        return this.Get('tunnels');
     }
 }

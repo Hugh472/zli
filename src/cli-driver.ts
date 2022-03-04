@@ -623,7 +623,16 @@ export class CliDriver {
                         await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'ssh') {
                         // FIXME: probably need to replace this function
-                        await sshConfigSyncHandler(this.configService, this.logger)
+                        // ref: https://nodejs.org/api/process.html#process_process_argv0
+                        let processName = process.argv0;
+
+                        // handle npm install edge case
+                        // note: node will also show up when running 'npm run start -- ssh-proxy-config'
+                        // so for devs, they should not rely on generating configs from here and should
+                        // map their dev executables in the ProxyCommand output
+                        if (processName.includes('node')) processName = 'zli';
+
+                        await sshConfigSyncHandler(this.configService, this.logger, processName)
                     }
                 }
             )
