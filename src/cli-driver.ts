@@ -2,7 +2,8 @@ import {
     disambiguateTarget,
     isGuid,
     parsePolicyType,
-    targetStringExample
+    targetStringExample,
+    cleanProcessName
 } from './utils/utils';
 import { ConfigService } from './services/config/config.service';
 import { checkVersionMiddleware } from './middlewares/check-version-middleware';
@@ -520,16 +521,7 @@ export class CliDriver
                 'Generate ssh configuration to be used with the ssh-proxy command',
                 (_) => {},
                 async (_) => {
-                    // ref: https://nodejs.org/api/process.html#process_process_argv0
-                    let processName = process.argv0;
-
-                    // handle npm install edge case
-                    // note: node will also show up when running 'npm run start -- ssh-proxy-config'
-                    // so for devs, they should not rely on generating configs from here and should
-                    // map their dev executables in the ProxyCommand output
-                    if(processName.includes('node')) processName = 'zli';
-
-                    sshProxyConfigHandler(this.configService, this.logger, processName);
+                    sshProxyConfigHandler(this.configService, this.logger, cleanProcessName());
                 }
             )
             .command(
@@ -619,17 +611,7 @@ export class CliDriver
                     } else if (argv.typeOfConfig == 'kubeYaml') {
                         await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'sshConfig') {
-                        // TODO: refactor this processName cleaning?
-                        // ref: https://nodejs.org/api/process.html#process_process_argv0
-                        let processName = process.argv0;
-
-                        // handle npm install edge case
-                        // note: node will also show up when running 'npm run start -- ssh-proxy-config'
-                        // so for devs, they should not rely on generating configs from here and should
-                        // map their dev executables in the ProxyCommand output
-                        if (processName.includes('node')) processName = 'zli';
-
-                        await sshConfigSyncHandler(this.configService, this.logger, processName);
+                        await sshConfigSyncHandler(this.configService, this.logger, cleanProcessName());
                     }
                 }
             )
