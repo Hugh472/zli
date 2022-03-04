@@ -27,7 +27,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await dynamicConfigHttpService.ListDynamicAccessConfigs();
             const results = response.map<TargetSummary>((config, _index, _array) => {
-                return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A'};
+                return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined, region: 'N/A', agentPublicKey: 'N/A'};
             });
 
             res(results);
@@ -45,7 +45,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await ssmTargetHttpService.ListSsmTargets(true);
             const results = response.map<TargetSummary>((ssm, _index, _array) => {
-                return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
+                return {type: TargetType.SsmTarget, agentPublicKey: ssm.agentPublicKey, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined, region: ssm.region};
             });
 
             res(results);
@@ -59,11 +59,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const clusterTargets = new Promise<KubeClusterSummary[]>( async (res) => {
         try {
             const response = await kubeHttpService.ListKubeClusters();
-            const results = response.map<KubeClusterSummary>((cluster, _index, _array) => {
-                return { type: TargetType.Cluster, id: cluster.id, name: cluster.name, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate, region: cluster.region };
-            });
-
-            res(results);
+            res(response);
         } catch (e: any) {
             logger.error(`Failed to fetch cluster targets: ${e}`);
             res([]);

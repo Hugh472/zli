@@ -1,6 +1,8 @@
 import yargs from 'yargs';
 
-export type listTargetsArgs = {targetType: string} &
+export type listTargetsArgs =
+{user: string} &
+{targetType: string[]} &
 {env: string} &
 {name: string} &
 {status: string[]} &
@@ -10,14 +12,26 @@ export type listTargetsArgs = {targetType: string} &
 
 export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: string[], targetStatusChoices: string[]) : yargs.Argv<listTargetsArgs> {
     return yargs
+        .options(
+            'user',
+            {
+                type: 'string',
+                demandOption: false,
+                alias: 'u',
+                requiresArg: true,
+                description: 'User email address to filter targets based on target access policies. [Admin only]'
+            }
+        )
         .option(
             'targetType',
             {
                 type: 'string',
+                array: true,
                 choices: targetTypeChoices,
                 demandOption: false,
                 alias: 't',
-                requiresArg: true
+                requiresArg: true,
+                description: 'Filter results based on target type.'
             }
         )
         .option(
@@ -26,7 +40,8 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
                 type: 'string',
                 demandOption: false,
                 alias: 'e',
-                requiresArg: true
+                requiresArg: true,
+                description: 'Filter results based on environment name of the target.'
             }
         )
         .option(
@@ -35,7 +50,8 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
                 type: 'string',
                 demandOption: false,
                 alias: 'n',
-                requiresArg: true
+                requiresArg: true,
+                description: 'Filter results based on target name (substring match).'
             }
         )
         .option(
@@ -44,8 +60,8 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
                 type: 'string',
                 array: true,
                 choices: targetStatusChoices,
-                alias: 'u',
-                requiresArg: true
+                requiresArg: true,
+                description: 'Filter results based on target status'
             }
         )
         .option(

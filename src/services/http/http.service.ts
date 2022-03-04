@@ -3,6 +3,7 @@ import { Dictionary } from 'lodash';
 import { ConfigService } from '../config/config.service';
 import FormData from 'form-data';
 import { Logger } from '../logger/logger.service';
+import { URLSearchParams } from 'url';
 
 export class HttpService {
     // ref for got: https://github.com/sindresorhus/got
@@ -91,7 +92,7 @@ export class HttpService {
         }, new FormData());
     }
 
-    protected async Get<TResp>(route?: string, queryParams?: Dictionary<string>, extraHeaders? : Dictionary<string>): Promise<TResp> {
+    protected async Get<TResp>(route?: string, queryParams?: Dictionary<string> | URLSearchParams, extraHeaders? : Dictionary<string>): Promise<TResp> {
         this.setHeaders(extraHeaders);
 
         try {

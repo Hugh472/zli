@@ -1,27 +1,17 @@
 import yargs from 'yargs';
 
-export type defaultTargetGroupArgs = { groups: string[] } &
-    { view: boolean}
+export type defaultTargetGroupArgs = { set: string[] }
 
 export function defaultTargetGroupCmdBuilder(yargs: yargs.Argv<{}>) :
 yargs.Argv<defaultTargetGroupArgs> {
     return yargs
-        .option('groups',
+        .option('set',
             {
                 type: 'array',
-                alias: 'g',
                 default: [],
-                demandOption: true,
             }
         )
-        .option('view',
-            {
-                type: 'boolean',
-                alias: 'v',
-                default: false,
-                demandOption: false,
-            }
-        )
-        .example('$0 default-targetGroup -g system:masters', 'Set default target group to system:masters')
-        .example('$0 default-targetGroup', 'Set default target group back to none');
+        .example('$0 default-targetGroup --set system:masters', 'Set default target group to system:masters')
+        .example('$0 default-targetGroup --set', 'Reset default target group to empty')
+        .example('$0 default-targetGroup', 'View default target group');
 }

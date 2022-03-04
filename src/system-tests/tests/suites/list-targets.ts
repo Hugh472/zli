@@ -1,4 +1,4 @@
-import { systemTestEnvId, testTargets } from '../system-test';
+import { systemTestEnvId, testClusters, testTargets } from '../system-test';
 import * as ListTargetsService from '../../../services/list-targets/list-targets.service';
 import { getMockResultValue } from '../utils/jest-utils';
 import { TargetSummary } from '../../../../webshell-common-ts/http/v2/target/targetSummary.types';
@@ -23,17 +23,19 @@ export const listTargetsSuite = () => {
                 if(t.type === 'ssm') {
                     return {
                         type: TargetType.SsmTarget,
+                        agentPublicKey: t.ssmTarget.agentPublicKey,
                         id: t.ssmTarget.id,
                         name: t.ssmTarget.name,
                         environmentId: systemTestEnvId,
                         agentVersion: t.ssmTarget.agentVersion,
                         status: t.ssmTarget.status,
-                        targetUsers: expect.anything(),
+                        targetUsers: t.ssmTarget.allowedTargetUsers.map(tu => tu.userName),
                         region: t.ssmTarget.region
                     };
                 } else if(t.type === 'bzero') {
                     return {
                         type: TargetType.Bzero,
+                        agentPublicKey: t.bzeroTarget.agentPublicKey,
                         id: t.bzeroTarget.id,
                         name: t.bzeroTarget.name,
                         environmentId: systemTestEnvId,
@@ -45,7 +47,21 @@ export const listTargetsSuite = () => {
                 }
             });
 
-            for (const target of expectedSSMTargetSummaries) {
+            const expectedClusterSummaries = Array.from(testClusters.values()).map<TargetSummary>(cluster => {
+                return {
+                    type: TargetType.Cluster,
+                    agentPublicKey:  cluster.bzeroClusterTargetSummary.agentPublicKey,
+                    id: cluster.bzeroClusterTargetSummary.id,
+                    name: cluster.bzeroClusterTargetSummary.name,
+                    environmentId: cluster.bzeroClusterTargetSummary.environmentId,
+                    agentVersion: cluster.bzeroClusterTargetSummary.agentVersion,
+                    status: cluster.bzeroClusterTargetSummary.status,
+                    targetUsers: cluster.bzeroClusterTargetSummary.allowedClusterUsers,
+                    region: cluster.bzeroClusterTargetSummary.region
+                };
+            });
+
+            for (const target of [...expectedClusterSummaries, ...expectedSSMTargetSummaries]) {
                 const foundObject = returnedTargetSummaries.find(t => t.id === target.id);
 
                 if (foundObject) {

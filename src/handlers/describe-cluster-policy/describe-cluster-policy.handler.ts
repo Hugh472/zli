@@ -4,6 +4,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { getTableOfDescribeCluster } from '../../utils/utils';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
 
 
 export async function describeClusterPolicyHandler(
@@ -28,14 +29,19 @@ export async function describeClusterPolicyHandler(
 
     // Now make a query to see all policies associated with this cluster
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
-    const kubernetesPolicies = (await policyQueryHttpService.GetKubePolicies(clusterSummary.id)).kubernetesPolicies;
+    const kubernetesPolicyQueryResponse = await policyQueryHttpService.KubePolicyQuery([clusterSummary.id]);
+    const kubePolicies = kubernetesPolicyQueryResponse[clusterSummary.id].allowedPolicies;
 
-    if (kubernetesPolicies.length === 0){
+    if (kubePolicies.length === 0){
         logger.info('There are no available policies for this cluster.');
         await cleanExit(0, logger);
     }
 
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const allKubePolicies = await policyHttpService.ListKubernetesPolicies();
+    const filteredKubePolicies = allKubePolicies.filter(p => kubePolicies.includes(p.id));
+
     // regular table output
-    const tableString = getTableOfDescribeCluster(kubernetesPolicies);
+    const tableString = getTableOfDescribeCluster(filteredKubePolicies);
     console.log(tableString);
 }

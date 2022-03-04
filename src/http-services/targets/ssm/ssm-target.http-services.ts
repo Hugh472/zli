@@ -17,7 +17,6 @@ export class SsmTargetHttpService extends HttpService {
     }
 
     public ListSsmTargets(showDynamic: boolean): Promise<SsmTargetSummary[]> {
-
         return this.Get('', {showDynamicAccessTargets: String(showDynamic)});
     }
 }
