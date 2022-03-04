@@ -1,4 +1,4 @@
-import { getCliSpace } from '../../utils/ssm-shell-utils';
+import { getCliSpace } from '../../utils/shell-utils';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';

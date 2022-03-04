@@ -2,11 +2,13 @@ import termsize from 'term-size';
 import readline from 'readline';
 import { ConfigService } from '../services/config/config.service';
 import { Logger } from '../services/logger/logger.service';
+import { SsmShellTerminal } from '../terminal/terminal';
 import { ShellTerminal } from '../terminal/bzero-terminal';
+import { SpaceState } from '../../webshell-common-ts/http/v2/space/types/space-state.types';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { SpaceHttpService } from '../http-services/space/space.http-services';
 import { SpaceSummary } from '../../webshell-common-ts/http/v2/space/types/space-summary.types';
-import { SpaceState } from '../../webshell-common-ts/http/v2/space/types/space-state.types';
+import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 
 export async function createAndRunShell(
     configService: ConfigService,
@@ -15,7 +17,12 @@ export async function createAndRunShell(
     onOutput: (output: Uint8Array) => any
 ) {
     return new Promise<number>(async (resolve, _) => {
-        const terminal = new ShellTerminal(logger, configService, connectionSummary);
+        let terminal: ShellTerminal | SsmShellTerminal;
+        if (connectionSummary.targetType === TargetType.Bzero) {
+            terminal = new ShellTerminal(logger, configService, connectionSummary);
+        } else {
+            terminal = new SsmShellTerminal(logger, configService, connectionSummary);
+        }
 
         // Subscribe first so we don't miss events
         terminal.terminalRunning.subscribe(
@@ -84,8 +91,6 @@ export async function createAndRunShell(
         process.stdin.on('keypress', async (_, key) => {
             // Implement some custom logic for batching input
             // Ref: https://stackoverflow.com/questions/66755705/detect-pasted-input-with-readline-nodejs
-
-            // logger.error('keypress: '+key);
 
             // Add our input to our array of input
             inputBuffer.push(key.sequence);
