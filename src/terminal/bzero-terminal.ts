@@ -110,7 +110,6 @@ export class ShellTerminal implements IDisposable
 
         this.shellEventDataSubscription = this.shellWebsocketService.shellEventData.subscribe(
             async (shellEvent: ShellEvent) => {
-                this.logger.error(`Got new shell event: ${shellEvent.type}`);
 
                 switch(shellEvent.type) {
                 // case ShellEventType.Ready:
@@ -127,30 +126,30 @@ export class ShellTerminal implements IDisposable
 
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
-                    // // Trigger resize to force the terminal to refresh the output
+                    // Trigger resize to force the terminal to refresh the output
                     // const tempTerminalSize : TerminalSize = {rows: this.currentTerminalSize.rows + 1, columns: this.currentTerminalSize.columns + 1};
                     // this.resizeSubject.next({rows: tempTerminalSize.rows, columns: tempTerminalSize.columns});
                     // // Send initial terminal dimensions
                     // this.resize(this.currentTerminalSize);
                     break;
-                // case ShellEventType.Unattached:
-                //     // When another client connects handle this by
-                //     // exiting this ZLI process without closing the
-                //     // connection and effectively transferring ownership of
-                //     // the connection to the other client
-                //     this.logger.error('Another client has attached to this connection.');
-                //     this.terminalRunningStream.complete();
-                //     break;
-                // case ShellEventType.Disconnect:
-                //     this.terminalRunningStream.error('Target Disconnected.');
-                //     break;
-                // case ShellEventType.Delete:
-                //     this.terminalRunningStream.error('Connection was closed.');
-                //     break;
-                // case ShellEventType.BrokenWebsocket:
-                //     this.blockInput = true;
-                //     this.logger.warn('BastionZero: 503 service unavailable. Reconnecting...');
-                //     break;
+                case ShellEventType.Unattached:
+                    // When another client connects handle this by
+                    // exiting this ZLI process without closing the
+                    // connection and effectively transferring ownership of
+                    // the connection to the other client
+                    this.logger.error('Another client has attached to this connection.');
+                    this.terminalRunningStream.complete();
+                    break;
+                case ShellEventType.Disconnect:
+                    this.terminalRunningStream.error('Target Disconnected.');
+                    break;
+                case ShellEventType.Delete:
+                    this.terminalRunningStream.error('Connection was closed.');
+                    break;
+                case ShellEventType.BrokenWebsocket:
+                    this.blockInput = true;
+                    this.logger.warn('BastionZero: 503 service unavailable. Reconnecting...');
+                    break;
                 default:
                     this.logger.warn(`Unhandled shell event type ${shellEvent.type}`);
                 }
@@ -207,12 +206,12 @@ export class ShellTerminal implements IDisposable
     {
         // First unsubscribe to shell event subscription because this wil be
         // completed when disposing the shellWebsocketService
-        // if(this.shellEventDataSubscription)
-        //     this.shellEventDataSubscription.unsubscribe();
+        if(this.shellEventDataSubscription)
+            this.shellEventDataSubscription.unsubscribe();
 
         if(this.shellWebsocketService)
             this.shellWebsocketService.dispose();
 
-        // this.terminalRunningStream.complete();
+        this.terminalRunningStream.complete();
     }
 }
