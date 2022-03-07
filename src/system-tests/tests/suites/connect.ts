@@ -156,9 +156,9 @@ export const connectSuite = () => {
             expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientDisconnect));
         }, 60 * 1000);
 
-        /*
+
         test("generate sshConfig", async () => {
-            /*
+
             const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
             const generatePromise = callZli(['generate', 'sshConfig']);
 
@@ -197,6 +197,6 @@ export const connectSuite = () => {
             expect(true).toBe(true);
 
         }, 60 * 1000)
-        */
+
     });
 };
