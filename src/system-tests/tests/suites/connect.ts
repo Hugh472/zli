@@ -173,9 +173,7 @@ export const connectSuite = () => {
                 mockStdin.send([userConfigFile, enterKey]);
             });
             await new Promise(r => setTimeout(r, 500));
-            process.nextTick(() => {
-                mockStdin.send([bzConfigFile, enterKey]);
-            });
+            mockStdin.send([bzConfigFile, enterKey]);
 
             await generatePromise;
 
@@ -192,6 +190,7 @@ export const connectSuite = () => {
                 const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
                 expect(bzConfigContents.includes(doTarget.ssmTarget.name)).toBe(true);
             }
+
         }, 60 * 1000)
     });
 };
