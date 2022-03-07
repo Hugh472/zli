@@ -51,9 +51,6 @@ export class ShellTerminal implements IDisposable
         //     const ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
         //     const ssmTargetInfo = await ssmTargetHttpService.GetSsmTarget(targetId);
 
-        //     // Check the agent version is keysplitting compatible
-        //     this.checkAgentVersion(ssmTargetInfo);
-
             const connectionHttpService = new ConnectionHttpService(this.configService, this.logger);
             const shellConnectionAuthDetails = await connectionHttpService.GetShellConnectionAuthDetails(this.connectionSummary.id);
             this.logger.info("AUTH DETAILS: " + { authToken: shellConnectionAuthDetails.authToken, connectionServiceUrl: shellConnectionAuthDetails.connectionServiceUrl })
