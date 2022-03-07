@@ -1,5 +1,6 @@
 import os from 'os';
 import path from 'path';
+import fs from 'fs';
 import { PolicyQueryHttpService } from '../../../http-services/policy-query/policy-query.http-services'
 
 import { MockSTDIN, stdin } from 'mock-stdin';
@@ -23,6 +24,7 @@ export const connectSuite = () => {
         let mockStdin: MockSTDIN;
         const targetUser = 'ssm-user';
         const testUtils = new TestUtils(configService, logger, loggerConfigService);
+        const enterKey = '\x0D';
 
         // Set up the policy before all the tests
         beforeAll(async () => {
@@ -100,7 +102,7 @@ export const connectSuite = () => {
             // Assert the output spy receives the same input sent to mock stdIn.
             // Keep sending input until the output spy says we've received what
             // we sent (possibly sends command more than once).
-            const enterKey = '\x0D';
+
             await waitForExpect(
                 () => {
                     // Wait for there to be some output
@@ -157,16 +159,39 @@ export const connectSuite = () => {
         test("generate sshConfig", async () => {
             const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
             const generatePromise = callZli(['generate', 'sshConfig']);
-            mockStdin.send(`\r`);
-            mockStdin.send(`\r`);
+
+            const userConfigFile = path.join(
+                os.homedir(), '.ssh', 'test-config-user'
+            );
+
+            const bzConfigFile = path.join(
+                os.homedir(), '.ssh', 'test-config-bz'
+            );
+
+            // respond to interactive prompt
+            process.nextTick(() => {
+                mockStdin.send([userConfigFile, enterKey]);
+            });
+            await new Promise(r => setTimeout(r, 500));
+            process.nextTick(() => {
+                mockStdin.send([bzConfigFile, enterKey]);
+            });
+
             await generatePromise;
 
-            const bzConfigPath = path.join(
-                os.homedir(), '.ssh', 'bz-config'
-            );
-            console.log(bzConfigPath)
-            expect(tunnelsSpy).toHaveBeenCalled()
+            expect(tunnelsSpy).toHaveBeenCalled();
 
+            // expect user's config file to include the bz file
+            const includeStmt = `Include ${bzConfigFile}`;
+            const userConfigContents = fs.readFileSync(userConfigFile).toString();
+            expect(userConfigContents.includes(includeStmt)).toBe(true);
+
+            // expect all the targets to appear in the bz-config
+            const bzConfigContents = fs.readFileSync(bzConfigFile).toString();
+            for (const testTarget of ssmTestTargetsToRun) {
+                const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
+                expect(bzConfigContents.includes(doTarget.ssmTarget.name)).toBe(true);
+            }
         }, 60 * 1000)
     });
 };

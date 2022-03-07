@@ -22,15 +22,12 @@ export async function sshConfigSyncHandler(configService: ConfigService, logger:
 }
 
 async function getFilePaths() {
-
-    const homeDir = os.homedir();
-
     const userConfigPath = path.join(
-        `${homeDir}`, '.ssh', 'config'
+        os.homedir(), '.ssh', 'config'
     );
 
     const bzConfigPath = path.join(
-        `${homeDir}`, '.ssh', 'bz-config'
+        os.homedir(), '.ssh', 'bz-config'
     );
 
     const response = await prompts([
@@ -68,13 +65,26 @@ Host ${prefix}${tunnel.targetName}
     return contents;
 }
 
-function linkNewConfigFile(useConfigFile: string, bzConfigFile: string) {
+function linkNewConfigFile(userConfigFile: string, bzConfigFile: string) {
     const includeStmt = `Include ${bzConfigFile}`;
-    const configContents = fs.readFileSync(useConfigFile);
+    let configContents;
+    let userConfigExists = true;
 
-    // if the include statement isn't present, prepend it to the file
-    if (!configContents.includes(includeStmt)) {
-        const fd = fs.openSync(useConfigFile, 'w+');
+    try {
+        configContents = fs.readFileSync(userConfigFile);
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            userConfigExists = false;
+            configContents = Buffer.from("");
+        } else {
+            throw err;
+        }
+    }
+
+    //      if the config file doesn't exist or the include statement 
+    // isn't present, prepend it to the file
+    if (!userConfigExists || !configContents.includes(includeStmt)) {
+        const fd = fs.openSync(userConfigFile, 'w+');
         const buffer = Buffer.from(`${includeStmt}\n\n`);
         fs.writeSync(fd, buffer, 0, buffer.length, 0);
         fs.writeSync(fd, configContents, 0, configContents.length, buffer.length);
