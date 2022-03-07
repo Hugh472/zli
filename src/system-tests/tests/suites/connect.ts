@@ -1,3 +1,7 @@
+import os from 'os';
+import path from 'path';
+import { PolicyQueryHttpService } from '../../../http-services/policy-query/policy-query.http-services'
+
 import { MockSTDIN, stdin } from 'mock-stdin';
 import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
@@ -39,7 +43,7 @@ export const connectSuite = () => {
                 environments: [environment],
                 targets: [],
                 targetUsers: [{userName: targetUser}],
-                verbs: [{type: VerbType.Shell}]
+                verbs: [{ type: VerbType.Shell }, { type: VerbType.Tunnel }]
             });
         });
 
@@ -149,5 +153,20 @@ export const connectSuite = () => {
             // Note, there is no close event since we do not close the connection, just disconnect from it
             expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientDisconnect));
         }, 60 * 1000);
+
+        test("generate sshConfig", async () => {
+            const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
+            const generatePromise = callZli(['generate', 'sshConfig']);
+            mockStdin.send(`\r`);
+            mockStdin.send(`\r`);
+            await generatePromise;
+
+            const bzConfigPath = path.join(
+                os.homedir(), '.ssh', 'bz-config'
+            );
+            console.log(bzConfigPath)
+            expect(tunnelsSpy).toHaveBeenCalled()
+
+        }, 60 * 1000)
     });
 };
