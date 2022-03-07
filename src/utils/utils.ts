@@ -426,13 +426,13 @@ export function getTableOfKubernetesPolicies(
         let formattedTargetUsers = '';
         let formattedTargetGroup = '';
 
-        if (p.environments) {
+        if (p.environments.length != 0) {
             const environmentNames : string [] = [];
             p.environments.forEach(
                 (env: any) => environmentNames.push(getEnvironmentName(env.id, environmentMap))
             );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
-        } else if (p.clusters) { // Alternatively if this policy gets applied straight on some clusters
+        } else if (p.clusters.length != 0) { // Alternatively if this policy gets applied straight on some clusters
             const clusterNames : string [] = [];
             p.clusters.forEach(
                 (c: any) => clusterNames.push(getTargetName(c.id, targetMap))
@@ -516,13 +516,13 @@ export function getTableOfTargetConnectPolicies(
         let formattedTargetUsers = '';
         const formattedTargetGroup = '';
 
-        if (p.environments) {
+        if (p.environments.length != 0) {
             const environmentNames : string [] = [];
             p.environments.forEach(
                 env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
             );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
-        } else if (p.targets) { // Alternatively if this policy gets applied straight on some targets
+        } else if (p.targets.length != 0) { // Alternatively if this policy gets applied straight on some targets
             const targetNames : string [] = [];
             p.targets.forEach(
                 t => targetNames.push(getTargetName(t.id, targetMap))
@@ -608,12 +608,14 @@ export function getTableOfOrganizationControlPolicies(
 export function getTableOfProxyPolicies(
     proxyPolicies: ProxyPolicySummary[],
     userMap: {[id: string]: UserSummary},
+    environmentMap: {[id: string]: EnvironmentSummary},
+    targetMap : {[id: string]: string},
     apiKeyMap: {[id: string]: ApiKeySummary},
-    groupMap : {[id: string]: GroupSummary}
+    groupMap : {[id: string]: GroupSummary},
 ) : string
 {
-    const header: string[] = ['Name', 'Type', 'Subject'];
-    const columnWidths = [24, 19, 26];
+    const header: string[] = ['Name', 'Type', 'Subject', 'Resource',];
+    const columnWidths = [24, 19, 26, 28];
 
     const table = new Table({ head: header, colWidths: columnWidths });
     proxyPolicies.forEach(p => {
@@ -644,10 +646,28 @@ export function getTableOfProxyPolicies(
         }
         formattedSubjects += formattedGroups;
 
+        // Translate the resource ids to human readable resources
+        let formattedResource = '';
+
+        if (p.environments.length != 0) {
+            const environmentNames : string [] = [];
+            p.environments.forEach(
+                env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
+            );
+            formattedResource = 'Environments: ' + environmentNames.join( ', \n');
+        } else if (p.targets.length != 0) { // Alternatively if this policy gets applied straight on some targets
+            const targetNames : string [] = [];
+            p.targets.forEach(
+                t => targetNames.push(getTargetName(t.id, targetMap))
+            );
+            formattedResource = 'Targets: ' + targetNames.join( ', \n');
+        }
+
         const row = [
             p.name,
             p.type,
             formattedSubjects || 'N/A',
+            formattedResource || 'N/A',
         ];
         table.push(row);
     });
