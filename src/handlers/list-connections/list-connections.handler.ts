@@ -1,20 +1,20 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { getTableOfConnections } from '../../utils/utils';
+import { bzeroTargetToTargetSummary, getTableOfConnections, ssmTargetToTargetSummary } from '../../utils/utils';
 import { cleanExit } from '../clean-exit.handler';
 import { getCliSpace } from '../../utils/shell-utils';
-import { TargetSummary } from '../../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { listConnectionsArgs } from './list-connections.command-builder';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { ConnectionSummary } from '../../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { ConnectionState } from '../../../webshell-common-ts/http/v2/connection/types/connection-state.types';
 import yargs from 'yargs';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
+import { BzeroAgentService } from '../../http-services/bzero-agent/bzero-agent.http-service';
 
 export async function listConnectionsHandler(
     argv: yargs.Arguments<listConnectionsArgs>,
     configService: ConfigService,
-    logger: Logger,
-    ssmTargets: Promise<TargetSummary[]>,
+    logger: Logger
 ){
     const spaceHttpService = new SpaceHttpService(configService, logger);
     const cliSpace = await getCliSpace(spaceHttpService, logger);
@@ -26,8 +26,14 @@ export async function listConnectionsHandler(
 
     const openConnections = cliSpace.connections.filter(c => c.state === ConnectionState.Open);
 
-    // await and concatenate
-    const allTargets = [...await ssmTargets];
+    const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
+    let ssmTargets = await ssmTargetHttpService.ListSsmTargets(true);
+
+    const bzeroAgentService = new BzeroAgentService(configService, logger);
+    let bzeroTargets = await bzeroAgentService.ListBzeroAgents();
+
+    const allTargets = [...ssmTargets.map(ssmTargetToTargetSummary), ...bzeroTargets.map(bzeroTargetToTargetSummary)];
+
     const formattedConnections = openConnections.map<ConnectionSummary>((conn, _index, _array) => {
         return {
             id: conn.id,

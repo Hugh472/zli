@@ -977,3 +977,17 @@ export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary)
         agentPublicKey: 'N/A'
     };
 }
+
+export function bzeroTargetToTargetSummary(bzeroTarget: BzeroAgentSummary) {
+    return {
+        type: TargetType.Bzero,
+        agentPublicKey: bzeroTarget.agentPublicKey,
+        id: bzeroTarget.id,
+        name: bzeroTarget.name,
+        status: parseTargetStatus(bzeroTarget.status.toString()),
+        environmentId: bzeroTarget.environmentId,
+        targetUsers: bzeroTarget.allowedTargetUsers.map(u => u.userName),
+        agentVersion: bzeroTarget.agentVersion,
+        region: bzeroTarget.region
+    };
+}

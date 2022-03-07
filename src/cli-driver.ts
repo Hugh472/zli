@@ -176,8 +176,6 @@ export class CliDriver
         'disconnect',
         'attach',
         'close',
-        'list-connections',
-        'lc',
         'copy',
         'ssh-proxy',
         'generate',
@@ -436,7 +434,7 @@ export class CliDriver
                     return listConnectionsCmdBuilder(yargs);
                 },
                 async (argv) => {
-                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
+                    await listConnectionsHandler(argv, this.configService, this.logger);
                 }
             )
             .command(
