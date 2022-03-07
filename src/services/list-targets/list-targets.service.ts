@@ -1,4 +1,4 @@
-import { dynamicConfigToTargetSummary, parseTargetStatus, ssmTargetToTargetSummary } from '../../utils/utils';
+import { dynamicConfigToTargetSummary, parseTargetStatus, ssmTargetToTargetSummary, bzeroTargetToTargetSummary } from '../../utils/utils';
 import { TargetSummary } from '../../../webshell-common-ts/http/v2/target/targetSummary.types';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
@@ -82,19 +82,7 @@ export async function listTargets(
                 });
             }
 
-            return bzeroAgents.map<TargetSummary>((bzeroAgent) => {
-                return {
-                    type: TargetType.Bzero,
-                    agentPublicKey: bzeroAgent.agentPublicKey,
-                    id: bzeroAgent.id,
-                    name: bzeroAgent.name,
-                    status: parseTargetStatus(bzeroAgent.status.toString()),
-                    environmentId: bzeroAgent.environmentId,
-                    targetUsers: bzeroAgent.allowedTargetUsers.map(u => u.userName),
-                    agentVersion: bzeroAgent.agentVersion,
-                    region: bzeroAgent.region
-                };
-            });
+            return bzeroAgents.map<TargetSummary>(bzeroTargetToTargetSummary);
         };
 
         targetSummaryWork = targetSummaryWork.concat(getBzeroAgentTargetSummaries());
