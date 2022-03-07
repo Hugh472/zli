@@ -35,8 +35,8 @@ import { webConnectHandler } from './handlers/connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
-import { generateKubeconfigHandler } from './handlers/generate-kube/generate-kubeconfig.handler';
-import { generateKubeYamlHandler } from './handlers/generate-kube/generate-kube-yaml.handler';
+import { generateKubeConfigHandler } from './handlers/generate-config/generate-kube-config.handler';
+import { generateKubeYamlHandler } from './handlers/generate-config/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect/disconnect.handler';
 import { statusHandler } from './handlers/status/status.handler';
 import { bctlHandler } from './handlers/bctl.handler';
@@ -61,7 +61,7 @@ import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-
 import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
 import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-controls-policies.handler';
 import { listUsersHandler } from './handlers/user/list-users.handler.v2';
-import { sshConfigSyncHandler } from './handlers/ssh-config-sync/ssh-config-sync-handler';
+import { generateSshConfigHandler } from './handlers/generate-config/generate-ssh-config.handler';
 
 
 // 3rd Party Modules
@@ -84,7 +84,7 @@ import { groupCmdBuilder } from './handlers/group/group.command-builder';
 import { targetUserCmdBuilder } from './handlers/target-user/target-user.command-builder';
 import { targetGroupCmdBuilder } from './handlers/target-group/target-group.command-builder';
 import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-builder';
-import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
+import { generateConfigCmdBuilder } from './handlers/generate-config/generate-config.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
@@ -601,18 +601,18 @@ export class CliDriver
             )
             .command(
                 'generate <typeOfConfig> [clusterName]',
-                'Generate a different types of configuration files',
+                'Generate different types of configuration files',
                 (yargs) => {
                     // TODO: should this function be renamed, since it handles SSH config as well?
-                    return generateKubeCmdBuilder(yargs);
+                    return generateConfigCmdBuilder(yargs);
                 },
                 async (argv) => {
                     if (argv.typeOfConfig == 'kubeConfig') {
-                        await generateKubeconfigHandler(argv, this.configService, this.logger);
+                        await generateKubeConfigHandler(argv, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'kubeYaml') {
                         await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'sshConfig') {
-                        await sshConfigSyncHandler(this.configService, this.logger, cleanProcessName());
+                        await generateSshConfigHandler(this.configService, this.logger, cleanProcessName());
                     }
                 }
             )

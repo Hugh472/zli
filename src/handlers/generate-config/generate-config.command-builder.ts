@@ -1,15 +1,15 @@
 import yargs from 'yargs';
 
-export type generateKubeArgs = {typeOfConfig: string} &
-{clusterName: string} &
-{namespace: string} &
-{labels: string[]} &
-{customPort: number} &
-{outputFile: string} &
-{environmentName: string } &
-{update: boolean}
+export type generateKubeArgs = { typeOfConfig: string } &
+{ clusterName: string } &
+{ namespace: string } &
+{ labels: string[] } &
+{ customPort: number } &
+{ outputFile: string } &
+{ environmentName: string } &
+{ update: boolean }
 
-export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
+export function generateConfigCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<generateKubeArgs> {
     return yargs
         .positional('typeOfConfig', {
             type: 'string',
@@ -48,5 +48,5 @@ export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<gener
         .example('$0 generate kubeYaml --labels testkey:testvalue', '')
         .example('$0 generate kubeConfig', '')
         .example('$0 generate kubeConfig --update', 'Update existing kube config (defaults KUBECONFIG to $HOME/.kube/config)')
-        .example('$0 generate sshConfig', 'link an ssh config file based on your organization\'s policies');
+        .example('$0 generate sshConfig', 'Include an ssh config file based on your organization\'s policies');
 }

@@ -6,9 +6,9 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
-import { buildSshConfigString } from '../../handlers/ssh-proxy-config.handler';
+import { buildSshConfigString } from '../ssh-proxy-config.handler';
 
-export async function sshConfigSyncHandler(configService: ConfigService, logger: Logger, processName: string) {
+export async function generateSshConfigHandler(configService: ConfigService, logger: Logger, processName: string) {
     const { userConfigPath, bzConfigPath } = await getFilePaths();
 
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
