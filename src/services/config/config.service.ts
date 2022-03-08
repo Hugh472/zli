@@ -145,7 +145,6 @@ export class ConfigService implements ConfigInterface {
         return tokenSet && new TokenSet(tokenSet);
     }
 
-    // private until we have a reason to expose to app
     public idp(): IdentityProvider {
         return this.config.get('idp');
     }
