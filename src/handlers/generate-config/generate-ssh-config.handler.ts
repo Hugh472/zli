@@ -75,13 +75,13 @@ function linkNewConfigFile(userConfigFile: string, bzConfigFile: string) {
     } catch (err) {
         if (err.code === 'ENOENT') {
             userConfigExists = false;
-            configContents = Buffer.from("");
+            configContents = Buffer.from('');
         } else {
             throw err;
         }
     }
 
-    //      if the config file doesn't exist or the include statement 
+    //      if the config file doesn't exist or the include statement
     // isn't present, prepend it to the file
     if (!userConfigExists || !configContents.includes(includeStmt)) {
         const fd = fs.openSync(userConfigFile, 'w+');

@@ -3,13 +3,11 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { PolicyQueryHttpService } from '../../../http-services/policy-query/policy-query.http-services'
+import { PolicyQueryHttpService } from '../../../http-services/policy-query/policy-query.http-services';
 import { MockSTDIN, stdin } from 'mock-stdin';
-import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets } from '../system-test';
+import { configService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets } from '../system-test';
 import { callZli } from '../utils/zli-utils';
 import { DigitalOceanSSMTarget } from '../../digital-ocean/digital-ocean-ssm-target.service.types';
-import { TestUtils } from '../utils/test-utils';
-import { removeIfExists } from '../../../utils/utils';
 import { VerbType } from '../../../../src/services/v1/policy-query/policy-query.types';
 import { SubjectType } from '../../../../webshell-common-ts/http/v2/common.types/subject.types';
 import { Subject } from '../../../../src/services/v1/policy/policy.types';
@@ -19,7 +17,6 @@ export const sshSuite = () => {
     describe('connect suite', () => {
         let mockStdin: MockSTDIN;
         const targetUser = 'ssm-user';
-        const testUtils = new TestUtils(configService, logger, loggerConfigService);
         const enterKey = '\x0D';
 
         const userConfigFile = path.join(
@@ -86,7 +83,7 @@ export const sshSuite = () => {
             }
         });
 
-        test("generate sshConfig", async () => {
+        test('generate sshConfig', async () => {
 
             const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
             const generatePromise = callZli(['generate', 'sshConfig']);
@@ -115,16 +112,16 @@ export const sshSuite = () => {
             }
         }, 60 * 1000);
 
-        test("use sshConfig to connect", async () => {
+        test('use sshConfig to connect', async () => {
 
             const pexec = promisify(exec);
-            const { stdout, stderr } = await pexec(`which ssh`);
+            const { stdout } = await pexec(`which ssh`);
             console.log(stdout);
             for (const testTarget of ssmTestTargetsToRun) {
                 const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
                 const { stdout, stderr } = await pexec(`ssh dev-bzero-${doTarget.ssmTarget.name} echo success`);
-                expect(stdout).toEqual("success");
-                expect(stderr).toEqual("");
+                expect(stdout).toEqual('success');
+                expect(stderr).toEqual('');
             }
 
         }, 60 * 1000);
