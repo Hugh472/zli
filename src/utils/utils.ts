@@ -985,3 +985,13 @@ export function cleanProcessName(): string {
     if (processName.includes('node')) processName = 'zli';
     return processName;
 }
+
+export function removeIfExists(file: string): void {
+    try {
+        fs.unlinkSync(file);
+    } catch (err) {
+        if (err.code !== 'ENOENT') {
+            throw err;
+        }
+    }
+}

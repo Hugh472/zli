@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 /**
  * Removes a trailing slash from a url if it exists
  */

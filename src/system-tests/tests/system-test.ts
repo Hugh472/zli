@@ -7,6 +7,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { OAuthService } from '../../services/oauth/oauth.service';
 import { randomAlphaNumericString } from '../../utils/utils';
 import { connectSuite } from './suites/connect';
+import { sshSuite } from './suites/ssh';
 import { listTargetsSuite } from './suites/list-targets';
 import { versionSuite } from './suites/version';
 import { convertAwsRegionToDigitalOceanRegion, DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
@@ -626,6 +627,7 @@ if(SSM_ENABLED) {
     versionSuite();
     listTargetsSuite();
     connectSuite();
+    sshSuite();
 }
 
 if(KUBE_ENABLED) {

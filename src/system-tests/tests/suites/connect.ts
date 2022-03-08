@@ -1,8 +1,3 @@
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
-import { PolicyQueryHttpService } from '../../../http-services/policy-query/policy-query.http-services'
-
 import { MockSTDIN, stdin } from 'mock-stdin';
 import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
@@ -155,48 +150,6 @@ export const connectSuite = () => {
             // Note, there is no close event since we do not close the connection, just disconnect from it
             expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientDisconnect));
         }, 60 * 1000);
-
-
-        test("generate sshConfig", async () => {
-
-            const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
-            const generatePromise = callZli(['generate', 'sshConfig']);
-
-            const userConfigFile = path.join(
-                os.homedir(), '.ssh', 'test-config-user'
-            );
-
-            const bzConfigFile = path.join(
-                os.homedir(), '.ssh', 'test-config-bz'
-            );
-
-            // respond to interactive prompt
-            process.nextTick(() => {
-                mockStdin.send([userConfigFile, enterKey]);
-            });
-            await new Promise(r => setTimeout(r, 500));
-            mockStdin.send([bzConfigFile, enterKey]);
-
-            await generatePromise;
-
-            expect(tunnelsSpy).toHaveBeenCalled();
-
-            // expect user's config file to include the bz file
-            const includeStmt = `Include ${bzConfigFile}`;
-            const userConfigContents = fs.readFileSync(userConfigFile).toString();
-            expect(userConfigContents.includes(includeStmt)).toBe(true);
-
-            // expect all the targets to appear in the bz-config
-            const bzConfigContents = fs.readFileSync(bzConfigFile).toString();
-            for (const testTarget of ssmTestTargetsToRun) {
-                const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-                expect(bzConfigContents.includes(doTarget.ssmTarget.name)).toBe(true);
-            } 
-            
-            console.log("What?");
-            expect(true).toBe(true);
-
-        }, 60 * 1000)
 
     });
 };
