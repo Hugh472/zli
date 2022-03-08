@@ -20,14 +20,6 @@ export const sshSuite = () => {
         const testUtils = new TestUtils(configService, logger, loggerConfigService);
         const enterKey = '\x0D';
 
-        const currentUser: Subject = {
-            id: configService.me().id,
-            type: SubjectType.User
-        };
-        const environment: Environment = {
-            id: systemTestEnvId
-        };
-
         const userConfigFile = path.join(
             os.homedir(), '.ssh', 'test-config-user'
         );
@@ -36,11 +28,42 @@ export const sshSuite = () => {
             os.homedir(), '.ssh', 'test-config-bz'
         );
 
+        // Set up the policy before all the tests
+        beforeAll(async () => {
+            const currentUser: Subject = {
+                id: configService.me().id,
+                type: SubjectType.User
+            };
+            const environment: Environment = {
+                id: systemTestEnvId
+            };
+
+            // Then create our targetConnect policy
+            await policyService.AddTargetConnectPolicy({
+                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
+                subjects: [currentUser],
+                groups: [],
+                description: `Target connect policy created for system test: ${systemTestUniqueId}`,
+                environments: [environment],
+                targets: [],
+                targetUsers: [{ userName: targetUser }],
+                verbs: [{ type: VerbType.Shell }, { type: VerbType.Tunnel }]
+            });
+        });
+
         // Cleanup all policy after the tests
         afterAll(async () => {
+            // Search and delete our target connect policy
+            const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
+            const targetConnectPolicy = targetConnectPolicies.find(policy =>
+                policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
+            );
+            policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
+
             // delete outstanding configuration files
             removeIfExists(userConfigFile);
             removeIfExists(bzConfigFile);
+
         });
 
         // Called before each case
@@ -61,18 +84,7 @@ export const sshSuite = () => {
             }
         });
 
-        test("generate sshConfig -- tunnel targets are recorded", async () => {
-            // Then create our targetConnect policy
-            await policyService.AddTargetConnectPolicy({
-                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
-                subjects: [currentUser],
-                groups: [],
-                description: `Target connect policy created for system test: ${systemTestUniqueId}`,
-                environments: [environment],
-                targets: [],
-                targetUsers: [{ userName: targetUser }],
-                verbs: [{ type: VerbType.Shell }, { type: VerbType.Tunnel }]
-            });
+        test("generate sshConfig", async () => {
 
             const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
             const generatePromise = callZli(['generate', 'sshConfig']);
@@ -99,95 +111,10 @@ export const sshSuite = () => {
                 const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
                 expect(bzConfigContents.includes(doTarget.ssmTarget.name)).toBe(true);
             }
-
-            // Search and delete our target connect policy
-            const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
-            const targetConnectPolicy = targetConnectPolicies.find(policy =>
-                policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
-            );
-            policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
-
         }, 60 * 1000);
 
-        test("generate sshConfig -- non-tunnel targets are not recorded", async () => {
-            // Then create our targetConnect policy
-            await policyService.AddTargetConnectPolicy({
-                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
-                subjects: [currentUser],
-                groups: [],
-                description: `Target connect policy created for system test: ${systemTestUniqueId}`,
-                environments: [environment],
-                targets: [],
-                targetUsers: [{ userName: targetUser }],
-                verbs: [{ type: VerbType.Shell }]
-            });
-
-            const generatePromise = callZli(['generate', 'sshConfig']);
-
-            // respond to interactive prompt
-            process.nextTick(() => {
-                mockStdin.send([userConfigFile, enterKey]);
-            });
-            await new Promise(r => setTimeout(r, 500));
-            mockStdin.send([bzConfigFile, enterKey]);
-
-            await generatePromise;
-
-            // expect none of the targets to appear in the bz-config
-            const bzConfigContents = fs.readFileSync(bzConfigFile).toString();
-            for (const testTarget of ssmTestTargetsToRun) {
-                const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-                expect(bzConfigContents.includes(doTarget.ssmTarget.name)).toBe(false);
-            }
-
-            // Search and delete our target connect policy
-            const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
-            const targetConnectPolicy = targetConnectPolicies.find(policy =>
-                policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
-            );
-            policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
-
-        }, 60 * 1000);
-
-
-        test("generate sshConfig -- multiple usernames", async () => {
-            // Then create our targetConnect policy
-            await policyService.AddTargetConnectPolicy({
-                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
-                subjects: [currentUser],
-                groups: [],
-                description: `Target connect policy created for system test: ${systemTestUniqueId}`,
-                environments: [environment],
-                targets: [],
-                targetUsers: [{ userName: targetUser }, { userName: `user-${systemTestUniqueId}` }],
-                verbs: [{ type: VerbType.Shell }, { type: VerbType.Tunnel }]
-            });
-
-            const generatePromise = callZli(['generate', 'sshConfig']);
-
-            // respond to interactive prompt
-            process.nextTick(() => {
-                mockStdin.send([userConfigFile, enterKey]);
-            });
-            await new Promise(r => setTimeout(r, 500));
-            mockStdin.send([bzConfigFile, enterKey]);
-
-            await generatePromise;
-            // the test username should not appear in the config file, although the targets are there
-            const bzConfigContents = fs.readFileSync(bzConfigFile).toString();
-            for (const testTarget of ssmTestTargetsToRun) {
-                const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-                expect(bzConfigContents.includes(doTarget.ssmTarget.name)).toBe(true);
-            }
-            expect(bzConfigContents.includes(`user-${systemTestUniqueId}`)).toBe(false);
-
-            // Search and delete our target connect policy
-            const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
-            const targetConnectPolicy = targetConnectPolicies.find(policy =>
-                policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
-            );
-            policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
-
+        test("use sshConfig to connect", async () => {
+            expect(true).toBe(true);
         }, 60 * 1000);
 
     });
