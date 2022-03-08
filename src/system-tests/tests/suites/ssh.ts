@@ -1,6 +1,8 @@
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { promisify } from 'util';
+import { exec } from 'child_process';
 import { PolicyQueryHttpService } from '../../../http-services/policy-query/policy-query.http-services'
 import { MockSTDIN, stdin } from 'mock-stdin';
 import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets } from '../system-test';
@@ -61,8 +63,8 @@ export const sshSuite = () => {
             policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
 
             // delete outstanding configuration files
-            removeIfExists(userConfigFile);
-            removeIfExists(bzConfigFile);
+            //removeIfExists(userConfigFile);
+            //removeIfExists(bzConfigFile);
 
         });
 
@@ -114,7 +116,17 @@ export const sshSuite = () => {
         }, 60 * 1000);
 
         test("use sshConfig to connect", async () => {
-            expect(true).toBe(true);
+
+            const pexec = promisify(exec);
+            const { stdout, stderr } = await pexec(`which ssh`);
+            console.log(stdout);
+            for (const testTarget of ssmTestTargetsToRun) {
+                const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
+                const { stdout, stderr } = await pexec(`ssh dev-bzero-${doTarget.ssmTarget.name} echo success`);
+                expect(stdout).toEqual("success");
+                expect(stderr).toEqual("");
+            }
+
         }, 60 * 1000);
 
     });
