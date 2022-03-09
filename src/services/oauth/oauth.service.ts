@@ -192,7 +192,25 @@ export class OAuthService implements IDisposable {
         }
 
         if(this.nonce === undefined){
-            throw new Error('Unable to get authUrl from with undefined nonce');
+            throw new Error('Unable to get authUrl with undefined nonce');
+        }
+
+        const idp = this.configService.idp();
+        if(idp === undefined){
+            throw new Error('Unable to get authUrl from undefined idp');
+        }
+
+        let prompt = '';
+        switch (idp) {
+        case IdentityProvider.Google:
+        case IdentityProvider.Okta:
+            prompt = 'consent';
+            break;
+        case IdentityProvider.Microsoft:
+            prompt = 'login';
+            break;
+        default:
+            throw new Error(`Unsupported IdP: ${idp}`);
         }
 
         const authParams: AuthorizationParameters = {
@@ -202,7 +220,7 @@ export class OAuthService implements IDisposable {
             code_challenge_method: 'S256',
             scope: this.configService.authScopes(),
             // required for google refresh token
-            prompt: 'consent',
+            prompt: prompt,
             access_type: 'offline',
             nonce: this.nonce,
             state: state
