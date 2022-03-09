@@ -112,17 +112,16 @@ export const sshSuite = () => {
             }
         }, 60 * 1000);
 
-        // TODO: clean this up, rewrite as a test.each
-        test('use sshConfig to connect', async () => {
+        test.each(ssmTestTargetsToRun)('ssh proxy to %p', async (testTarget) => {
+            const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
 
             const pexec = promisify(exec);
-            for (const testTarget of ssmTestTargetsToRun) {
-                const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-                const command = `ssh -F ${userConfigFile} -o StrictHostKeyChecking=no dev-bzero-${doTarget.ssmTarget.name} echo success`;
-                const { stdout, stderr } = await pexec(command);
-                expect(stdout.trim()).toEqual('success');
-                expect(stderr.includes('Warning: Permanently added')).toBe(true);
-            }
+            // TODO: will it always be dev-bzero?
+            // use the config file we just created to ssh without specifying a user or identity file
+            const command = `ssh -F ${userConfigFile} -o StrictHostKeyChecking=no dev-bzero-${doTarget.ssmTarget.name} echo success`;
+            const { stdout, stderr } = await pexec(command);
+            expect(stdout.trim()).toEqual('success');
+            expect(stderr.includes('Warning: Permanently added')).toBe(true);
 
         }, 60 * 1000);
 
