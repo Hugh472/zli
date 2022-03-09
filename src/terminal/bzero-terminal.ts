@@ -13,6 +13,7 @@ import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/t
 import { ConnectionHttpService } from '../http-services/connection/connection.http-services';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { BzeroTargetHttpService } from '../http-services/targets/bzero/bzero.http-services';
 
 export class ShellTerminal implements IDisposable
 {
@@ -55,9 +56,12 @@ export class ShellTerminal implements IDisposable
             const shellConnectionAuthDetails = await connectionHttpService.GetShellConnectionAuthDetails(this.connectionSummary.id);
             this.logger.info("AUTH DETAILS: " + { authToken: shellConnectionAuthDetails.authToken, connectionServiceUrl: shellConnectionAuthDetails.connectionServiceUrl })
 
+            const bzeroTargetHttpService = new BzeroTargetHttpService(this.configService, this.logger);
+            const bzeroTargetInfo = await bzeroTargetHttpService.GetBzeroTarget(targetId);
+
             return new ShellWebsocketService(
                 new KeySplittingService(this.configService, this.logger),
-                // ssmTargetInfo,
+                bzeroTargetInfo,
                 this.logger,
                 new ZliAuthConfigService(this.configService, this.logger),
                 this.connectionSummary.id,
@@ -180,9 +184,9 @@ export class ShellTerminal implements IDisposable
             process.exit();
         }
         // this.logger.error("writeString: "+input);
-        if( input == "w" ){ 
-            this.shellWebsocketService.shellReplay();
-        }
+        // if( input == "w" ){ 
+        //     this.shellWebsocketService.shellReplay();
+        // }
 
         if(! this.blockInput) {
             // this.logger.error("writeString this.blockInput: "+input);
