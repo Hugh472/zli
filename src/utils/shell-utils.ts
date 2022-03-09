@@ -2,8 +2,8 @@ import termsize from 'term-size';
 import readline from 'readline';
 import { ConfigService } from '../services/config/config.service';
 import { Logger } from '../services/logger/logger.service';
-import { SsmShellTerminal } from '../terminal/terminal';
-import { ShellTerminal } from '../terminal/bzero-terminal';
+import { ShellTerminal } from '../terminal/terminal';
+// import { ShellTerminal } from '../terminal/bzero-terminal';
 import { SpaceState } from '../../webshell-common-ts/http/v2/space/types/space-state.types';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { SpaceHttpService } from '../http-services/space/space.http-services';
@@ -17,12 +17,13 @@ export async function createAndRunShell(
     onOutput: (output: Uint8Array) => any
 ) {
     return new Promise<number>(async (resolve, _) => {
-        let terminal: ShellTerminal | SsmShellTerminal;
-        if (connectionSummary.targetType === TargetType.Bzero) {
-            terminal = new ShellTerminal(logger, configService, connectionSummary);
-        } else {
-            terminal = new SsmShellTerminal(logger, configService, connectionSummary);
-        }
+        let terminal = new ShellTerminal(logger, configService, connectionSummary);
+        // let terminal: ShellTerminal | ShellTerminal;
+        // if (connectionSummary.targetType === TargetType.Bzero) {
+        //     terminal = new ShellTerminal(logger, configService, connectionSummary);
+        // } else {
+        //     terminal = new ShellTerminal(logger, configService, connectionSummary);
+        // }
 
         // Subscribe first so we don't miss events
         terminal.terminalRunning.subscribe(

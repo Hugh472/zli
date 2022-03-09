@@ -134,7 +134,7 @@ export class ShellTerminal implements IDisposable
                     // exiting this ZLI process without closing the
                     // connection and effectively transferring ownership of
                     // the connection to the other client
-                    this.logger.error('Another client has attached to this connection.');
+                    // this.logger.error('Another client has attached to this connection.');
                     this.terminalRunningStream.complete();
                     break;
                 case ShellEventType.Disconnect:
@@ -180,9 +180,9 @@ export class ShellTerminal implements IDisposable
             process.exit();
         }
         // this.logger.error("writeString: "+input);
-        if( input == "w" ){ 
-            this.shellWebsocketService.shellReplay();
-        }
+        // if( input == "w" ){ 
+        //     this.shellWebsocketService.shellReplay();
+        // }
 
         if(! this.blockInput) {
             // this.logger.error("writeString this.blockInput: "+input);

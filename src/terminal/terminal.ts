@@ -13,8 +13,11 @@ import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/t
 import { ConnectionHttpService } from '../http-services/connection/connection.http-services';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { IShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
+import { ShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service';
+import { BzeroTargetHttpService } from '../http-services/targets/bzero/bzero.http-services';
 
-export class SsmShellTerminal implements IDisposable
+export class ShellTerminal implements IDisposable
 {
     private shellWebsocketService : ISsmShellWebsocketService;
     private shellEventDataSubscription: Subscription;
@@ -43,9 +46,47 @@ export class SsmShellTerminal implements IDisposable
     {
     }
 
-    private async createShellWebsocketService() : Promise<ISsmShellWebsocketService> {
+    private async createShellWebsocketService() : Promise<ISsmShellWebsocketService | IShellWebsocketService> {
         const targetType = this.connectionSummary.targetType;
         const targetId = this.connectionSummary.targetId;
+
+        switch (targetType) {
+            case TargetType.SsmTarget || TargetType.DynamicAccessConfig:
+                const ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
+                const ssmTargetInfo = await ssmTargetHttpService.GetSsmTarget(targetId);
+
+                // Check the agent version is keysplitting compatible
+                this.checkAgentVersion(ssmTargetInfo);
+
+                const connectionHttpService = new ConnectionHttpService(this.configService, this.logger);
+                const shellConnectionAuthDetails = await connectionHttpService.GetShellConnectionAuthDetails(this.connectionSummary.id);
+
+                return new SsmShellWebsocketService(
+                    new KeySplittingService(this.configService, this.logger),
+                    ssmTargetInfo,
+                    this.logger,
+                    new ZliAuthConfigService(this.configService, this.logger),
+                    this.connectionSummary.id,
+                    { authToken: shellConnectionAuthDetails.authToken, connectionServiceUrl: shellConnectionAuthDetails.connectionServiceUrl },
+                    this.inputSubject,
+                    this.resizeSubject
+                );
+            case TargetType.Bzero:
+                const bzeroTargetHttpService = new BzeroTargetHttpService(this.configService, this.logger);
+                const bzeroTargetInfo = await bzeroTargetHttpService.GetBzeroTarget(targetId);
+
+                return new ShellWebsocketService(
+                    new KeySplittingService(this.configService, this.logger),
+                    bzeroTargetInfo,
+                    this.connectionSummary.targetUser,
+                    this.logger,
+                    new ZliAuthConfigService(this.configService, this.logger),
+                    this.connectionSummary.id,
+                    { authToken: shellConnectionAuthDetails.authToken, connectionServiceUrl: shellConnectionAuthDetails.connectionServiceUrl },
+                    this.inputSubject,
+                    this.resizeSubject
+                )
+        }
 
         if (targetType === TargetType.SsmTarget || targetType === TargetType.DynamicAccessConfig) {
             const ssmTargetHttpService = new SsmTargetHttpService(this.configService, this.logger);
