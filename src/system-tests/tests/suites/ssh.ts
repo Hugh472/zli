@@ -7,6 +7,7 @@ import { PolicyQueryHttpService } from '../../../http-services/policy-query/poli
 import { MockSTDIN, stdin } from 'mock-stdin';
 import { configService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets } from '../system-test';
 import { callZli } from '../utils/zli-utils';
+import { removeIfExists } from '../../../utils/utils';
 import { DigitalOceanSSMTarget } from '../../digital-ocean/digital-ocean-ssm-target.service.types';
 import { VerbType } from '../../../../src/services/v1/policy-query/policy-query.types';
 import { SubjectType } from '../../../../webshell-common-ts/http/v2/common.types/subject.types';
@@ -14,7 +15,7 @@ import { Subject } from '../../../../src/services/v1/policy/policy.types';
 import { Environment } from '../../../../webshell-common-ts/http/v2/policy/types/environment.types';
 
 export const sshSuite = () => {
-    describe('connect suite', () => {
+    describe('ssh suite', () => {
         let mockStdin: MockSTDIN;
         const targetUser = 'ssm-user';
         const enterKey = '\x0D';
@@ -60,9 +61,8 @@ export const sshSuite = () => {
             policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
 
             // delete outstanding configuration files
-            //removeIfExists(userConfigFile);
-            //removeIfExists(bzConfigFile);
-
+            removeIfExists(userConfigFile);
+            removeIfExists(bzConfigFile);
         });
 
         // Called before each case
@@ -115,13 +115,14 @@ export const sshSuite = () => {
         test('use sshConfig to connect', async () => {
 
             const pexec = promisify(exec);
-            const { stdout } = await pexec(`which ssh`);
-            console.log(stdout);
             for (const testTarget of ssmTestTargetsToRun) {
                 const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-                const { stdout, stderr } = await pexec(`ssh dev-bzero-${doTarget.ssmTarget.name} echo success`);
-                expect(stdout).toEqual('success');
-                expect(stderr).toEqual('');
+                const command = `ssh -F ${userConfigFile} -o StrictHostKeyChecking=no dev-bzero-${doTarget.ssmTarget.name} echo success`
+                const { stdout, stderr } = await pexec(command);
+                console.log(`TESTING: does ${JSON.stringify(stdout)} equal success? ${stdout === 'success'}`);
+                console.log(stderr);
+                expect(stdout.trim()).toEqual('success');
+                expect(stderr.includes('Warning: Permanently added')).toBe(true);
             }
 
         }, 60 * 1000);
