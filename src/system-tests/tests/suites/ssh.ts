@@ -112,15 +112,14 @@ export const sshSuite = () => {
             }
         }, 60 * 1000);
 
+        // TODO: clean this up, rewrite as a test.each
         test('use sshConfig to connect', async () => {
 
             const pexec = promisify(exec);
             for (const testTarget of ssmTestTargetsToRun) {
                 const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-                const command = `ssh -F ${userConfigFile} -o StrictHostKeyChecking=no dev-bzero-${doTarget.ssmTarget.name} echo success`
+                const command = `ssh -F ${userConfigFile} -o StrictHostKeyChecking=no dev-bzero-${doTarget.ssmTarget.name} echo success`;
                 const { stdout, stderr } = await pexec(command);
-                console.log(`TESTING: does ${JSON.stringify(stdout)} equal success? ${stdout === 'success'}`);
-                console.log(stderr);
                 expect(stdout.trim()).toEqual('success');
                 expect(stderr.includes('Warning: Permanently added')).toBe(true);
             }
