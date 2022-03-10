@@ -79,18 +79,7 @@ export const sshSuite = () => {
             });
 
             const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
-            const zliPromise = callZli(['generate', 'sshConfig']);
-
-            // respond to interactive prompt
-            process.nextTick(async () => {
-                mockStdin.send([userConfigFile, enterKey]);
-            });
-            await new Promise(r => setTimeout(r, 1000));
-            process.nextTick(async () => {
-                mockStdin.send([bzConfigFile, enterKey]);
-            });
-
-            await zliPromise;
+            await callZli(['generate', 'sshConfig', '--mySshPath', userConfigFile, '--bzSshPath', bzConfigFile]);
             expect(tunnelsSpy).toHaveBeenCalled();
 
             // expect user's config file to include the bz file
@@ -144,16 +133,7 @@ export const sshSuite = () => {
             });
 
             const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
-            const zliPromise = callZli(['generate', 'sshConfig']);
-
-            // respond to interactive prompt
-            process.nextTick(() => {
-                mockStdin.send([userConfigFile, enterKey]);
-            });
-            await new Promise(r => setTimeout(r, 500));
-            mockStdin.send([bzConfigFile, enterKey]);
-
-            await zliPromise;
+            await callZli(['generate', 'sshConfig', '--mySshPath', userConfigFile, '--bzSshPath', bzConfigFile]);
             expect(tunnelsSpy).toHaveBeenCalled();
 
             // expect user's config file to include the bz file
@@ -192,16 +172,7 @@ export const sshSuite = () => {
             });
 
             const tunnelsSpy = jest.spyOn(PolicyQueryHttpService.prototype, 'GetTunnels');
-            const zliPromise = callZli(['generate', 'sshConfig']);
-
-            // respond to interactive prompt
-            process.nextTick(() => {
-                mockStdin.send([userConfigFile, enterKey]);
-            });
-            await new Promise(r => setTimeout(r, 500));
-            mockStdin.send([bzConfigFile, enterKey]);
-
-            await zliPromise;
+            await callZli(['generate', 'sshConfig', '--mySshPath', userConfigFile, '--bzSshPath', bzConfigFile]);
             expect(tunnelsSpy).toHaveBeenCalled();
 
             // expect user's config file to include the bz file

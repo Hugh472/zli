@@ -611,7 +611,7 @@ export class CliDriver
                     } else if (argv.typeOfConfig == 'kubeYaml') {
                         await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'sshConfig') {
-                        await generateSshConfigHandler(this.configService, this.logger, cleanProcessName());
+                        await generateSshConfigHandler(argv, this.configService, this.logger, cleanProcessName());
                     }
                 }
             )

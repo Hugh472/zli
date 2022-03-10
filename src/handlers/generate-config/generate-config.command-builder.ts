@@ -7,7 +7,9 @@ export type generateConfigArgs = { typeOfConfig: string } &
 { customPort: number } &
 { outputFile: string } &
 { environmentName: string } &
-{ update: boolean }
+{ update: boolean } &
+{ mySshPath: string } &
+{ bzSshPath: string }
 
 export function generateConfigCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<generateConfigArgs> {
     return yargs
@@ -43,10 +45,18 @@ export function generateConfigCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<gene
         .option('update', {
             type: 'boolean',
             default: false
+        }).option('mySshPath', {
+            type: 'string',
+            default: null
+        })
+        .option('bzSshPath', {
+            type: 'string',
+            default: null
         })
         .example('$0 generate kubeYaml testcluster', '')
         .example('$0 generate kubeYaml --labels testkey:testvalue', '')
         .example('$0 generate kubeConfig', '')
         .example('$0 generate kubeConfig --update', 'Update existing kube config (defaults KUBECONFIG to $HOME/.kube/config)')
-        .example('$0 generate sshConfig', 'Create and link an ssh config file based on your organization\'s policies');
+        .example('$0 generate sshConfig', 'Create and link an ssh config file based on your organization\'s policies')
+        .example('$0 generate sshConfig --mySshPath ../config --bzSshPath ../bz-config', '(defaults to $HOME/.ssh/config and $HOME/.ssh/bz-config)');
 }

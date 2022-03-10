@@ -2,11 +2,14 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import prompts from 'prompts';
+import yargs from 'yargs';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
 import { buildSshConfigString } from '../ssh-proxy-config.handler';
+import { generateConfigArgs } from './generate-config.command-builder';
+
 
 /**
  *  Generates an ssh config file based on tunnel targets the user has access to, then Includes it 
@@ -15,7 +18,7 @@ import { buildSshConfigString } from '../ssh-proxy-config.handler';
  * @param logger {Logger}
  * @param processName {string} the calling process (e.g., "zli"), used to populate the ProxyCommand
  */
-export async function generateSshConfigHandler(configService: ConfigService, logger: Logger, processName: string) {
+export async function generateSshConfigHandler(argv: yargs.Arguments<generateConfigArgs>, configService: ConfigService, logger: Logger, processName: string) {
     // Query for tunnel targets that the user has access to
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
     const tunnels: TunnelsResponse[] = await policyQueryHttpService.GetTunnels();
@@ -25,8 +28,7 @@ export async function generateSshConfigHandler(configService: ConfigService, log
     const bzConfigContentsFormatted = formatBzConfigContents(tunnels, allHosts, prefix);
 
     // Determine + write to the user's ssh and bzero-ssh config path
-    const { userConfigPath, bzConfigPath } = await getFilePaths();
-    console.log({ userConfigPath, bzConfigPath });
+    const { userConfigPath, bzConfigPath } = await getFilePaths(argv.mySshPath, argv.bzSshPath, logger);
     fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
 
     // Link the ssh config path, with our new bzero-ssh config path
@@ -39,31 +41,28 @@ export async function generateSshConfigHandler(configService: ConfigService, log
  * get filepaths from the user via CLI prompt
  * @returns {{userConfigPath: string, bzConfigPath: string}}
  */
-async function getFilePaths() {
-    const userConfigPath = path.join(
-        os.homedir(), '.ssh', 'config'
-    );
+async function getFilePaths(userSshPath: string | null, bzSshPath: string | null, logger: Logger) {
 
-    const bzConfigPath = path.join(
-        os.homedir(), '.ssh', 'bz-config'
-    );
+    let userConfigPath: string;
+    let bzConfigPath: string;
 
-    const filepaths = await prompts([
-        {
-            type: 'text',
-            name: 'userConfigPath',
-            message: `Where is your primary SSH config file? `,
-            initial: userConfigPath
-        },
-        {
-            type: 'text',
-            name: 'bzConfigPath',
-            message: `Where should the BZ config file be stored?`,
-            initial: bzConfigPath
-        },
-    ]);
+    if (userSshPath) {
+        userConfigPath = userSshPath;
+    } else {
+        userConfigPath = path.join(os.homedir(), '.ssh', 'config');
+        logger.info(`Using default location '${userConfigPath}' for your primary SSH config file; to change this, use the --mySshPath option`);
+    }
+    if (bzSshPath) {
+        bzConfigPath = bzSshPath;
+    } else {
+        bzConfigPath = path.join(os.homedir(), '.ssh', 'bz-config');
+        logger.info(`Using default location '${bzConfigPath}' for the BastionZero SSH config file; to change this, use the --bzSshPath option`);
+    }
 
-    return filepaths;
+    return {
+        userConfigPath,
+        bzConfigPath
+    }
 }
 
 /**
