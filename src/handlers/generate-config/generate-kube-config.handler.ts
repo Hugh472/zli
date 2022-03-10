@@ -3,7 +3,7 @@ import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
 import { exec } from 'child_process';
 import yargs from 'yargs';
-import { generateKubeArgs } from './generate-config.command-builder';
+import { generateConfigArgs } from './generate-config.command-builder';
 import { cleanExit } from '../clean-exit.handler';
 import { generateNewCert } from '../../utils/daemon-utils';
 
@@ -15,7 +15,7 @@ const randtoken = require('rand-token');
 const execPromise = util.promisify(exec);
 
 export async function generateKubeConfigHandler(
-    argv: yargs.Arguments<generateKubeArgs>,
+    argv: yargs.Arguments<generateConfigArgs>,
     configService: ConfigService,
     logger: Logger
 ) {

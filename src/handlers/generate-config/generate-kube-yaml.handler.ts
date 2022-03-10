@@ -3,7 +3,7 @@ import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
 import { cleanExit } from '../clean-exit.handler';
 import yargs from 'yargs';
-import { generateKubeArgs } from './generate-config.command-builder';
+import { generateConfigArgs } from './generate-config.command-builder';
 import { getEnvironmentFromName } from '../../utils/utils';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
 import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
@@ -12,7 +12,7 @@ const fs = require('fs');
 
 
 export async function generateKubeYamlHandler(
-    argv: yargs.Arguments<generateKubeArgs>,
+    argv: yargs.Arguments<generateConfigArgs>,
     envs: Promise<EnvironmentSummary[]>,
     configService: ConfigService,
     logger: Logger

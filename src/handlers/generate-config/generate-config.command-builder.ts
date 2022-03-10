@@ -1,6 +1,6 @@
 import yargs from 'yargs';
 
-export type generateKubeArgs = { typeOfConfig: string } &
+export type generateConfigArgs = { typeOfConfig: string } &
 { clusterName: string } &
 { namespace: string } &
 { labels: string[] } &
