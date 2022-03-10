@@ -622,10 +622,10 @@ async function cleanupSystemTestApiKeys() {
     await apiKeyService.DeleteApiKey(systemTestRegistrationApiKey.apiKeyDetails.id);
 }
 
-export async function cleanupTargetConnectPolicies() {
+export async function cleanupTargetConnectPolicies(policyType: string) {
     const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
     const targetConnectPolicy = targetConnectPolicies.find(policy =>
-        policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
+        policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', policyType)
     );
     await policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
 }

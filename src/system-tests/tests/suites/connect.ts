@@ -18,6 +18,7 @@ export const connectSuite = () => {
     describe('connect suite', () => {
         let mockStdin: MockSTDIN;
         const targetUser = 'ssm-user';
+        const policyType = 'target-connect';
         const testUtils = new TestUtils(configService, logger, loggerConfigService);
         const enterKey = '\x0D';
 
@@ -33,7 +34,7 @@ export const connectSuite = () => {
 
             // Then create our targetConnect policy
             await policyService.AddTargetConnectPolicy({
-                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
+                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', policyType),
                 subjects: [currentUser],
                 groups: [],
                 description: `Target connect policy created for system test: ${systemTestUniqueId}`,
@@ -47,7 +48,7 @@ export const connectSuite = () => {
         // Cleanup all policy after the tests
         afterAll(async () => {
             // Search and delete our target connect policy
-            await cleanupTargetConnectPolicies();
+            await cleanupTargetConnectPolicies(policyType);
         });
 
         // Called before each case

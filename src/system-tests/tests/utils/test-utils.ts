@@ -206,5 +206,17 @@ export class TestUtils {
             throw new Error(`There are currently processes using port ${port}: ${ports}`);
         }
     }
+
+    /**
+     * Helper function to get the prefix for targets
+     */
+    public getTargetPrefix(): string {
+        const configName = configService.getConfigName();
+        let prefix = 'bzero-';
+        if (configName != 'prod') {
+            prefix = `${configName}-${prefix}`;
+        }
+        return prefix;
+    }
 }
 

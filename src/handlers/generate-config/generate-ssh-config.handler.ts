@@ -8,19 +8,37 @@ import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-
 import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
 import { buildSshConfigString } from '../ssh-proxy-config.handler';
 
+/**
+ *  Generates an ssh config file based on tunnel targets the user has access to, then Includes it 
+ * in the user's existing ssh config file
+ * @param configService {ConfigService}
+ * @param logger {Logger}
+ * @param processName {string} the calling process (e.g., "zli"), used to populate the ProxyCommand
+ */
 export async function generateSshConfigHandler(configService: ConfigService, logger: Logger, processName: string) {
-    const { userConfigPath, bzConfigPath } = await getFilePaths();
-
+    // Query for tunnel targets that the user has access to
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
     const tunnels: TunnelsResponse[] = await policyQueryHttpService.GetTunnels();
+
+    // Build our ssh config file
     const { allHosts, prefix } = buildSshConfigString(configService, processName);
     const bzConfigContentsFormatted = formatBzConfigContents(tunnels, allHosts, prefix);
 
+    // Determine + write to the user's ssh and bzero-ssh config path
+    const { userConfigPath, bzConfigPath } = await getFilePaths();
+    console.log({ userConfigPath, bzConfigPath });
     fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
-    linkNewConfigFile(userConfigPath, bzConfigPath);
+
+    // Link the ssh config path, with our new bzero-ssh config path
+    linkNewConfigFile(userConfigPath, bzConfigPath, logger);
+
     logger.info('SSH configuration generated successfully!');
 }
 
+/**
+ * get filepaths from the user via CLI prompt
+ * @returns {{userConfigPath: string, bzConfigPath: string}}
+ */
 async function getFilePaths() {
     const userConfigPath = path.join(
         os.homedir(), '.ssh', 'config'
@@ -30,7 +48,7 @@ async function getFilePaths() {
         os.homedir(), '.ssh', 'bz-config'
     );
 
-    const response = await prompts([
+    const filepaths = await prompts([
         {
             type: 'text',
             name: 'userConfigPath',
@@ -45,9 +63,16 @@ async function getFilePaths() {
         },
     ]);
 
-    return response;
+    return filepaths;
 }
 
+/**
+ * 
+ * @param tunnels {TunnelsResponse[]} A list of targets the user can access over SSH tunnel
+ * @param allHosts {string} the wildcard configuration that applies to all bzero hosts
+ * @param prefix {string} e.g., "bzero-", prepended to hostnames in the config file
+ * @returns {string} the bz config file contents
+ */
 function formatBzConfigContents(tunnels: TunnelsResponse[], allHosts: string, prefix: string) {
     // initialize with wildcard config
     let contents = allHosts;
@@ -65,7 +90,13 @@ Host ${prefix}${tunnel.targetName}
     return contents;
 }
 
-function linkNewConfigFile(userConfigFile: string, bzConfigFile: string) {
+/**
+ * Attaches an 'Include path/to/bz-config' line to the user's ssh config file, if not there already
+ * @param userConfigFile {string} path of the user's config file
+ * @param bzConfigFile {string} path of the BZ config file
+ * @param logger {Logger}
+ */
+function linkNewConfigFile(userConfigFile: string, bzConfigFile: string, logger: Logger) {
     const includeStmt = `Include ${bzConfigFile}`;
     let configContents;
     let userConfigExists = true;
@@ -77,11 +108,12 @@ function linkNewConfigFile(userConfigFile: string, bzConfigFile: string) {
             userConfigExists = false;
             configContents = Buffer.from('');
         } else {
+            logger.error("Unable to read your ssh config file")
             throw err;
         }
     }
 
-    //      if the config file doesn't exist or the include statement
+    // if the config file doesn't exist or the include statement
     // isn't present, prepend it to the file
     if (!userConfigExists || !configContents.includes(includeStmt)) {
         const fd = fs.openSync(userConfigFile, 'w+');

@@ -9,7 +9,7 @@ export type generateConfigArgs = { typeOfConfig: string } &
 { environmentName: string } &
 { update: boolean }
 
-export function generateConfigCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<generateKubeArgs> {
+export function generateConfigCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<generateConfigArgs> {
     return yargs
         .positional('typeOfConfig', {
             type: 'string',
