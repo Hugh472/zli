@@ -67,6 +67,6 @@ export class PolicyQueryHttpService extends HttpService
     }
 
     public GetTunnels(): Promise<TunnelsResponse[]> {
-        return this.Get('tunnels');
+        return this.Get('target-connect/tunnels');
     }
 }

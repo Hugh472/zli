@@ -26,7 +26,6 @@ export async function generateSshConfigHandler(configService: ConfigService, log
 
     // Determine + write to the user's ssh and bzero-ssh config path
     const { userConfigPath, bzConfigPath } = await getFilePaths();
-    console.log({ userConfigPath, bzConfigPath });
     fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
 
     // Link the ssh config path, with our new bzero-ssh config path
