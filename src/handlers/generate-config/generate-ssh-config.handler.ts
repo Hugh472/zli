@@ -18,7 +18,7 @@ export async function generateSshConfigHandler(configService: ConfigService, log
 
     fs.writeFileSync(bzConfigPath, bzConfigContentsFormatted);
     linkNewConfigFile(userConfigPath, bzConfigPath);
-    logger.info('SSH configuration synced successfully!');
+    logger.info('SSH configuration generated successfully!');
 }
 
 async function getFilePaths() {

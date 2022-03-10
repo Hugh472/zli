@@ -603,7 +603,6 @@ export class CliDriver
                 'generate <typeOfConfig> [clusterName]',
                 'Generate different types of configuration files',
                 (yargs) => {
-                    // TODO: should this function be renamed, since it handles SSH config as well?
                     return generateConfigCmdBuilder(yargs);
                 },
                 async (argv) => {
