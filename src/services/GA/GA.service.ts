@@ -12,7 +12,8 @@ export class GAService
     private visitor: any;
 
     private customDimensionMapper: { [key: string ]: string } = {
-        'zli-os': 'cd1'
+        'zli-os': 'cd1',
+        'user-id': 'cd2'
     }
 
     constructor(private configService: ConfigService, private logger: Logger)
