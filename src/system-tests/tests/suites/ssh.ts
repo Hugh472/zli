@@ -82,11 +82,12 @@ export const sshSuite = () => {
             const zliPromise = callZli(['generate', 'sshConfig']);
 
             // respond to interactive prompt
-            process.nextTick(async () => {
+            await process.nextTick(async () => {
+                await new Promise(r => setTimeout(r, 2000));
                 mockStdin.send([userConfigFile, enterKey]);
             });
-            await new Promise(r => setTimeout(r, 1000));
-            process.nextTick(async () => {
+            await process.nextTick(async () => {
+                await new Promise(r => setTimeout(r, 2000));
                 mockStdin.send([bzConfigFile, enterKey]);
             });
 
@@ -133,7 +134,7 @@ export const sshSuite = () => {
 
             //  create our policy
             await policyService.AddTargetConnectPolicy({
-                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
+                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', policyType),
                 subjects: [currentUser],
                 groups: [],
                 description: `Target ssh policy created for system test: ${systemTestUniqueId}`,
@@ -147,11 +148,14 @@ export const sshSuite = () => {
             const zliPromise = callZli(['generate', 'sshConfig']);
 
             // respond to interactive prompt
-            process.nextTick(() => {
+            await process.nextTick(async () => {
+                await new Promise(r => setTimeout(r, 2000));
                 mockStdin.send([userConfigFile, enterKey]);
             });
-            await new Promise(r => setTimeout(r, 500));
-            mockStdin.send([bzConfigFile, enterKey]);
+            await process.nextTick(async () => {
+                await new Promise(r => setTimeout(r, 2000));
+                mockStdin.send([bzConfigFile, enterKey]);
+            });
 
             await zliPromise;
             expect(tunnelsSpy).toHaveBeenCalled();
@@ -181,7 +185,7 @@ export const sshSuite = () => {
 
             // create our policy
             await policyService.AddTargetConnectPolicy({
-                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'),
+                name: systemTestPolicyTemplate.replace('$POLICY_TYPE', policyType),
                 subjects: [currentUser],
                 groups: [],
                 description: `Target ssh policy created for system test: ${systemTestUniqueId}`,
@@ -195,11 +199,14 @@ export const sshSuite = () => {
             const zliPromise = callZli(['generate', 'sshConfig']);
 
             // respond to interactive prompt
-            process.nextTick(() => {
+            await process.nextTick(async () => {
+                await new Promise(r => setTimeout(r, 2000));
                 mockStdin.send([userConfigFile, enterKey]);
             });
-            await new Promise(r => setTimeout(r, 500));
-            mockStdin.send([bzConfigFile, enterKey]);
+            await process.nextTick(async () => {
+                await new Promise(r => setTimeout(r, 2000));
+                mockStdin.send([bzConfigFile, enterKey]);
+            });
 
             await zliPromise;
             expect(tunnelsSpy).toHaveBeenCalled();
