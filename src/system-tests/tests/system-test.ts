@@ -622,6 +622,14 @@ async function cleanupSystemTestApiKeys() {
     await apiKeyService.DeleteApiKey(systemTestRegistrationApiKey.apiKeyDetails.id);
 }
 
+export async function cleanupTargetConnectPolicies() {
+    const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
+    const targetConnectPolicy = targetConnectPolicies.find(policy =>
+        policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
+    );
+    await policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
+}
+
 // Call various test suites
 if(SSM_ENABLED) {
     versionSuite();

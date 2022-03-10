@@ -2,7 +2,7 @@ import { MockSTDIN, stdin } from 'mock-stdin';
 import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
-import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets } from '../system-test';
+import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets, cleanupTargetConnectPolicies } from '../system-test';
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
 import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
@@ -47,11 +47,7 @@ export const connectSuite = () => {
         // Cleanup all policy after the tests
         afterAll(async () => {
             // Search and delete our target connect policy
-            const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
-            const targetConnectPolicy = targetConnectPolicies.find(policy =>
-                policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
-            );
-            policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
+            await cleanupTargetConnectPolicies();
         });
 
         // Called before each case
