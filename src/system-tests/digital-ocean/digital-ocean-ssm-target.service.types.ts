@@ -1,7 +1,7 @@
-import { Droplet } from 'digitalocean-js';
 import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 import { BzeroAgentSummary } from '../../../webshell-common-ts/http/v2/target/bzero/types/bzero-agent-summary.types';
 import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.types';
+import { IDroplet } from 'dots-wrapper/dist/droplet/types/droplet';
 
 /**
  * String union of a selection of public droplet distro images and some custom
@@ -17,11 +17,11 @@ export const DigitalOceanDistroImage = {
     // This is a custom DigitalOcean image that exists on our account.
     // The image is built from al2_20211005.0-x86_64.
     // Find the image ID of custom images using: doctl compute image list-user
-    AmazonLinux2: 95598425,
+    AmazonLinux2: 102220395,
     // This is a custom DigitalOcean droplet snapshot that exists on our
     // account. This image is built from AL2 and it contains custom packages,
     // such as postgres and python3, for usage in virtual target tests.
-    BzeroVTAL2TestImage: 101611622,
+    BzeroVTAL2TestImage: 102221344,
     BzeroVTUbuntuTestImage: 101596484
 } as const;
 export type DigitalOceanDistroImage = typeof DigitalOceanDistroImage[keyof typeof DigitalOceanDistroImage];
@@ -78,7 +78,7 @@ export function getDOImageName(image: DigitalOceanDistroImage) {
  */
 export type DigitalOceanSSMTarget = {
     type: 'ssm';
-    droplet: Droplet;
+    droplet: IDroplet;
     ssmTarget: SsmTargetSummary;
 };
 
@@ -87,7 +87,7 @@ export type DigitalOceanSSMTarget = {
  */
 export type DigitalOceanBZeroTarget = {
     type: 'bzero';
-    droplet: Droplet;
+    droplet: IDroplet;
     bzeroTarget: BzeroAgentSummary;
 };
 

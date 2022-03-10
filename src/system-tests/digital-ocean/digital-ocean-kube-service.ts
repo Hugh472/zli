@@ -1,18 +1,18 @@
 import { Retrier } from '@jsier/retrier';
-import { DigitalOcean } from 'digitalocean-js';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { KubernetesCluster, KubernetesWorkerNodePool } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
-import { ClusterTargetStatusPollError, CreateNewKubeClusterParameters, RegisteredDigitalOceanKubernetesCluster } from './digital-ocean-kube.service.types';
+import { ClusterTargetStatusPollError, CreateNewKubeClusterParameters, DigitalOceanRegistryCredentials, RegisteredDigitalOceanKubernetesCluster } from './digital-ocean-kube.service.types';
 import { checkAllSettledPromise } from '../tests/utils/utils';
 import { EnvironmentHttpService } from '../../http-services/environment/environment.http-services';
 import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { createApiClient } from 'dots-wrapper';
+import { ICreateKubernetesClusterNodePoolApiRequest, IKubernetesCluster } from 'dots-wrapper/dist/kubernetes';
 
 export class DigitalOceanKubeService {
-    private doClient: DigitalOcean;
+    private doClient;
     private kubeHttpService: KubeHttpService;
     private policyHttpService: PolicyHttpService;
     private envHttpService: EnvironmentHttpService;
@@ -22,7 +22,7 @@ export class DigitalOceanKubeService {
         private configService: ConfigService,
         private logger: Logger
     ) {
-        this.doClient = new DigitalOcean(apiToken);
+        this.doClient = createApiClient({ token: apiToken });
         this.kubeHttpService = new KubeHttpService(this.configService, this.logger);
         this.policyHttpService = new PolicyHttpService(this.configService, this.logger);
         this.envHttpService = new EnvironmentHttpService(this.configService, this.logger);
@@ -32,14 +32,14 @@ export class DigitalOceanKubeService {
      * Create a DigitalOcean cluster.
      * @returns Information about the created cluster
      */
-    public async createDigitalOceanKubeCluster(parameters: CreateNewKubeClusterParameters): Promise<KubernetesCluster> {
+    public async createDigitalOceanKubeCluster(parameters: CreateNewKubeClusterParameters): Promise<IKubernetesCluster> {
         // Try 3 times with a delay of 10 seconds between each attempt.
         const retrier = new Retrier({
             limit: 3,
             delay: 1000 * 10
         });
 
-        const cluster: KubernetesCluster = await retrier.resolve((attempt) => {
+        const cluster: IKubernetesCluster = await retrier.resolve((attempt) => {
             this.logger.info(`Attempt ${attempt} creating kube cluster ${parameters.clusterName}`);
             return this.createNewCluster(parameters);
         });
@@ -52,19 +52,25 @@ export class DigitalOceanKubeService {
      * @param cluster The DigitalOcean cluster
      * @returns String that should be stored in a kubeconfig file
      */
-    public async getClusterKubeConfig(cluster: KubernetesCluster): Promise<string> {
+    public async getClusterKubeConfig(cluster: IKubernetesCluster): Promise<string> {
         // Try 3 times with a delay of 10 seconds between each attempt.
         const retrier = new Retrier({
             limit: 3,
             delay: 1000 * 10
         });
 
-        const kubeConfig: string = await retrier.resolve((attempt) => {
+        const kubeConfig: string = await retrier.resolve(async (attempt) => {
             this.logger.info(`Attempt ${attempt} getting kube config for cluster ${cluster.name}`);
-            return this.doClient.kubernetes.getClusterKubeconfig(cluster.id);
+            const kubeConfigDataResp = await this.doClient.kubernetes.getKubernetesClusterKubeconfig({kubernetes_cluster_id: cluster.id});
+            return kubeConfigDataResp.data;
         });
 
         return kubeConfig;
+    }
+
+    public async getDigitalOceanContainerRegistryCredentials(): Promise<DigitalOceanRegistryCredentials> {
+        const getDockerCredentialsResp = await this.doClient.containerRegistry.getDockerCredentials({ can_write: false });
+        return getDockerCredentialsResp.data;
     }
 
     /**
@@ -90,7 +96,7 @@ export class DigitalOceanKubeService {
 
             const deleteDOClusterPromise: Promise<void> = retrier.resolve((attempt) => {
                 this.logger.info(`Attempt ${attempt} deleting cluster ${registeredCluster.doClusterSummary.name}`);
-                return this.doClient.kubernetes.deleteCluster(registeredCluster.doClusterSummary.id);
+                return this.doClient.kubernetes.deleteKubernetesCluster({kubernetes_cluster_id: registeredCluster.doClusterSummary.id});
             });
 
             cleanupPromises.push(deleteDOClusterPromise);
@@ -197,7 +203,7 @@ export class DigitalOceanKubeService {
      * @param cluster Cluster to query
      * @returns Cluster information after its status == "running"
      */
-    public async pollClusterRunning(cluster: KubernetesCluster): Promise<KubernetesCluster> {
+    public async pollClusterRunning(cluster: IKubernetesCluster): Promise<IKubernetesCluster> {
         // Try 90 times with a delay of 10 seconds between each attempt (total 15 min).
         // Average ETA: 5-10 minutes to provision
         const retrier = new Retrier({
@@ -205,13 +211,13 @@ export class DigitalOceanKubeService {
             delay: 1000 * 10
         });
 
-        return retrier.resolve(() => new Promise<KubernetesCluster>(async (resolve, reject) => {
+        return retrier.resolve(() => new Promise<IKubernetesCluster>(async (resolve, reject) => {
             try {
                 // A status string indicating the state of the cluster instance.
                 // This may be: "running", "provisioning", "degraded" "error",
                 // "deleted", "upgrading" or "deleting". Source:
                 // https://docs.digitalocean.com/reference/api/api-reference/#operation/get_kubernetes_cluster
-                const retrievedCluster = await this.doClient.kubernetes.getCluster(cluster.id);
+                const retrievedCluster = (await this.doClient.kubernetes.getKubernetesCluster({kubernetes_cluster_id: cluster.id})).data.kubernetes_cluster;
                 if (retrievedCluster.status.state === 'running') {
                     resolve(retrievedCluster);
                 } else {
@@ -230,14 +236,14 @@ export class DigitalOceanKubeService {
      */
     private async createNewCluster(
         parameters: CreateNewKubeClusterParameters
-    ): Promise<KubernetesCluster> {
+    ): Promise<IKubernetesCluster> {
         const request = {
             name: parameters.clusterName,
             region: parameters.clusterRegion,
             version: parameters.clusterVersion,
             tags: parameters.clusterTags,
-            node_pools: parameters.clusterNodePools.map<KubernetesWorkerNodePool>(w => {
-                const apiWorkerNodePool: KubernetesWorkerNodePool = {
+            node_pools: parameters.clusterNodePools.map<ICreateKubernetesClusterNodePoolApiRequest>(w => {
+                const apiWorkerNodePool: ICreateKubernetesClusterNodePoolApiRequest = {
                     size: w.workerDropletSize,
                     name: w.nodePoolName,
                     count: w.dropletInstancesCount,
@@ -246,14 +252,16 @@ export class DigitalOceanKubeService {
 
                 if (w.autoScaleParameters) {
                     apiWorkerNodePool.auto_scale = true;
-                    apiWorkerNodePool.min_nodes = (w.autoScaleParameters.minNodes ? w.autoScaleParameters.minNodes : 1) as any;
-                    apiWorkerNodePool.max_nodes = w.autoScaleParameters.maxNodes as any;
+                    apiWorkerNodePool.min_nodes = (w.autoScaleParameters.minNodes ? w.autoScaleParameters.minNodes : 1);
+                    apiWorkerNodePool.max_nodes = w.autoScaleParameters.maxNodes;
                 }
 
                 return apiWorkerNodePool;
-            }) as any
+            })
         };
-        return this.doClient.kubernetes.createCluster(request);
+
+        const createClusterResp = await this.doClient.kubernetes.createKubernetesCluster(request);
+        return createClusterResp.data.kubernetes_cluster;
     }
 
     /**

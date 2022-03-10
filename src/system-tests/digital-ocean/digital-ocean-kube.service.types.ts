@@ -1,4 +1,4 @@
-import { KubernetesCluster } from 'digitalocean-js/build/main/lib/models/kubernetes-cluster';
+import { IKubernetesCluster } from 'dots-wrapper/dist/kubernetes/types/kubernetes-cluster';
 import { KubeClusterSummary } from '../../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.types';
 
@@ -7,7 +7,7 @@ import { DigitalOceanDropletSize, DigitalOceanRegion } from './digital-ocean.typ
  * BastionZero as a cluster target
  */
 export type RegisteredDigitalOceanKubernetesCluster = {
-    doClusterSummary: KubernetesCluster;
+    doClusterSummary: IKubernetesCluster;
     bzeroClusterTargetSummary: KubeClusterSummary;
     kubeConfigFileContents: string;
 };
@@ -69,3 +69,9 @@ export class ClusterTargetStatusPollError extends Error {
         this.name = 'ClusterTargetStatusPollError';
     }
 }
+
+/**
+ * Represents a JSON dictionary that can be used to configure a Kubernetes
+ * secret used for pulling images from a DigitalOcean container registry
+ */
+export type DigitalOceanRegistryCredentials = { [key: string]: any }

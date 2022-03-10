@@ -1,6 +1,6 @@
 import Table from 'cli-table3';
 import fs from 'fs';
-import { concat, filter, map, max } from 'lodash';
+import { concat, filter, includes, map, max } from 'lodash';
 import { WebTargetSummary } from '../../webshell-common-ts/http/v2/target/web/types/web-target-summary.types';
 import { DbTargetSummary } from '../../webshell-common-ts/http/v2/target/db/types/db-target-summary.types';
 import util from 'util';
@@ -121,8 +121,9 @@ export function parseTargetString(targetString: string) : ParsedTargetString
     // case sensitive check for [targetUser@]<targetId | targetName>[:targetPath]
     const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)@)?(([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})|([a-zA-Z0-9_.-]{1,255}))(:{1}|$)/;
 
-    if(! pattern.test(targetString))
+    if(! pattern.test(targetString)) {
         return undefined;
+    }
 
     const result : ParsedTargetString = {
         type: undefined,
@@ -425,13 +426,13 @@ export function getTableOfKubernetesPolicies(
         let formattedTargetUsers = '';
         let formattedTargetGroup = '';
 
-        if (p.environments) {
+        if (p.environments.length != 0) {
             const environmentNames : string [] = [];
             p.environments.forEach(
                 (env: any) => environmentNames.push(getEnvironmentName(env.id, environmentMap))
             );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
-        } else if (p.clusters) { // Alternatively if this policy gets applied straight on some clusters
+        } else if (p.clusters.length != 0) { // Alternatively if this policy gets applied straight on some clusters
             const clusterNames : string [] = [];
             p.clusters.forEach(
                 (c: any) => clusterNames.push(getTargetName(c.id, targetMap))
@@ -515,13 +516,13 @@ export function getTableOfTargetConnectPolicies(
         let formattedTargetUsers = '';
         const formattedTargetGroup = '';
 
-        if (p.environments) {
+        if (p.environments.length != 0) {
             const environmentNames : string [] = [];
             p.environments.forEach(
                 env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
             );
             formattedResource = 'Environments: ' + environmentNames.join( ', \n');
-        } else if (p.targets) { // Alternatively if this policy gets applied straight on some targets
+        } else if (p.targets.length != 0) { // Alternatively if this policy gets applied straight on some targets
             const targetNames : string [] = [];
             p.targets.forEach(
                 t => targetNames.push(getTargetName(t.id, targetMap))
@@ -607,12 +608,14 @@ export function getTableOfOrganizationControlPolicies(
 export function getTableOfProxyPolicies(
     proxyPolicies: ProxyPolicySummary[],
     userMap: {[id: string]: UserSummary},
+    environmentMap: {[id: string]: EnvironmentSummary},
+    targetMap : {[id: string]: string},
     apiKeyMap: {[id: string]: ApiKeySummary},
-    groupMap : {[id: string]: GroupSummary}
+    groupMap : {[id: string]: GroupSummary},
 ) : string
 {
-    const header: string[] = ['Name', 'Type', 'Subject'];
-    const columnWidths = [24, 19, 26];
+    const header: string[] = ['Name', 'Type', 'Subject', 'Resource',];
+    const columnWidths = [24, 19, 26, 28];
 
     const table = new Table({ head: header, colWidths: columnWidths });
     proxyPolicies.forEach(p => {
@@ -643,10 +646,28 @@ export function getTableOfProxyPolicies(
         }
         formattedSubjects += formattedGroups;
 
+        // Translate the resource ids to human readable resources
+        let formattedResource = '';
+
+        if (p.environments.length != 0) {
+            const environmentNames : string [] = [];
+            p.environments.forEach(
+                env => environmentNames.push(getEnvironmentName(env.id, environmentMap))
+            );
+            formattedResource = 'Environments: ' + environmentNames.join( ', \n');
+        } else if (p.targets.length != 0) { // Alternatively if this policy gets applied straight on some targets
+            const targetNames : string [] = [];
+            p.targets.forEach(
+                t => targetNames.push(getTargetName(t.id, targetMap))
+            );
+            formattedResource = 'Targets: ' + targetNames.join( ', \n');
+        }
+
         const row = [
             p.name,
             p.type,
             formattedSubjects || 'N/A',
+            formattedResource || 'N/A',
         ];
         table.push(row);
     });
@@ -774,6 +795,7 @@ export async function disambiguateTarget(
     zippedShellTargetsUnformatted.forEach((targetSummary: TargetSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: targetSummary.type,
             status: targetSummary.status,
@@ -790,6 +812,7 @@ export async function disambiguateTarget(
     awaitedDbTarget.forEach((targetSummary: DbTargetSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Db,
             status: targetSummary.status,
@@ -805,6 +828,7 @@ export async function disambiguateTarget(
     awaitedWebTarget.forEach((targetSummary: WebTargetSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Web,
             status: targetSummary.status,
@@ -820,6 +844,7 @@ export async function disambiguateTarget(
     awaitedKubeTarget.forEach((targetSummary: KubeClusterSummary) => {
         const newVal: CommonTargetInfo = {
             name: targetSummary.name,
+            agentPublicKey: targetSummary.agentPublicKey,
             id: targetSummary.id,
             type: TargetType.Cluster,
             status: targetSummary.status,
@@ -869,6 +894,34 @@ export async function disambiguateTarget(
     return parsedTarget;
 }
 
+// Checks if the target user that is provided is allowed. Defaults to using a
+// single target user if only one is allowed. Returns the targetUser to use when
+// connecting.
+export async function connectCheckAllowedTargetUsers(targetName: string, providedTargetUser: string, allowedTargetUsers: string[], logger: Logger): Promise<string> {
+    if(providedTargetUser) { // User specified a targetUser explicitly in the connect string
+        if(! includes(allowedTargetUsers, providedTargetUser)) {
+            logger.error(`You do not have permission to connect as targetUser: ${providedTargetUser}`);
+            logger.info(`Allowed target users: ${allowedTargetUsers}`);
+            await cleanExit(1, logger);
+        }
+        return providedTargetUser;
+    } else { // User did not specify any targetUser in the connect string
+        if(allowedTargetUsers.length === 0) {
+            logger.error(`You do not have permission to connect to ${targetName} as any target user. Please check your policy configuration.`);
+            await cleanExit(1, logger);
+        } else if(allowedTargetUsers.length == 1) {
+            // If there is only one allowed targetUser then default to that one
+            logger.info(`Using target user: ${allowedTargetUsers[0]}`);
+            return allowedTargetUsers[0];
+        } else {
+            logger.warn(`Multiple allowed targetUsers found for target ${targetName} please specify one in the connection string`);
+            logger.info(`e.g zli connect ${allowedTargetUsers[0]}@${targetName}`);
+            logger.info(`Allowed target users: ${allowedTargetUsers}`);
+            await cleanExit(1, logger);
+        }
+    }
+}
+
 export function readFile(filePath: string): Promise<string> {
     return util.promisify(fs.readFile)(filePath, 'utf8');
 }
@@ -894,9 +947,29 @@ export function randomAlphaNumericString(length: number) : string {
 
 
 export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
-    return {type: TargetType.SsmTarget, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: [], region: ssm.region};
+    return {
+        type: TargetType.SsmTarget,
+        id: ssm.id,
+        name: ssm.name,
+        environmentId: ssm.environmentId,
+        agentVersion: ssm.agentVersion,
+        status: ssm.status,
+        targetUsers: ssm.allowedTargetUsers.map(u => u.userName),
+        region: ssm.region,
+        agentPublicKey: ssm.agentPublicKey
+    };
 }
 
 export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary): TargetSummary {
-    return {type: TargetType.DynamicAccessConfig, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: [], region: 'N/A'};
+    return {
+        type: TargetType.DynamicAccessConfig,
+        id: config.id,
+        name: config.name,
+        environmentId: config.environmentId,
+        agentVersion: 'N/A',
+        status: undefined,
+        targetUsers: config.allowedTargetUsers.map(u => u.userName),
+        region: 'N/A',
+        agentPublicKey: 'N/A'
+    };
 }

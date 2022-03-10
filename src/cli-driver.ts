@@ -128,8 +128,6 @@ export class CliDriver
         'close',
         'list-targets',
         'lt',
-        'list-clusters',
-        'lk',
         'list-connections',
         'lc',
         'copy',
@@ -154,8 +152,6 @@ export class CliDriver
         'close',
         'list-targets',
         'lt',
-        'list-clusters',
-        'lk',
         'list-connections',
         'lc',
         'copy',
@@ -178,9 +174,6 @@ export class CliDriver
         'disconnect',
         'attach',
         'close',
-        'lt',
-        'list-clusters',
-        'lk',
         'list-connections',
         'lc',
         'copy',
@@ -197,6 +190,7 @@ export class CliDriver
         'targetUser',
         'targetGroup',
         'policy',
+        'describe-cluster-policy',
         'generate-bash'
     ];
 
@@ -366,7 +360,7 @@ export class CliDriver
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
                         break;
                     case PolicyType.Proxy:
-                        await listProxyPoliciesHandler(argv, this.configService, this.logger);
+                        await listProxyPoliciesHandler(argv, this.configService, this.logger, this.envs);
                         break;
                     case PolicyType.OrganizationControls:
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
@@ -375,7 +369,7 @@ export class CliDriver
                         await listTargetConnectPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.envs);
                         await listKubernetesPoliciesHandler(argv, this.configService, this.logger, this.clusterTargets, this.envs);
                         await listSessionRecordingPoliciesHandler(argv, this.configService, this.logger);
-                        await listProxyPoliciesHandler(argv, this.configService, this.logger);
+                        await listProxyPoliciesHandler(argv, this.configService, this.logger, this.envs);
                         await listOrganizationControlsPoliciesHandler(argv, this.configService, this.logger);
                         break;
                     }

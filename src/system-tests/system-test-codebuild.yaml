@@ -52,6 +52,7 @@ phases:
       - export PATH=/usr/local/go/bin:$PATH
       - npm ci
       # Build golang daemon, only run the linux release as we dont want to build all binaries
+      - npm run update-daemon-version
       - npm run release-linux
       - # Install system-test dependencies
       - # Install helm (ref: https://helm.sh/docs/intro/install/#from-apt-debianubuntu)

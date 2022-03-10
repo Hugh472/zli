@@ -20,13 +20,29 @@ export async function listTargetsHandler(
     logger: Logger,
     argv: yargs.Arguments<listTargetsArgs>
 ) {
-    let allTargets = await listTargets(configService, logger, argv.detail);
+    const me = configService.me();
+    const isAdmin = me.isAdmin;
+
+    let userEmail;
+    if(argv.user) {
+        if(! isAdmin) {
+            throw Error('Must be an admin to use --user option');
+        }
+        userEmail = argv.user;
+    }
+
+    const targetTypes = (! argv.targetType || argv.targetType.length === 0)
+        // Default to all target types if no target type filter has been provided
+        ? [TargetType.Bzero, TargetType.Cluster, TargetType.Db, TargetType.Web, TargetType.DynamicAccessConfig, TargetType.SsmTarget]
+        : argv.targetType.map(type => parseTargetType(type));
+
+    let allTargets = await listTargets(configService, logger, targetTypes, userEmail);
 
     const envHttpService = new EnvironmentHttpService(configService, logger);
     const envs = await envHttpService.ListEnvironments();
 
     // find all envIds with substring search
-    // filter targets down by endIds
+    // filter targets down by envIds
     // ref for '!!': https://stackoverflow.com/a/29312197/14782428
     if(!! argv.env) {
         const envIdFilter = envs.filter(e => findSubstring(argv.env, e.name)).map(e => e.id);
@@ -36,12 +52,6 @@ export async function listTargetsHandler(
     // filter targets by name/alias
     if(!! argv.name) {
         allTargets = allTargets.filter(t => findSubstring(argv.name, t.name));
-    }
-
-    // filter targets by TargetType
-    if(!! argv.targetType) {
-        const targetType = parseTargetType(argv.targetType);
-        allTargets = allTargets.filter(t => t.type === targetType);
     }
 
     if(!! argv.status) {
@@ -59,8 +69,12 @@ export async function listTargetsHandler(
     } else {
         // regular table output
         // We OR the detail and status flags since we want to show the details in both cases
-        const tableString = getTableOfTargets(allTargets, envs, !! argv.detail || !! argv.status, !! argv.showId);
-        console.log(tableString);
+        if(allTargets.length === 0) {
+            logger.info('No Targets Found.');
+        } else {
+            const tableString = getTableOfTargets(allTargets, envs, !! argv.detail || !! argv.status, !! argv.showId);
+            console.log(tableString);
+        }
     }
 
     await cleanExit(0, logger);

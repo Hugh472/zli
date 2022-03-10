@@ -5,12 +5,14 @@ import { OrganizationControlsPolicyCreateRequest } from '../../../webshell-commo
 import { OrganizationControlsPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/organization-controls/requests/organization-controls-policy-update.requests';
 import { OrganizationControlsPolicySummary } from '../../../webshell-common-ts/http/v2/policy/organization-controls/types/organization-controls-policy-summary.types';
 import { ProxyPolicySummary } from '../../../webshell-common-ts/http/v2/policy/proxy/types/proxy-policy-summary.types';
+import { ProxyPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/proxy/requests/proxy-policy-create.requests';
 import { SessionRecordingPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/session-recording/requests/session-recording-create.requests';
 import { SessionRecordingPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/session-recording/requests/session-recording-policy-update.requests';
 import { SessionRecordingPolicySummary } from '../../../webshell-common-ts/http/v2/policy/session-recording/types/session-recording-policy-summary.types';
 import { TargetConnectPolicyCreateRequest } from '../../../webshell-common-ts/http/v2/policy/target-connect/requests/target-connect-policy-create.requests';
 import { TargetConnectPolicyUpdateRequest } from '../../../webshell-common-ts/http/v2/policy/target-connect/requests/target-connect-policy-update.requests';
 import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
+
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
 import { Logger } from '../../services/logger/logger.service';
@@ -129,6 +131,10 @@ export class PolicyHttpService extends HttpService
         return this.Post(TARGET, request);
     }
 
+    public AddProxyPolicy(request: ProxyPolicyCreateRequest): Promise<ProxyPolicySummary> {
+        return this.Post(PROXY, request);
+    }
+
     public DeleteKubernetesPolicy(policyId: string): Promise<void> {
         return this.Delete(`${KUBE}/${policyId}`);
     }
@@ -143,5 +149,9 @@ export class PolicyHttpService extends HttpService
 
     public DeleteTargetConnectPolicy(policyId: string): Promise<void> {
         return this.Delete(`${TARGET}/${policyId}`);
+    }
+
+    public DeleteProxyPolicy(policyId: string): Promise<void> {
+        return this.Delete(`${PROXY}/${policyId}`);
     }
 }

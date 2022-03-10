@@ -13,7 +13,7 @@ export async function listDbTargets(logger: Logger, configService: ConfigService
         try {
             const response = await dbTargetService.ListDbTargets();
             const results = response.map<DbTargetSummary>((target, _index, _array) => {
-                return { type: TargetType.Db, id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost, region: target.region, bzeroAgentId: target.bzeroAgentId };
+                return { type: TargetType.Db, id: target.id, name: target.name, status: target.status, localPort: target.localPort, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId, localHost: target.localHost, region: target.region, proxyTargetId: target.proxyTargetId, agentPublicKey: target.agentPublicKey };
             });
 
             res(results);
@@ -33,7 +33,7 @@ export async function listWebTargets(logger: Logger, configService: ConfigServic
         try {
             const response = await webTargetService.ListWebTargets();
             const results = response.map<WebTargetSummary>((target, _index, _array) => {
-                return { type: TargetType.Web, id: target.id, name: target.name, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId , localPort: target.localPort, localHost: target.localHost, region: target.region, bzeroAgentId: target.bzeroAgentId };
+                return { type: TargetType.Web, id: target.id, name: target.name, status: target.status, agentVersion: target.agentVersion, lastAgentUpdate: target.lastAgentUpdate, remotePort: target.remotePort, remoteHost: target.remoteHost, environmentId: target.environmentId , localPort: target.localPort, localHost: target.localHost, region: target.region, proxyTargetId: target.proxyTargetId, agentPublicKey: target.agentPublicKey };
             });
 
             res(results);
