@@ -59,12 +59,11 @@ export async function webConnectHandler(argv: yargs.Arguments<connectArgs>, targ
     await killLocalPortAndPid(webConfig.localPid, webConfig.localPort, logger);
 
     // Build our args and cwd
-    const baseArgs = getBaseDaemonArgs(configService, loggerConfigService);
+    const baseArgs = getBaseDaemonArgs(configService, loggerConfigService, webTarget.agentPublicKey);
     const pluginArgs = [
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
         `-targetId=${webTarget.id}`,
-        `-agentPubKey=${webTarget.agentPublicKey}`,
         `-remotePort=${webTarget.remotePort}`,
         `-remoteHost=${webTarget.remoteHost}`,
         `-plugin="web"`

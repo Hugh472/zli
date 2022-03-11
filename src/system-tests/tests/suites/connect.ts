@@ -41,7 +41,7 @@ export const connectSuite = () => {
                 targetUsers: [{userName: targetUser}],
                 verbs: [{type: VerbType.Shell}]
             });
-        });
+        }, 15 * 1000);
 
         // Cleanup all policy after the tests
         afterAll(async () => {
@@ -51,7 +51,7 @@ export const connectSuite = () => {
                 policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
             );
             policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
-        });
+        }, 15 * 1000);
 
         // Called before each case
         beforeEach(() => {
