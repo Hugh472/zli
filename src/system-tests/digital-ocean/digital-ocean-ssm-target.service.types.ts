@@ -18,6 +18,7 @@ export const DigitalOceanDistroImage = {
     // The image is built from al2_20211005.0-x86_64.
     // Find the image ID of custom images using: doctl compute image list-user
     AmazonLinux2: 102220395,
+    AmazonLinux1: 103710263,
     // This is a custom DigitalOcean droplet snapshot that exists on our
     // account. This image is built from AL2 and it contains custom packages,
     // such as postgres and python3, for usage in virtual target tests.
@@ -31,6 +32,7 @@ export function getPackageManagerType(image: DigitalOceanDistroImage) : 'yum' | 
     case DigitalOceanDistroImage.CentOS7:
     case DigitalOceanDistroImage.CentOS8:
     case DigitalOceanDistroImage.AmazonLinux2:
+    case DigitalOceanDistroImage.AmazonLinux1:
     case DigitalOceanDistroImage.BzeroVTAL2TestImage:
         return 'yum';
     case DigitalOceanDistroImage.Debian10:
@@ -64,6 +66,8 @@ export function getDOImageName(image: DigitalOceanDistroImage) {
         return 'al2';
     case DigitalOceanDistroImage.BzeroVTAL2TestImage:
         return 'bz-al2';
+    case DigitalOceanDistroImage.AmazonLinux1:
+        return 'al1';
     case DigitalOceanDistroImage.BzeroVTUbuntuTestImage:
         return 'bz-ubuntu';
     default:

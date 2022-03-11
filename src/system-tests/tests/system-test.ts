@@ -112,6 +112,7 @@ export const ssmTestTargetsToRun: TestTarget[] = [
     // new autodiscovery script (self-registration)
     { installType: 'pm', dropletImage: DigitalOceanDistroImage.Debian11, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
     { installType: 'pm', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
+    { installType: 'pm', dropletImage: DigitalOceanDistroImage.AmazonLinux1, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion}
 ];
 
 // Different types of vt targets to create for each type of operating system
