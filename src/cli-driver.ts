@@ -238,9 +238,10 @@ export class CliDriver
                     await this.configService.fetchGAToken();
                 }
                 this.GAService = await GATrackingMiddleware(this.configService, argvPassed, this.logger, version, argvPassed[0]);
+                
+                // We set the GA service here since it would otherwise be a circular dependency and we need the configService
+                // to be initialized prior
                 this.logger.setGAService(this.GAService);
-
-                await cleanExit(1, this.logger)
             })
             .middleware(async (argv) => {
                 if(!includes(this.oauthCommands, argv._[0]))

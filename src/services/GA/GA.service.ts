@@ -30,21 +30,30 @@ export class GAService
      * @param {string[]} args Args to the command
     */
     public async TrackCliCommand(args: string[]) {
-        await this.visitor.event('zli-command', this.baseCommand, (err: any) => {
-            if (err) {
-                this.logger.error(`Error sending GA event zli-command: ${err}`);
-            } else {
-                this.logger.debug('Successfully tracked event')
-            }
-        });
-        if (args.length != 0) {
-            await this.visitor.event('zli-args', args.toString(), (err: any) => {
+        const zliCommandCall = new Promise<void>(async (resolve, _) => {
+            await this.visitor.event('zli-command', this.baseCommand, (err: any) => {
                 if (err) {
-                    this.logger.error(`Error sending GA event zli-args: ${err}`);
+                    this.logger.error(`Error sending GA event zli-command: ${err}`);
                 } else {
                     this.logger.debug('Successfully tracked event')
                 }
+                resolve();
             });
+        });
+        await zliCommandCall; 
+        
+        if (args.length != 0) {
+            const zliArgsCall = new Promise<void>(async (resolve, _) => {
+                await this.visitor.event('zli-args', args.toString(), (err: any) => {
+                    if (err) {
+                        this.logger.error(`Error sending GA event zli-args: ${err}`);
+                    } else {
+                        this.logger.debug('Successfully tracked event')
+                    }
+                    resolve();
+                });
+            });
+            await zliArgsCall;
         }
     }
 
@@ -52,12 +61,16 @@ export class GAService
      * Helper function to track a cli error.
     */
     public async TrackError() {
-        await this.visitor.event('zli-error', 'lt', (err: any) => {
-            if (err) {
-                this.logger.error(`Error sending GA event zli-error: ${err}`);
-            } else {
-                this.logger.debug('Successfully tracked event')
-            }
+        const zliErrorCall = new Promise<void>(async (resolve, _) => {
+            await this.visitor.event('zli-error', 'lt', (err: any) => {
+                if (err) {
+                    this.logger.error(`Error sending GA event zli-error: ${err}`);
+                } else {
+                    this.logger.debug('Successfully tracked event')
+                }
+                resolve();
+            });
         });
+        await zliErrorCall;
     }
 }
