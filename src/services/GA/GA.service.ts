@@ -37,8 +37,7 @@ export class GAService
                 this.logger.debug('Successfully tracked event')
             }
         });
-        console.log(args)
-        if (args.length == 0) {
+        if (args.length != 0) {
             await this.visitor.event('zli-args', args.toString(), (err: any) => {
                 if (err) {
                     this.logger.error(`Error sending GA event zli-args: ${err}`);
