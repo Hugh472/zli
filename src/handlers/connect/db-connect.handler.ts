@@ -58,12 +58,11 @@ export async function dbConnectHandler(argv: yargs.Arguments<connectArgs>, targe
     await killLocalPortAndPid(dbConfig.localPid, dbConfig.localPort, logger);
 
     // Build our args and cwd
-    const baseArgs = getBaseDaemonArgs(configService, loggerConfigService);
+    const baseArgs = getBaseDaemonArgs(configService, loggerConfigService, dbTarget.agentPublicKey);
     const pluginArgs = [
         `-localPort=${localPort}`,
         `-localHost=${localHost}`,
         `-targetId=${dbTarget.id}`,
-        `-agentPubKey=${dbTarget.agentPublicKey}`,
         `-remotePort=${dbTarget.remotePort}`,
         `-remoteHost=${dbTarget.remoteHost}`,
         `-plugin="db"`

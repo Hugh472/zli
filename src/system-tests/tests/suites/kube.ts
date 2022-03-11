@@ -38,7 +38,7 @@ export const kubeSuite = () => {
 
             // Reset test passed
             testPassed = false;
-        });
+        }, 15 * 1000);
 
         test.each(clusterVersionsToRun)('zli generate kubeConfig %p', async (_) => {
             // Generate the kubeConfig YAML and write to a file to be read by

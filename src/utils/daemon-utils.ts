@@ -314,7 +314,7 @@ function killPid(pid: string) {
 /**
  * Helper function to get common args to pass to the daemon
  */
-export function getBaseDaemonArgs(configService: ConfigService, loggerConfigService: LoggerConfigService): string[] {
+export function getBaseDaemonArgs(configService: ConfigService, loggerConfigService: LoggerConfigService, agentPubKey: string): string[] {
     // Build the refresh command so it works in the case of the pkg'd app which
     // is expecting a second argument set to internal main script
     // This is a work-around for pkg recursive binary issue see https://github.com/vercel/pkg/issues/897
@@ -328,7 +328,8 @@ export function getBaseDaemonArgs(configService: ConfigService, loggerConfigServ
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,
         `-refreshTokenCommand="${execPath + ' ' + entryPoint + ' refresh'}"`,
-        `-logPath="${loggerConfigService.daemonLogPath()}"`
+        `-logPath="${loggerConfigService.daemonLogPath()}"`,
+        `-agentPubKey=${agentPubKey}`,
     ];
 }
 

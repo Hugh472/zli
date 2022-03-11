@@ -40,10 +40,10 @@ export const connectSuite = () => {
                 description: `Target connect policy created for system test: ${systemTestUniqueId}`,
                 environments: [environment],
                 targets: [],
-                targetUsers: [{userName: targetUser}],
+                targetUsers: [{ userName: targetUser }],
                 verbs: [{ type: VerbType.Shell }, { type: VerbType.Tunnel }]
             });
-        });
+        }, 15 * 1000);
 
         // Cleanup all policy after the tests
         afterAll(async () => {

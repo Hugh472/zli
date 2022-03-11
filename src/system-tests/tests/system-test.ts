@@ -10,7 +10,7 @@ import { connectSuite } from './suites/connect';
 import { sshSuite } from './suites/ssh';
 import { listTargetsSuite } from './suites/list-targets';
 import { versionSuite } from './suites/version';
-import { convertAwsRegionToDigitalOceanRegion, DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
+import { convertAwsRegionToDigitalOceanRegion, DigitalOceanDropletSize, DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
 import { ClusterTargetStatusPollError, DigitalOceanKubernetesClusterVersion, RegisteredDigitalOceanKubernetesCluster } from '../digital-ocean/digital-ocean-kube.service.types';
 import { DigitalOceanKubeService } from '../digital-ocean/digital-ocean-kube-service';
 import { KubeBctlNamespace, kubeSuite, KubeTestTargetGroups } from './suites/kube';
@@ -35,6 +35,10 @@ import * as k8s from '@kubernetes/client-node';
 // pipeline in the AWS dev account this will be 'dev' and when running as part
 // of the CD pipeline in the AWS prod account it will be 'stage'
 const configName = envMap.configName;
+
+// Droplet size to create
+const vtDropletSize = DigitalOceanDropletSize.CPU_1_MEM_1GB;
+const ssmDropletSize =  DigitalOceanDropletSize.CPU_1_MEM_1GB;
 
 // Setup services used for running system tests
 export const loggerConfigService = new LoggerConfigService(configName, envMap.configDir);
@@ -134,7 +138,7 @@ if(SSM_ENABLED) {
 if(VT_ENABLED) {
     allTargets = allTargets.concat(vtTestTargetsToRun);
 } else {
-    logger.info(`Skipping adding vt targets because SSM_ENABLED is false`);
+    logger.info(`Skipping adding vt targets because VT_ENABLED is false`);
 }
 
 // Global mapping of Kubernetes cluster targets
@@ -234,7 +238,7 @@ async function createDOTestClusters() {
         const kubeConfigFileContents = await doKubeService.getClusterKubeConfig(cluster);
         clusterToRegister.kubeConfigFileContents = kubeConfigFileContents;
 
-        console.log(`Config retrieved: ${kubeConfigFileContents}`);
+        console.log(`Config retrieved for cluster ${clusterSummary.name}!`);
 
         // Write to file
         const kubeConfigPath = '/tmp/do-kubeconfig.yml';
@@ -455,16 +459,20 @@ async function createDOTestTargets() {
         const targetName = `st-${systemTestUniqueId}-${getDOImageName(testTarget.dropletImage)}-${testTarget.installType}-${randomAlphaNumericString(15)}`;
 
         let userDataScript : string;
+        let dropletSizeToCreate;
         switch (testTarget.installType) {
         case 'ad':
             // Autodiscovery expect envId, not env name
             userDataScript = await getAutodiscoveryScript(logger, configService, systemTestEnvId, ScriptTargetNameOption.DigitalOceanMetadata, 'staging');
+            dropletSizeToCreate = ssmDropletSize;
             break;
         case 'pm':
             userDataScript = getPackageManagerRegistrationScript('bzero-ssm-agent', testTarget, systemTestEnvName, systemTestRegistrationApiKey.secret);
+            dropletSizeToCreate = ssmDropletSize;
             break;
         case 'pm-vt':
             userDataScript = getPackageManagerRegistrationScript('bzero-beta', testTarget, systemTestEnvName, systemTestRegistrationApiKey.secret);
+            dropletSizeToCreate = vtDropletSize;
             break;
         default:
             // Compile-time exhaustive check
@@ -476,7 +484,7 @@ async function createDOTestTargets() {
             targetName: targetName,
             dropletParameters: {
                 dropletName: targetName,
-                dropletSize: 's-1vcpu-1gb',
+                dropletSize: dropletSizeToCreate,
                 dropletImage: testTarget.dropletImage,
                 dropletRegion: testTarget.doRegion,
                 dropletTags: systemTestTags,
