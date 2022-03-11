@@ -601,7 +601,7 @@ export class CliDriver
             )
             .command(
                 'generate <typeOfConfig> [clusterName]',
-                'Generate different types of configuration files',
+                'Generate configuration files for Kubernetes or SSH',
                 (yargs) => {
                     return generateConfigCmdBuilder(yargs);
                 },
