@@ -214,8 +214,8 @@ export async function quickstartHandler(
         // Fetch the GA token in case it is not set (first time user)
         await configService.fetchGAToken();
     }
-    const gaService = new GAService(configService, logger);
-    gaService.TrackCliCommand(version, 'quickstart', []);
+    const gaService = new GAService(configService, logger, 'quickstart', version);
+    gaService.TrackCliCommand([]);
 
     // Parse SSH config file
     consoleWithTranscript.log(`Parsing SSH config file: ${argv.sshConfigFile}`);

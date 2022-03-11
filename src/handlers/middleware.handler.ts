@@ -83,16 +83,16 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     };
 }
 
-export function GATrackingMiddleware(configService: ConfigService, argv: any, logger: Logger) {
+/*
+ * Helper function to get our our GA tracking middleware and track our cli command
+*/
+export function GATrackingMiddleware(configService: ConfigService, argvPassed: any, logger: Logger, version: string, baseCommand: string) {
     // GA tracking
-    const gaService: GAService = new GAService(configService, logger);
+    const gaService: GAService = new GAService(configService, logger, baseCommand, version);
 
-    // Only captures args, not options at the moment. Capturing configName flag
-    // does not matter as that is handled by which GA token is used
-    // TODO: capture options and flags
-    gaService.TrackCliCommand(version, argv._[0], argv._.slice(1));
-    // console.log(argv._[0]);
-    // console.log(argv._.slice(1));
+    // Capturing configName flag does not matter as that is handled by which GA token is used
+    // We slice(1) in order to not capture the baseCommand
+    gaService.TrackCliCommand(argvPassed.slice(1));
     return gaService;
 }
 

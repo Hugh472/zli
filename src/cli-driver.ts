@@ -18,6 +18,7 @@ import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/targetS
 import { TargetSummary } from '../webshell-common-ts/http/v2/target/targetSummary.types';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { version } from '../package.json';
 
 // Handlers
 import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, GATrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
@@ -229,6 +230,17 @@ export class CliDriver
                 this.keySplittingService = initResponse.keySplittingService;
             })
             .middleware(async (argv) => {
+                if(!includes(this.GACommands, argv._[0])) {
+                    this.GAService = null;
+                    return;
+                }
+                if(! this.configService.GAToken()) {
+                    await this.configService.fetchGAToken();
+                }
+                this.GAService = GATrackingMiddleware(this.configService, argvPassed, this.logger, version, argv._[0].toString());
+                this.logger.setGAService(this.GAService);
+            })
+            .middleware(async (argv) => {
                 if(!includes(this.oauthCommands, argv._[0]))
                     return;
                 await checkVersionMiddleware(this.configService, this.logger);
@@ -243,14 +255,6 @@ export class CliDriver
                     this.logger.error(`This is an admin restricted command. Please login as an admin to perform it.`);
                     await cleanExit(1, this.logger);
                 }
-            })
-            .middleware(async (argv) => {
-                if(!includes(this.GACommands, argv._[0]))
-                    return;
-                if(! this.configService.GAToken()) {
-                    await this.configService.fetchGAToken();
-                }
-                this.GAService = GATrackingMiddleware(this.configService, argv, this.logger);
             })
             .middleware((argv) => {
                 if(!includes(this.fetchCommands, argv._[0]))

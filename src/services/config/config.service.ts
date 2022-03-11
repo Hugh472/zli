@@ -324,6 +324,6 @@ export class ConfigService implements ConfigInterface {
 
     private async getGAToken(): Promise<string> {
         // return (await this.tokenHttpService.getGAToken()).token;
-        return "test";
+        return "UA-216204125-3";
     }
 }
