@@ -51,9 +51,9 @@ export class Logger implements ILogger {
     /**
      * Helper function to use our GA service to track an error
      */
-    public logGAError(): void {
+    public async logGAError(): Promise<void> {
         if (this.gaService != null) {
-            this.gaService.TrackError();
+            await this.gaService.TrackError();
         }
     }
 

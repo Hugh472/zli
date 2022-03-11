@@ -215,7 +215,7 @@ export async function quickstartHandler(
         await configService.fetchGAToken();
     }
     const gaService = new GAService(configService, logger, 'quickstart', version);
-    gaService.TrackCliCommand([]);
+    await gaService.TrackCliCommand([]);
 
     // Parse SSH config file
     consoleWithTranscript.log(`Parsing SSH config file: ${argv.sshConfigFile}`);

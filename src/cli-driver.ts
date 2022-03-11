@@ -237,8 +237,10 @@ export class CliDriver
                 if(! this.configService.GAToken()) {
                     await this.configService.fetchGAToken();
                 }
-                this.GAService = GATrackingMiddleware(this.configService, argvPassed, this.logger, version, argv._[0].toString());
+                this.GAService = await GATrackingMiddleware(this.configService, argvPassed, this.logger, version, argvPassed[0]);
                 this.logger.setGAService(this.GAService);
+
+                await cleanExit(1, this.logger)
             })
             .middleware(async (argv) => {
                 if(!includes(this.oauthCommands, argv._[0]))

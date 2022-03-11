@@ -29,30 +29,33 @@ export class GAService
      * Helper function to track a cli command.
      * @param {string[]} args Args to the command
     */
-    public TrackCliCommand(args: string[]) {
-        this.visitor.event('zli-command', this.baseCommand, (err: any) => {
+    public async TrackCliCommand(args: string[]) {
+        await this.visitor.event('zli-command', this.baseCommand, (err: any) => {
             if (err) {
-                this.logger.error(`Error sending GA event: ${err}`);
+                this.logger.error(`Error sending GA event zli-command: ${err}`);
             } else {
                 this.logger.debug('Successfully tracked event')
             }
         });
-        this.visitor.event('zli-args', args.toString(), (err: any) => {
-            if (err) {
-                this.logger.error(`Error sending GA event: ${err}`);
-            } else {
-                this.logger.debug('Successfully tracked event')
-            }
-        });
+        console.log(args)
+        if (args.length == 0) {
+            await this.visitor.event('zli-args', args.toString(), (err: any) => {
+                if (err) {
+                    this.logger.error(`Error sending GA event zli-args: ${err}`);
+                } else {
+                    this.logger.debug('Successfully tracked event')
+                }
+            });
+        }
     }
 
     /**
      * Helper function to track a cli error.
     */
-    public TrackError() {
-        this.visitor.event('zli-error', this.baseCommand, (err: any) => {
+    public async TrackError() {
+        await this.visitor.event('zli-error', 'lt', (err: any) => {
             if (err) {
-                this.logger.error(`Error sending GA event: ${err}`);
+                this.logger.error(`Error sending GA event zli-error: ${err}`);
             } else {
                 this.logger.debug('Successfully tracked event')
             }
