@@ -66,7 +66,7 @@ async function getFilePaths() {
 }
 
 /**
- * 
+ * given some config information, produces a valid SSH config string
  * @param tunnels {TunnelsResponse[]} A list of targets the user can access over SSH tunnel
  * @param allHosts {string} the wildcard configuration that applies to all bzero hosts
  * @param prefix {string} e.g., "bzero-", prepended to hostnames in the config file
