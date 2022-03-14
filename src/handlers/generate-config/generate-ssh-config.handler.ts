@@ -66,6 +66,7 @@ async function getFilePaths() {
 }
 
 /**
+ * given some config information, produces a valid SSH config string
  * @param tunnels {TunnelsResponse[]} A list of targets the user can access over SSH tunnel
  * @param identityFile {string} A path to the user's key file
  * @param proxyCommand {string} A proxy command routing SSH requests to the ZLI
