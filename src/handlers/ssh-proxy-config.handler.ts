@@ -30,7 +30,7 @@ export function buildSshConfigStrings(configService: ConfigService, processName:
     }
 
     const identityFile = `IdentityFile ${keyPath}`
-    const proxyCommand = `ProxyCommand ${processName} ssh-proxy ${configNameArg} -s %n %r %p ${keyPath}`
+    const proxyCommand = `ProxyCommand ${processName} ssh-proxy ${configNameArg} -s ${prefix}%n %r %p ${keyPath}`
 
     return { identityFile, proxyCommand, prefix };
 

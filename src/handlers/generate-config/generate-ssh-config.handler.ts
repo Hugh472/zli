@@ -66,10 +66,12 @@ async function getFilePaths() {
 }
 
 /**
- * 
+ * @param tunnels {TunnelsResponse[]} A list of targets the user can access over SSH tunnel
+ * @param identityFile {string} A path to the user's key file
+ * @param proxyCommand {string} A proxy command routing SSH requests to the ZLI
  * @returns {string} the bz config file contents
  */
-function formatBzConfigContents(tunnels: TunnelsResponse[], identityFile: string, proxyCommand: string) {
+function formatBzConfigContents(tunnels: TunnelsResponse[], identityFile: string, proxyCommand: string): string {
     let contents = ``;
 
     // add per-target configs
