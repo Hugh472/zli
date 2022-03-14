@@ -6,7 +6,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
-import { buildSshConfigString } from '../ssh-proxy-config.handler';
+import { buildSshConfigStrings } from '../ssh-proxy-config.handler';
 
 /**
  *  Generates an ssh config file based on tunnel targets the user has access to, then Includes it 
@@ -21,8 +21,8 @@ export async function generateSshConfigHandler(configService: ConfigService, log
     const tunnels: TunnelsResponse[] = await policyQueryHttpService.GetTunnels();
 
     // Build our ssh config file
-    const { allHosts, prefix } = buildSshConfigString(configService, processName);
-    const bzConfigContentsFormatted = formatBzConfigContents(tunnels, allHosts, prefix);
+    const { identityFile, proxyCommand } = buildSshConfigStrings(configService, processName);
+    const bzConfigContentsFormatted = formatBzConfigContents(tunnels, identityFile, proxyCommand);
 
     // Determine + write to the user's ssh and bzero-ssh config path
     const { userConfigPath, bzConfigPath } = await getFilePaths();
@@ -67,21 +67,19 @@ async function getFilePaths() {
 
 /**
  * 
- * @param tunnels {TunnelsResponse[]} A list of targets the user can access over SSH tunnel
- * @param allHosts {string} the wildcard configuration that applies to all bzero hosts
- * @param prefix {string} e.g., "bzero-", prepended to hostnames in the config file
  * @returns {string} the bz config file contents
  */
-function formatBzConfigContents(tunnels: TunnelsResponse[], allHosts: string, prefix: string) {
-    // initialize with wildcard config
-    let contents = allHosts;
+function formatBzConfigContents(tunnels: TunnelsResponse[], identityFile: string, proxyCommand: string) {
+    let contents = ``;
 
     // add per-target configs
     for (const tunnel of tunnels) {
         // only add username if there is exactly one -- otherwise, user must specify user@host
         const user = tunnel.targetUsers.length === 1 ? `User ${tunnel.targetUsers[0].userName}` : ``;
         contents += `
-Host ${prefix}${tunnel.targetName}
+Host ${tunnel.targetName}
+    ${identityFile}
+    ${proxyCommand}
     ${user}
 `;
     }

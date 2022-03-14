@@ -21,7 +21,6 @@ export const sshSuite = () => {
         const targetUser = 'ssm-user';
         const policyType = 'target-ssh';
         const uniqueUser = `user-${systemTestUniqueId}`;
-        const testUtils = new TestUtils(configService, logger, loggerConfigService);
         const enterKey = '\x0D';
 
         const userConfigFile = path.join(
@@ -110,8 +109,7 @@ export const sshSuite = () => {
         test.each(ssmTestTargetsToRun)('ssh tunnel to %p', async (testTarget) => {
             // use the config file we just created to ssh without specifying a user or identity file
             const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-            const prefix = testUtils.getTargetPrefix();
-            const command = `ssh -F ${userConfigFile} -o StrictHostKeyChecking=no ${prefix}${doTarget.ssmTarget.name} echo success`;
+            const command = `ssh -F ${userConfigFile} -o StrictHostKeyChecking=no ${doTarget.ssmTarget.name} echo success`;
 
             const pexec = promisify(exec);
             const { stdout, stderr } = await pexec(command);
