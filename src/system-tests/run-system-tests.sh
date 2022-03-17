@@ -14,7 +14,10 @@ CONFIG_DIR="/system-test"
 PROJECT_NAME="bastionzero-zli"
 mkdir -p "${CONFIG_DIR}/${PROJECT_NAME}"
 
-declare -a IDPS=("google" "okta" "microsoft")
+# If IDPS_TO_TEST is not provided default to running all idps
+if [[ -z "${IDPS_TO_TEST}" ]]; then
+  IDPS_TO_TEST="google okta microsoft"
+fi
 
 run_system_test() {
     # Downloads a role account zli configuration file from s3 that is pre-logged and
@@ -28,7 +31,7 @@ run_system_test() {
 }
 
 # Run system tests for each idp
-for idp in "${IDPS[@]}"
+for idp in $IDPS_TO_TEST
 do
    echo "Running system tests with idp = $idp"
    run_system_test $idp
