@@ -11,7 +11,7 @@ yargs.Argv<defaultTargetGroupArgs> {
                 default: [],
             }
         )
-        .example('$0 default-targetGroup --set system:masters', 'Set default target group to system:masters')
-        .example('$0 default-targetGroup --set', 'Reset default target group to empty')
-        .example('$0 default-targetGroup', 'View default target group');
+        .example('$0 default-targetgroup --set system:masters', 'Set default target group to system:masters')
+        .example('$0 default-targetgroup --set', 'Reset default target group to empty')
+        .example('$0 default-targetgroup', 'View default target group');
 }

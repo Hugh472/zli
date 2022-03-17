@@ -1,6 +1,7 @@
 import {
     disambiguateTarget,
     isGuid,
+    makeCaseInsensitive,
     parsePolicyType,
     targetStringExample
 } from './utils/utils';
@@ -119,8 +120,8 @@ export class CliDriver
         'connect',
         'tunnel',
         'user',
-        'targetUser',
-        'targetGroup',
+        'targetuser',
+        'targetgroup',
         'describe-cluster-policy',
         'disconnect',
         'attach',
@@ -143,8 +144,8 @@ export class CliDriver
         'connect',
         'tunnel',
         'user',
-        'targetUser',
-        'targetGroup',
+        'targetuser',
+        'targetgroup',
         'describe-cluster-policy',
         'disconnect',
         'attach',
@@ -167,8 +168,8 @@ export class CliDriver
         'db-connect',
         'web-connect',
         'user',
-        'targetUser',
-        'targetGroup',
+        'targetuser',
+        'targetgroup',
         'describe-cluster-policy',
         'disconnect',
         'attach',
@@ -186,8 +187,8 @@ export class CliDriver
     private adminOnlyCommands: Set<string> = new Set([
         'group',
         'user',
-        'targetUser',
-        'targetGroup',
+        'targetuser',
+        'targetgroup',
         'policy',
         'describe-cluster-policy',
         'generate-bash'
@@ -318,7 +319,7 @@ export class CliDriver
                 }
             )
             .command(
-                'default-targetGroup',
+                'default-targetgroup',
                 'Update the default target group',
                 (yargs) => {
                     return defaultTargetGroupCmdBuilder(yargs);
@@ -466,7 +467,7 @@ export class CliDriver
                 }
             )
             .command(
-                ['targetUser <policyName> [user]'],
+                ['targetuser <policyName> [user]'],
                 'List the available targetUsers, add them, or remove them from policies',
                 (yargs) => {
                     return targetUserCmdBuilder(yargs);
@@ -485,7 +486,7 @@ export class CliDriver
                 }
             )
             .command(
-                ['targetGroup <policyName> [group]'],
+                ['targetgroup <policyName> [group]'],
                 'List the available targetGroups, add them, or remove them from policies',
                 (yargs) => {
                     return targetGroupCmdBuilder(yargs);
@@ -694,7 +695,7 @@ Need help? https://cloud.bastionzero.com/support`)
 
     public run(argv: string[], isSystemTest?: boolean, callback?: (err: Error, argv: any, output: string) => void) {
         // @ts-ignore TS2589
-        const baseCmd = argv[0];
-        return this.getCliDriver(isSystemTest, baseCmd).parseAsync(argv, {}, callback);
+        const { baseCmd, parsedArgv } = makeCaseInsensitive(argv);
+        return this.getCliDriver(isSystemTest, baseCmd).parseAsync(parsedArgv, {}, callback);
     }
 }

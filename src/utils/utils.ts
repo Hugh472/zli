@@ -978,3 +978,15 @@ export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary)
         agentPublicKey: 'N/A'
     };
 }
+
+export function makeCaseInsensitive(argv: string[]) {
+    // Converting commands to lowercase
+    if(argv[0]) {
+        argv[0] = argv[0].toLowerCase();
+    }
+
+    return {
+        baseCmd: argv[0],
+        parsedArgv: argv
+    };
+}
