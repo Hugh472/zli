@@ -13,7 +13,7 @@ export async function callZli(zliArgs: string[], callback?: (err: Error, argv: a
     const cliDriver = new CliDriver();
     const callbackComplete = new Promise<void>(async (res, rej) => {
         try {
-            await cliDriver.getCliDriver(true).parseAsync(zliArgs, {}, async (err, argv, output) => {
+            await cliDriver.run(zliArgs, true, async (err, argv, output) => {
                 try {
                     // Allow test code to handle err, argv, and output with
                     // custom logic
