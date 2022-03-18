@@ -5,7 +5,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { connectCheckAllowedTargetUsers, targetStringExample } from '../../utils/utils';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { ParsedTargetString } from '../../services/common.types';
-import { GAService } from '../../services/GA/GA.service';
+import { GAService } from '../../services/Tracking/Tracking.service';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
