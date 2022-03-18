@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { GAService } from '../../services/GA/GA.service';
+import { GAService } from '../../services/Tracking/Tracking.service';
 import { readFile } from '../../utils/utils';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';

@@ -11,7 +11,8 @@ import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { GAService } from './services/GA/GA.service';
+import { GAService } from './services/Tracking/Tracking.service';
+import { MixpanelService } from './services/Tracking/Tracking.service';
 import { PolicyType } from './services/v1/policy/policy.types';
 import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/targetStatus.types';
@@ -21,7 +22,7 @@ import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/ty
 import { version } from '../package.json';
 
 // Handlers
-import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, GATrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
+import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, GATrackingMiddleware, initLoggerMiddleware, mixpanelTrackingMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy/ssh-proxy.handler';
 import { loginHandler } from './handlers/login/login.handler';
@@ -108,6 +109,7 @@ export class CliDriver
     private logger: Logger;
 
     private GAService: GAService;
+    private mixpanelService: MixpanelService;
 
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
@@ -140,6 +142,30 @@ export class CliDriver
     ];
 
     private GACommands: string[] = [
+        'kube',
+        'ssh-proxy-config',
+        'connect',
+        'tunnel',
+        'user',
+        'targetUser',
+        'targetGroup',
+        'describe-cluster-policy',
+        'disconnect',
+        'attach',
+        'close',
+        'list-targets',
+        'lt',
+        'list-connections',
+        'lc',
+        'copy',
+        'ssh-proxy',
+        'generate',
+        'policy',
+        'group',
+        'generate-bash',
+    ];
+
+    private mixpanelCommands: string[] = [
         'kube',
         'ssh-proxy-config',
         'connect',
@@ -243,6 +269,17 @@ export class CliDriver
                 // to be initialized prior
                 this.logger.setGAService(this.GAService);
             })
+            
+            .middleware(async (argv) => {
+                if(!includes(this.mixpanelCommands, argv._[0]))
+                    return;
+                if(! this.configService.mixpanelToken()) {
+                    await this.configService.fetchMixpanelToken();
+                }
+                this.mixpanelService = mixpanelTrackingMiddleware(this.configService, argv);
+            })
+
+
             .middleware(async (argv) => {
                 if(!includes(this.oauthCommands, argv._[0]))
                     return;
@@ -302,7 +339,7 @@ export class CliDriver
                     }
                     let exitCode = 1;
                     if (parsedTarget.type == TargetType.SsmTarget || parsedTarget.type == TargetType.DynamicAccessConfig) {
-                        exitCode = await connectHandler(this.configService, this.logger, undefined, parsedTarget);
+                        exitCode = await connectHandler(this.configService, this.logger, this.GAService, parsedTarget);
                     } else if (parsedTarget.type == TargetType.Cluster) {
                         exitCode = await startKubeDaemonHandler(argv, parsedTarget.user, argv.targetGroup, parsedTarget.name, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
                     } else if (parsedTarget.type == TargetType.Db) {

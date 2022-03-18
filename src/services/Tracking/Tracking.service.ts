@@ -2,6 +2,12 @@ import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
 const ua = require('universal-analytics');
 
+
+import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
+import { Dictionary } from 'lodash';
+import mixpanel, { Mixpanel } from 'mixpanel';
+import { TrackNewConnection } from './mixpanel.service.types';
+
 export class GAService
 {
     private userId: string;
@@ -17,7 +23,7 @@ export class GAService
     {   
         // Set up our user + GA info
         this.userId = this.configService.me().id;
-        this.visitor = ua('UA-216204125-3', {uid: this.userId});
+        this.visitor = ua('UA-223035536-1', {uid: this.userId});
 
         // Set our custom dimensions
         this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);
@@ -72,5 +78,57 @@ export class GAService
             });
         });
         await zliErrorCall;
+    }
+}
+
+export class MixpanelService
+{
+    private mixpanelClient: Mixpanel;
+    private userId: string;
+    private sessionId: string;
+
+    constructor(private configService: ConfigService)
+    {
+        this.mixpanelClient = mixpanel.init(this.configService.mixpanelToken(), {
+            protocol: 'https',
+        });
+
+        this.userId = this.configService.me().id;
+        this.sessionId = this.configService.sessionId();
+    }
+
+
+    // track connect calls
+    public TrackNewConnection(targetType: TargetType): void
+    {
+        const trackMessage : TrackNewConnection = {
+            distinct_id: this.userId,
+            client_type: 'CLI',
+            UserSessionId: this.sessionId,
+            ConnectionType: targetType,
+        };
+
+        this.mixpanelClient.track('ConnectionOpened', trackMessage);
+    }
+
+    public TrackCliCall(eventName: string, properties: Dictionary<string | string[] | unknown>)
+    {
+        // append the following properties
+        properties.distinct_id = this.userId;
+        properties.client_type = 'CLI';
+        properties.UserSessionId = this.sessionId;
+
+        this.mixpanelClient.track(eventName, properties);
+    }
+
+    public TrackCliCommand(version: string, command: string, args: string[]) {
+        this.TrackCliCall(
+            'CliCommand',
+            {
+                'cli-version': version,
+                'command': command,
+                args: args
+            }
+        );
     }
 }

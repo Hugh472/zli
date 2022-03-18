@@ -22,6 +22,7 @@ type BastionZeroConfigSchema = {
     tokenSet: TokenSetParameters,
     callbackListenerPort: number,
     GAToken: string,
+    MixpanelToken: string,
     idp: IdentityProvider,
     sessionId: string,
     whoami: UserSummary,
@@ -67,6 +68,7 @@ export class ConfigService implements ConfigInterface {
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
                 callbackListenerPort: 0, // if the port is 0, the oauth.service will ask the OS for available port
                 GAToken: undefined,
+                MixpanelToken: undefined,
                 idp: undefined,
                 sessionId: undefined,
                 whoami: undefined,
@@ -93,7 +95,7 @@ export class ConfigService implements ConfigInterface {
             process.exit(1);
         }
 
-        this.tokenHttpService = new TokenService(this, logger);
+        this.tokenHttpService = new TokenHttpService(this, logger);
 
         this.config.onDidChange('tokenSet',
             (newValue : TokenSetParameters, oldValue : TokenSetParameters) => {
@@ -126,6 +128,10 @@ export class ConfigService implements ConfigInterface {
 
     public GAToken(): string {
         return this.config.get('GAToken');
+    }
+
+    public mixpanelToken(): string {
+        return this.config.get('mixpanelToken');
     }
 
     public callbackListenerPort(): number {
@@ -215,6 +221,12 @@ export class ConfigService implements ConfigInterface {
         // fetch GA token from backend
         const GAToken = await this.getGAToken();
         this.config.set('GAToken', GAToken);
+    }
+
+    public async fetchMixpanelToken() {
+        // fetch Mixpanel token from backend
+        const mixpanelToken = await this.getMixpanelToken();
+        this.config.set('mixpanelToken', mixpanelToken);
     }
 
     public async loginSetup(idp: IdentityProvider, email?: string): Promise<void> {
@@ -323,7 +335,10 @@ export class ConfigService implements ConfigInterface {
     }
 
     private async getGAToken(): Promise<string> {
-        // return (await this.tokenHttpService.getGAToken()).token;
-        return "UA-216204125-3";
+        return (await this.tokenHttpService.getGAToken()).token;
+    }
+
+    private async getMixpanelToken(): Promise<string> {
+        return (await this.tokenHttpService.getMixpanelToken()).token;
     }
 }
