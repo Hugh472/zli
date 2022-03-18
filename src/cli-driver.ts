@@ -165,30 +165,6 @@ export class CliDriver
         'generate-bash',
     ];
 
-    private mixpanelCommands: string[] = [
-        'kube',
-        'ssh-proxy-config',
-        'connect',
-        'tunnel',
-        'user',
-        'targetUser',
-        'targetGroup',
-        'describe-cluster-policy',
-        'disconnect',
-        'attach',
-        'close',
-        'list-targets',
-        'lt',
-        'list-connections',
-        'lc',
-        'copy',
-        'ssh-proxy',
-        'generate',
-        'policy',
-        'group',
-        'generate-bash',
-    ];
-
     private fetchCommands: string[] = [
         'connect',
         'tunnel',
@@ -271,7 +247,7 @@ export class CliDriver
             })
             
             .middleware(async (argv) => {
-                if(!includes(this.mixpanelCommands, argv._[0]))
+                if(!includes(this.GACommands, argv._[0]))
                     return;
                 if(! this.configService.mixpanelToken()) {
                     await this.configService.fetchMixpanelToken();
@@ -339,7 +315,7 @@ export class CliDriver
                     }
                     let exitCode = 1;
                     if (parsedTarget.type == TargetType.SsmTarget || parsedTarget.type == TargetType.DynamicAccessConfig) {
-                        exitCode = await connectHandler(this.configService, this.logger, this.GAService, parsedTarget);
+                        exitCode = await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                     } else if (parsedTarget.type == TargetType.Cluster) {
                         exitCode = await startKubeDaemonHandler(argv, parsedTarget.user, argv.targetGroup, parsedTarget.name, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
                     } else if (parsedTarget.type == TargetType.Db) {

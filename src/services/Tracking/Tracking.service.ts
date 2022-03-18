@@ -23,7 +23,7 @@ export class GAService
     {   
         // Set up our user + GA info
         this.userId = this.configService.me().id;
-        this.visitor = ua('UA-223035536-1', {uid: this.userId});
+        this.visitor = ua(configService.GAToken(), {uid: this.userId});
 
         // Set our custom dimensions
         this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);

@@ -5,7 +5,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { connectCheckAllowedTargetUsers, targetStringExample } from '../../utils/utils';
 import { createAndRunShell, getCliSpace, pushToStdOut } from '../../utils/shell-utils';
 import { ParsedTargetString } from '../../services/common.types';
-import { GAService } from '../../services/Tracking/Tracking.service';
+import { MixpanelService } from '../../services/Tracking/Tracking.service';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { PolicyQueryHttpService } from '../../../src/http-services/policy-query/policy-query.http-services';
@@ -18,7 +18,7 @@ import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-
 export async function connectHandler(
     configService: ConfigService,
     logger: Logger,
-    mixpanelService: GAService,
+    mixpanelService: MixpanelService,
     parsedTarget: ParsedTargetString
 ) {
     if(! parsedTarget) {
@@ -99,6 +99,7 @@ export async function connectHandler(
     const connectionSummary = await connectionHttpService.GetConnection(connectionId);
 
     const runShellPromise = createAndRunShell(configService, logger, connectionSummary, pushToStdOut);
-
+    mixpanelService.TrackNewConnection(parsedTarget.type);
+    
     return await runShellPromise;
 }

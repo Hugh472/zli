@@ -1,6 +1,6 @@
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 import { ClientSecretResponse } from '../../../webshell-common-ts/http/v2/token/responses/client-secret.responses';
-import { TrackingTokenResponse } from '../../../webshell-common-ts/http/v2/token/responses/tracking-token.responses';
+import { TrackingTokenResponse } from '../../../webshell-common-ts/http/v2/token/responses/tracking-token-token.responses';
 import { OktaClientResponse } from '../../../webshell-common-ts/http/v2/token/responses/okta-client.responses';
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
