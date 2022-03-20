@@ -959,7 +959,7 @@ export function ssmTargetToTargetSummary(ssm: SsmTargetSummary): TargetSummary {
         environmentId: ssm.environmentId,
         agentVersion: ssm.agentVersion,
         status: ssm.status,
-        targetUsers: ssm.allowedTargetUsers.map(u => u.userName),
+        targetUsers: ssm.allowedTargetUsers?.map(u => u.userName),
         region: ssm.region,
         agentPublicKey: ssm.agentPublicKey
     };
@@ -973,7 +973,7 @@ export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary)
         environmentId: config.environmentId,
         agentVersion: 'N/A',
         status: undefined,
-        targetUsers: config.allowedTargetUsers.map(u => u.userName),
+        targetUsers: config.allowedTargetUsers?.map(u => u.userName),
         region: 'N/A',
         agentPublicKey: 'N/A'
     };
