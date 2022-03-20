@@ -48,6 +48,6 @@ export function generateBashCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<genera
                 describe: 'Write the script to a file'
             }
         )
-        .example('generate-bash --targetNameScheme time', '')
-        .example('generate-bash -o script.sh', 'Writes the script to a file "script.sh" in the current directory');
+        .example('generate bash --targetNameScheme time', '')
+        .example('generate bash -o script.sh', 'Writes the script to a file "script.sh" in the current directory');
 }

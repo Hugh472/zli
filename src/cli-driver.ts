@@ -327,11 +327,6 @@ export class CliDriver
                 'Generate a different types of configuration files (bash, ssh-proxy, kubeConfig or kubeYaml)',
                 (yargs) => {
                     return yargs
-                        .positional('typeOfConfig', {
-                            type: 'string',
-                            choices: ['bash', 'ssh-proxy', 'kubeConfig', 'kubeYaml'],
-                            describe: 'Determines the type of configuration to generate.',
-                        })
                         .command(
                             'bash',
                             'Generate a bash script to autodiscover a target.',

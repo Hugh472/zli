@@ -1,31 +1,29 @@
 import yargs from 'yargs';
 
-export type generateKubeArgs = {clusterName: string} &
-{namespace: string} &
+export type generateKubeArgs = {namespace: string} &
 {labels: string[]} &
 {customPort: number} &
 {outputFile: string} &
-{environmentName: string } &
-{update: boolean}
+{environmentName: string }
 
 function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
     return yargs
-        .positional('clusterName', {
-            type: 'string',
-            default: null
-        }).option('namespace', {
+        .option('namespace', {
             type: 'string',
             default: '',
             demandOption: false
-        }).option('labels', {
+        })
+        .option('labels', {
             type: 'array',
             default: [],
             demandOption: false
-        }).option('customPort', {
+        })
+        .option('customPort', {
             type: 'number',
             default: -1,
             demandOption: false
-        }).option('outputFile', {
+        })
+        .option('outputFile', {
             type: 'string',
             demandOption: false,
             alias: 'o',
@@ -35,21 +33,39 @@ function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKube
             type: 'string',
             default: null
         })
-        .option('update', {
-            type: 'boolean',
-            default: false
-        });
 
 }
 
-export function generateKubeYamlCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
+export type generateKubeYamlArgs = {clusterName: string} &
+{namespace: string} &
+{labels: string[]} &
+{customPort: number} &
+{outputFile: string} &
+{environmentName: string }
+
+export function generateKubeYamlCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeYamlArgs> {
     return generateKubeCmdBuilder(yargs)
+        .positional('clusterName', {
+            type: 'string',
+            default: null
+        })
         .example('$0 generate kubeYaml testcluster', '')
         .example('$0 generate kubeYaml --labels testkey:testvalue', '');
 }
 
-export function generateKubeConfigCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
+export type generateKubeConfigArgs = {namespace: string} &
+{labels: string[]} &
+{customPort: number} &
+{outputFile: string} &
+{environmentName: string } &
+{update: boolean}
+
+export function generateKubeConfigCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeConfigArgs> {
     return generateKubeCmdBuilder(yargs)
+        .option('update', {
+            type: 'boolean',
+            default: false
+        })
         .example('$0 generate kubeConfig', '')
         .example('$0 generate kubeConfig --update', 'Update existing kube config (defaults KUBECONFIG to $HOME/.kube/config)');
 }
