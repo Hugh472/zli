@@ -8,7 +8,7 @@ export type generateBashArgs = { environment: string } &
 { agentVersion: string } &
 { outputFile: string }
 
-export function generateBashCmdBuilder(processArgs : string[], yargs: yargs.Argv<{}>): yargs.Argv<generateBashArgs> {
+export function generateBashCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<generateBashArgs> {
     return yargs
         .option(
             'environment',
