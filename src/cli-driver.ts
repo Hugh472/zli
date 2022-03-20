@@ -84,7 +84,8 @@ import { groupCmdBuilder } from './handlers/group/group.command-builder';
 import { targetUserCmdBuilder } from './handlers/target-user/target-user.command-builder';
 import { targetGroupCmdBuilder } from './handlers/target-group/target-group.command-builder';
 import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-builder';
-import { generateConfigCmdBuilder } from './handlers/generate-config/generate-config.command-builder';
+import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
+import { generateCmdBuilder } from './handlers/generate/generate.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
@@ -331,6 +332,65 @@ export class CliDriver
                     await defaultTargetGroupHandler(this.configService, this.logger, argv);
                 }
             )
+
+            // .command(
+            //     'ssh-proxy-config',
+            //     'Generate ssh configuration to be used with the ssh-proxy command',
+            //     (_) => {},
+            //     async (_) => {
+            //         // ref: https://nodejs.org/api/process.html#process_process_argv0
+            //         let processName = process.argv0;
+
+            //         // handle npm install edge case
+            //         // note: node will also show up when running 'npm run start -- ssh-proxy-config'
+            //         // so for devs, they should not rely on generating configs from here and should
+            //         // map their dev executables in the ProxyCommand output
+            //         if(processName.includes('node')) processName = 'zli';
+
+            //         sshProxyConfigHandler(this.configService, this.logger, processName);
+            //     }
+            // )
+            // .command(
+            //     'generate-bash',
+            //     'Returns a bash script to autodiscover a target.',
+            //     (yargs) => {
+            //         return generateBashCmdBuilder(process.argv, yargs) ;
+            //     },
+            //     async (argv) => {
+            //         await generateBashHandler(argv, this.logger, this.configService, this.envs);
+            //     },
+            // )
+            // .command(
+            //     'generate <typeOfConfig> [clusterName]',
+            //     'Generate a different types of configuration files',
+            //     (yargs) => {
+            //         return generateKubeCmdBuilder(yargs);
+            //     },
+            //     async (argv) => {
+            //         if (argv.typeOfConfig == 'kubeConfig') {
+            //             await generateKubeconfigHandler(argv, this.configService, this.logger);
+            //         } else if (argv.typeOfConfig == 'kubeYaml') {
+            //             await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
+            //         }
+            //     }
+            // )
+            .command(
+                'generate <typeOfConfig>',
+                'Generate a different types of configuration files (bash, ssh-proxy, kubeConfig or kubeYaml)',
+                (yargs) => {
+                    return yargs
+                        .positional('typeOfConfig', {
+                            type: 'string',
+                            choices: ['bash', 'ssh-proxy', 'kubeConfig', 'kubeYaml']
+                        })
+                        .command(
+                            'bash',
+                            'Returns a bash script to autodiscover a target.',
+                            (yargs) => generateBashCmdBuilder(process.argv, yargs),
+                            async (argv) => await generateBashHandler(argv, this.logger, this.configService, this.envs),
+                        )
+                },
+            )
             .command(
                 ['policy [type]'],
                 'List the available policies',
@@ -509,14 +569,6 @@ export class CliDriver
                 }
             )
             .command(
-                'ssh-proxy-config',
-                'Generate ssh configuration to be used with the ssh-proxy command',
-                (_) => {},
-                async (_) => {
-                    await sshProxyConfigHandler(this.configService, getZliRunCommand(), this.logger);
-                }
-            )
-            .command(
                 'ssh-proxy <host> <user> <port> <identityFile>',
                 'ssh proxy command (run ssh-proxy-config command to generate configuration)',
                 (yargs) => {
@@ -572,16 +624,6 @@ export class CliDriver
                 }
             )
             .command(
-                'generate-bash',
-                'Returns a bash script to autodiscover a target.',
-                (yargs) => {
-                    return generateBashCmdBuilder(process.argv, yargs) ;
-                },
-                async (argv) => {
-                    await generateBashHandler(argv, this.logger, this.configService, this.envs);
-                },
-            )
-            .command(
                 'quickstart',
                 'Start an interactive onboarding session to add your SSH hosts to BastionZero.',
                 (yargs) => {
@@ -589,22 +631,6 @@ export class CliDriver
                 },
                 async (argv) => {
                     await quickstartHandler(argv, this.logger, this.keySplittingService, this.configService);
-                }
-            )
-            .command(
-                'generate <typeOfConfig> [clusterName]',
-                'Generate files for Kubernetes or SSH',
-                (yargs) => {
-                    return generateConfigCmdBuilder(yargs);
-                },
-                async (argv) => {
-                    if (argv.typeOfConfig == 'kubeConfig') {
-                        await generateKubeConfigHandler(argv, this.configService, this.logger);
-                    } else if (argv.typeOfConfig == 'kubeYaml') {
-                        await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
-                    } else if (argv.typeOfConfig == 'sshConfig') {
-                        await generateSshConfigHandler(argv, this.configService, this.logger, getZliRunCommand());
-                    }
                 }
             )
             .command(
