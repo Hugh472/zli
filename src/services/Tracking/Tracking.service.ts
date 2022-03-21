@@ -23,12 +23,18 @@ export class GAService
     {   
         // Set up our user + GA info
         this.userId = this.configService.me().id;
-        this.visitor = ua(configService.GAToken(), {uid: this.userId});
+        const gaToken = configService.GAToken(); 
+        if (gaToken != 'n/a') {
+            this.visitor = ua(gaToken, {uid: this.userId});
 
-        // Set our custom dimensions
-        this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);
-        this.visitor.set(this.customDimensionMapper['user-id'], this.userId);
-        this.visitor.set(this.customDimensionMapper['zli-version'], version);
+            // Set our custom dimensions
+            this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);
+            this.visitor.set(this.customDimensionMapper['user-id'], this.userId);
+            this.visitor.set(this.customDimensionMapper['zli-version'], version);
+        } else {
+            // This means we got 'n/a' and this is a dev stack
+            this.visitor = undefined;
+        }
     }
 
     /**
@@ -36,30 +42,32 @@ export class GAService
      * @param {string[]} args Args to the command
     */
     public async TrackCliCommand(args: string[]) {
-        const zliCommandCall = new Promise<void>(async (resolve, _) => {
-            await this.visitor.event('zli-command', this.baseCommand, (err: any) => {
-                if (err) {
-                    this.logger.error(`Error sending GA event zli-command: ${err}`);
-                } else {
-                    this.logger.debug('Successfully tracked event')
-                }
-                resolve();
-            });
-        });
-        await zliCommandCall; 
-        
-        if (args.length != 0) {
-            const zliArgsCall = new Promise<void>(async (resolve, _) => {
-                await this.visitor.event('zli-args', args.toString(), (err: any) => {
+        if (this.visitor) {
+            const zliCommandCall = new Promise<void>(async (resolve, _) => {
+                await this.visitor.event('zli-command', this.baseCommand, (err: any) => {
                     if (err) {
-                        this.logger.error(`Error sending GA event zli-args: ${err}`);
+                        this.logger.error(`Error sending GA event zli-command: ${err}`);
                     } else {
                         this.logger.debug('Successfully tracked event')
                     }
                     resolve();
                 });
             });
-            await zliArgsCall;
+            await zliCommandCall; 
+            
+            if (args.length != 0) {
+                const zliArgsCall = new Promise<void>(async (resolve, _) => {
+                    await this.visitor.event('zli-args', args.toString(), (err: any) => {
+                        if (err) {
+                            this.logger.error(`Error sending GA event zli-args: ${err}`);
+                        } else {
+                            this.logger.debug('Successfully tracked event')
+                        }
+                        resolve();
+                    });
+                });
+                await zliArgsCall;
+            }
         }
     }
 
@@ -67,17 +75,19 @@ export class GAService
      * Helper function to track a cli error.
     */
     public async TrackError() {
-        const zliErrorCall = new Promise<void>(async (resolve, _) => {
-            await this.visitor.event('zli-error', 'lt', (err: any) => {
-                if (err) {
-                    this.logger.error(`Error sending GA event zli-error: ${err}`);
-                } else {
-                    this.logger.debug('Successfully tracked event')
-                }
-                resolve();
+        if (this.visitor) {
+            const zliErrorCall = new Promise<void>(async (resolve, _) => {
+                await this.visitor.event('zli-error', 'lt', (err: any) => {
+                    if (err) {
+                        this.logger.error(`Error sending GA event zli-error: ${err}`);
+                    } else {
+                        this.logger.debug('Successfully tracked event')
+                    }
+                    resolve();
+                });
             });
-        });
-        await zliErrorCall;
+            await zliErrorCall;
+        }
     }
 }
 
