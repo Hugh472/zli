@@ -229,8 +229,8 @@ export class CliDriver
                     return;
                 }
 
-                // Attempt to re-get the token if we dont have it, or its been saved as 'n/a'
-                if(! this.configService.GAToken() || this.configService.GAToken() == 'n/a') {
+                // Attempt to re-get the token if we dont have it
+                if(! this.configService.GAToken()) {
                     await this.configService.fetchGAToken();
                 }
                 this.GAService = await GATrackingMiddleware(this.configService, baseCmd, this.logger, version, argvPassed[0]);
