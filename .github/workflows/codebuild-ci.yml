@@ -1,14 +1,16 @@
-name: AWS CodeBuild CI
+name: Build/Lint/Unit Tests CI
 
 on:
   pull_request:
     branches:
-      # Run CI on PRs to master or feature branches
+      # Run CI on PRs to master, develop or feature branches
       - master
+      - develop
       - 'feat/**'
 
 jobs:
   build:
+    name: Build/Lint/Unit Tests CI
     runs-on: ubuntu-latest
     steps:
     - name: Configure AWS Credentials
@@ -22,3 +24,7 @@ jobs:
       with:
         # won't change aws ci name as that is not editable
         project-name: thoum-ci
+        env-vars-for-codebuild: |
+          version_check_branch
+      env:
+        version_check_branch: ${{ github.base_ref }}

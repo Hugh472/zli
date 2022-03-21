@@ -22,7 +22,7 @@ export const DigitalOceanDistroImage = {
     // account. This image is built from AL2 and it contains custom packages,
     // such as postgres and python3, for usage in virtual target tests.
     BzeroVTAL2TestImage: 102221344,
-    BzeroVTUbuntuTestImage: 101596484
+    BzeroVTUbuntuTestImage: 103484721
 } as const;
 export type DigitalOceanDistroImage = typeof DigitalOceanDistroImage[keyof typeof DigitalOceanDistroImage];
 

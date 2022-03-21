@@ -51,7 +51,7 @@ yargs.Argv<targetGroupArgs> {
                 alias: 'j',
             }
         )
-        .example('$0 targetGroup --json', 'List all target users, output as json, pipeable')
-        .example('$0 targetGroup --add cool-policy system:masters', 'Adds the system:master group to cool-policy')
-        .example('$0 targetGroup -d test-cluster system:masters', 'Removes the system:masters group from the test-cluster policy');
+        .example('$0 targetgroup --json', 'List all target users, output as json, pipeable')
+        .example('$0 targetgroup --add cool-policy system:masters', 'Adds the system:master group to cool-policy')
+        .example('$0 targetgroup -d test-cluster system:masters', 'Removes the system:masters group from the test-cluster policy');
 }

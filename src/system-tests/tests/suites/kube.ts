@@ -38,7 +38,7 @@ export const kubeSuite = () => {
 
             // Reset test passed
             testPassed = false;
-        });
+        }, 15 * 1000);
 
         test.each(clusterVersionsToRun)('zli generate kubeConfig %p', async (_) => {
             // Generate the kubeConfig YAML and write to a file to be read by
@@ -149,12 +149,12 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetUser - add target user to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('zli targetuser - add target user to policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 
             // Call the target group function
-            await callZli(['targetUser', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'someuser', '-a']);
+            await callZli(['targetuser', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'someuser', '-a']);
 
             // Ensure we see the targetUser in the backend
             const policies = await policyService.ListKubernetesPolicies();
@@ -168,12 +168,12 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetUser - delete target user to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('zli targetuser - delete target user to policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 
             // Call the target group function
-            await callZli(['targetUser', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'someuser', '-d']);
+            await callZli(['targetuser', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'someuser', '-d']);
 
             // Ensure we see the targetUser in the backend
             const policies = await policyService.ListKubernetesPolicies();
@@ -187,12 +187,12 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetGroup - add target group to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('zli targetgroup - add target group to policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 
             // Call the target group function
-            await callZli(['targetGroup', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'somegroup', '-a']);
+            await callZli(['targetgroup', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'somegroup', '-a']);
 
             // Ensure we see the targetUser in the backend
             const policies = await policyService.ListKubernetesPolicies();
@@ -206,12 +206,12 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetGroup - delete target group to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('zli targetgroup - delete target group to policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 
             // Call the target group function
-            await callZli(['targetGroup', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'somegroup', '-d']);
+            await callZli(['targetgroup', `${doCluster.bzeroClusterTargetSummary.name}-policy`, 'somegroup', '-d']);
 
             // Ensure we see the targetUser in the backend
             const policies = await policyService.ListKubernetesPolicies();

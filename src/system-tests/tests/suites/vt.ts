@@ -40,7 +40,7 @@ export const vtSuite = () => {
                 environments: [environment],
                 targets: []
             });
-        });
+        }, 15 * 1000);
 
         // Cleanup all policy after the tests
         afterAll(async () => {
@@ -50,7 +50,7 @@ export const vtSuite = () => {
                 policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'proxy')
             );
             policyService.DeleteProxyPolicy(proxyPolicy.id);
-        });
+        }, 15 * 1000);
 
 
         afterEach(async () => {
