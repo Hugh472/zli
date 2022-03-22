@@ -233,11 +233,17 @@ export class CliDriver
                 if(! this.configService.GAToken()) {
                     await this.configService.fetchGAToken();
                 }
-                this.GAService = await GATrackingMiddleware(this.configService, baseCmd, this.logger, version, argvPassed[0]);
+
+                var argvPassed: any = [];
+                if (!isSystemTest) {
+                    // If we are not running a system tests, attempt to extract the args passed
+                    argvPassed = process.argv.slice(3)
+                }
+                this.GAService = await GATrackingMiddleware(this.configService, baseCmd, this.logger, version, argvPassed);
                 
                 // We set the GA service here since it would otherwise be a circular dependency and we need the configService
                 // to be initialized prior
-                this.logger.setGAService(this.GAService);
+                // this.logger.setGAService(this.GAService);
             })
             
             .middleware(async (argv) => {
