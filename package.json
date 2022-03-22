@@ -65,6 +65,7 @@
     "wait-for-expect": "^3.0.2"
   },
   "dependencies": {
+    "@dlenroc/testrail": "^1.6.0",
     "@jsier/retrier": "^1.2.4",
     "@microsoft/signalr": "^5.0.0",
     "@types/async": "^3.2.5",
