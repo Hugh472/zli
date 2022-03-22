@@ -12,7 +12,7 @@ export const listTargetsSuite = () => {
             jest.clearAllMocks();
         });
 
-        test('list-targets', async () => {
+        test('2117: list-targets', async () => {
             const listTargetsSpy = jest.spyOn(ListTargetsService, 'listTargets');
             await callZli(['list-targets', '--json']);
 

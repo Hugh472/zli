@@ -69,6 +69,7 @@ const KUBE_ENABLED = process.env.KUBE_ENABLED ? (process.env.KUBE_ENABLED === 't
 const VT_ENABLED = process.env.VT_ENABLED ? (process.env.VT_ENABLED === 'true') : true;
 const SSM_ENABLED =  process.env.SSM_ENABLED ? (process.env.SSM_ENABLED === 'true') : true;
 
+
 const systemTestTags = process.env.SYSTEM_TEST_TAGS ? process.env.SYSTEM_TEST_TAGS.split(',').filter(t => t != '') : ['system-tests'];
 
 // Set this environment variable to compile agent from specific remote branch
@@ -110,19 +111,19 @@ const defaultDigitalOceanRegion = convertAwsRegionToDigitalOceanRegion(defaultAw
 // new droplet.
 export const ssmTestTargetsToRun: TestTarget[] = [
     // old autodiscovery script (all-in-bash)
-    { installType: 'ad', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
+    { installType: 'ad', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion, connectCaseId: '2120', sshCaseId: '2147'},
     // { type: 'autodiscovery', dropletImage: DigitalOceanDistroImage.CentOS8 },
-    { installType: 'ad', dropletImage: DigitalOceanDistroImage.Debian11, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
-    { installType: 'ad', dropletImage: DigitalOceanDistroImage.Ubuntu20, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
+    { installType: 'ad', dropletImage: DigitalOceanDistroImage.Debian11, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion, connectCaseId: '2121', sshCaseId: '2148' },
+    { installType: 'ad', dropletImage: DigitalOceanDistroImage.Ubuntu20, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion, connectCaseId: '2122', sshCaseId: '2149' },
     // new autodiscovery script (self-registration)
-    { installType: 'pm', dropletImage: DigitalOceanDistroImage.Debian11, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
-    { installType: 'pm', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion },
+    { installType: 'pm', dropletImage: DigitalOceanDistroImage.Debian11, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion, connectCaseId: '2123', sshCaseId: '2150' },
+    { installType: 'pm', dropletImage: DigitalOceanDistroImage.AmazonLinux2, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion, connectCaseId: '2124', sshCaseId: '2151' },
 ];
 
 // Different types of vt targets to create for each type of operating system
 export const vtTestTargetsToRun: TestTarget[] = [
-    { installType: 'pm-vt', dropletImage: DigitalOceanDistroImage.BzeroVTAL2TestImage, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion},
-    { installType: 'pm-vt', dropletImage: DigitalOceanDistroImage.BzeroVTUbuntuTestImage, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion}
+    { installType: 'pm-vt', dropletImage: DigitalOceanDistroImage.BzeroVTAL2TestImage, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion, webCaseId: '2154', dbCaseId: '2152'},
+    { installType: 'pm-vt', dropletImage: DigitalOceanDistroImage.BzeroVTUbuntuTestImage, doRegion: defaultDigitalOceanRegion, awsRegion: defaultAwsRegion, webCaseId: '2155', dbCaseId: '2153'}
 ];
 
 // Add extra targets to test config based on EXTRA_REGIONS env var
@@ -597,22 +598,42 @@ function initRegionalSSMTargetsTestConfig() {
         enabledExtraRegions.push(...enabledExtraRegionsEnvVarSplitAwsRegions);
     }
 
-    enabledExtraRegions.forEach(awsRegion =>
+    enabledExtraRegions.forEach(awsRegion => {
+        // Depending on the awsRegion we have different ssh and connect caseIds
+        var adConnectCaseId = null;
+        var pmConnectCaseId = null;
+        var adSshCaseId = null;
+        var pmSshCaseId = null;
+        
+        switch (awsRegion) {
+            case 'ap-northeast-1':
+                adConnectCaseId = '2176'
+                pmConnectCaseId = '2177'
+                adSshCaseId = '2178'
+                pmSshCaseId = '2179'
+            default:
+                logger.warn(`Unhandled TestRail awsRegion passed: ${awsRegion}`)
+        }
+
         ssmTestTargetsToRun.push(
             {
                 installType: 'ad',
                 dropletImage: DigitalOceanDistroImage.Debian11,
                 doRegion: convertAwsRegionToDigitalOceanRegion(awsRegion),
-                awsRegion: awsRegion
+                awsRegion: awsRegion,
+                connectCaseId: adConnectCaseId,
+                sshCaseId: adSshCaseId
             },
             {
                 installType: 'pm',
                 dropletImage: DigitalOceanDistroImage.Debian11,
                 doRegion: convertAwsRegionToDigitalOceanRegion(awsRegion),
-                awsRegion: awsRegion
+                awsRegion: awsRegion,
+                connectCaseId: pmConnectCaseId,
+                sshCaseId: pmSshCaseId
             }
         )
-    );
+    });
 }
 
 async function setupSystemTestApiKeys() {

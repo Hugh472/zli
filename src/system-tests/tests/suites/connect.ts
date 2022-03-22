@@ -6,7 +6,7 @@ import { configService, logger, loggerConfigService, policyService, ssmTestTarge
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
 import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
-import { DigitalOceanSSMTarget } from '../../digital-ocean/digital-ocean-ssm-target.service.types';
+import { DigitalOceanSSMTarget, getDOImageName } from '../../digital-ocean/digital-ocean-ssm-target.service.types';
 import { TestUtils } from '../utils/test-utils';
 import { VerbType } from '../../../../src/services/v1/policy-query/policy-query.types';
 import { SubjectType } from '../../../../webshell-common-ts/http/v2/common.types/subject.types';
@@ -68,84 +68,85 @@ export const connectSuite = () => {
             }
         });
 
-        test.each(ssmTestTargetsToRun)('zli connect %p', async (testTarget) => {
-            const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
+        ssmTestTargetsToRun.forEach(async (testTarget) => {
+            it(`${testTarget.connectCaseId}: zli connect - ${testTarget.awsRegion} - ${testTarget.installType} - ${getDOImageName(testTarget.dropletImage)}`, async () => {
+               const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
 
-            // Spy on result Bastion gives for shell auth details. This spy is
-            // used at the end of the test to assert the correct regional
-            // connection node was used to establish the websocket.
-            const shellConnectionAuthDetailsSpy = jest.spyOn(ConnectionHttpService.prototype, 'GetShellConnectionAuthDetails');
+                // Spy on result Bastion gives for shell auth details. This spy is
+                // used at the end of the test to assert the correct regional
+                // connection node was used to establish the websocket.
+                const shellConnectionAuthDetailsSpy = jest.spyOn(ConnectionHttpService.prototype, 'GetShellConnectionAuthDetails');
 
-            // Spy on output pushed to stdout
-            const capturedOutput: string[] = [];
-            const outputSpy = jest.spyOn(ShellUtils, 'pushToStdOut')
-                .mockImplementation((output) => {
-                    capturedOutput.push(Buffer.from(output).toString('utf-8'));
-                });
+                // Spy on output pushed to stdout
+                const capturedOutput: string[] = [];
+                const outputSpy = jest.spyOn(ShellUtils, 'pushToStdOut')
+                    .mockImplementation((output) => {
+                        capturedOutput.push(Buffer.from(output).toString('utf-8'));
+                    });
 
-            // Call "zli connect"
-            const connectPromise = callZli(['connect', `${targetUser}@${doTarget.ssmTarget.name}`]);
+                // Call "zli connect"
+                const connectPromise = callZli(['connect', `${targetUser}@${doTarget.ssmTarget.name}`]);
 
-            // Ensure that the created and connect event exists
-            expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientConnect));
-            expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.Created));
+                // Ensure that the created and connect event exists
+                expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientConnect));
+                expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.Created));
 
-            // Assert the output spy receives the same input sent to mock stdIn.
-            // Keep sending input until the output spy says we've received what
-            // we sent (possibly sends command more than once).
+                // Assert the output spy receives the same input sent to mock stdIn.
+                // Keep sending input until the output spy says we've received what
+                // we sent (possibly sends command more than once).
 
-            await waitForExpect(
-                () => {
-                    // Wait for there to be some output
-                    expect(outputSpy).toHaveBeenCalled();
+                await waitForExpect(
+                    () => {
+                        // Wait for there to be some output
+                        expect(outputSpy).toHaveBeenCalled();
 
-                    // There is still a chance that pty is not ready, or
-                    // blockInput is still true (no shell start received).
-                    // Therefore, we might send this command more than once.
-                    // Also, most likely there is some network delay to receive
-                    // output.
-                    mockStdin.send('echo \"hello world\"');
-                    mockStdin.send(enterKey);
+                        // There is still a chance that pty is not ready, or
+                        // blockInput is still true (no shell start received).
+                        // Therefore, we might send this command more than once.
+                        // Also, most likely there is some network delay to receive
+                        // output.
+                        mockStdin.send('echo \"hello world\"');
+                        mockStdin.send(enterKey);
 
-                    // Check that "hello world" exists somewhere in the output
-                    // (could be in "echo" command or in the output from running
-                    // "echo")
-                    const expectedRegex = [
-                        expect.stringMatching(new RegExp('hello world'))
-                    ];
-                    expect(capturedOutput).toEqual(
-                        expect.arrayContaining(expectedRegex),
-                    );
-                },
-                1000 * 30,  // Timeout
-            );
+                        // Check that "hello world" exists somewhere in the output
+                        // (could be in "echo" command or in the output from running
+                        // "echo")
+                        const expectedRegex = [
+                            expect.stringMatching(new RegExp('hello world'))
+                        ];
+                        expect(capturedOutput).toEqual(
+                            expect.arrayContaining(expectedRegex),
+                        );
+                    },
+                    1000 * 30,  // Timeout
+                );
 
-            // Send exit to the terminal so the zli connect handler will exit
-            // and the test can complete. However we must override the mock
-            // implementation of cleanExit to allow the zli connect command to
-            // exit with code 1 without causing the test to fail.
+                // Send exit to the terminal so the zli connect handler will exit
+                // and the test can complete. However we must override the mock
+                // implementation of cleanExit to allow the zli connect command to
+                // exit with code 1 without causing the test to fail.
 
-            // TODO: This could be cleaned up in the future if we exit the zli
-            // with exit code = 0 in this case. Currently there is no way for us
-            // to distinguish between a normal closure (user types exit) and an
-            // abnormal websocket closure
-            jest.spyOn(CleanExitHandler, 'cleanExit').mockImplementationOnce(() => Promise.resolve());
-            mockStdin.send('exit');
-            mockStdin.send(enterKey);
+                // TODO: This could be cleaned up in the future if we exit the zli
+                // with exit code = 0 in this case. Currently there is no way for us
+                // to distinguish between a normal closure (user types exit) and an
+                // abnormal websocket closure
+                jest.spyOn(CleanExitHandler, 'cleanExit').mockImplementationOnce(() => Promise.resolve());
+                mockStdin.send('exit');
+                mockStdin.send(enterKey);
 
-            // Wait for connect shell to cleanup
-            await connectPromise;
+                // Wait for connect shell to cleanup
+                await connectPromise;
 
-            // Assert shell connection auth details returns expected connection
-            // node region
-            expect(shellConnectionAuthDetailsSpy).toHaveBeenCalled();
-            const gotShellConnectionAuthDetails = await getMockResultValue(shellConnectionAuthDetailsSpy.mock.results[0]);
-            expect(gotShellConnectionAuthDetails.region).toBe<string>(testTarget.awsRegion);
+                // Assert shell connection auth details returns expected connection
+                // node region
+                expect(shellConnectionAuthDetailsSpy).toHaveBeenCalled();
+                const gotShellConnectionAuthDetails = await getMockResultValue(shellConnectionAuthDetailsSpy.mock.results[0]);
+                expect(gotShellConnectionAuthDetails.region).toBe<string>(testTarget.awsRegion);
 
-            // Ensure that the client disconnect event is here
-            // Note, there is no close event since we do not close the connection, just disconnect from it
-            expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientDisconnect));
-        }, 60 * 1000);
-
+                // Ensure that the client disconnect event is here
+                // Note, there is no close event since we do not close the connection, just disconnect from it
+                expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientDisconnect));
+            }, 60 * 1000)
+        })
     });
 };

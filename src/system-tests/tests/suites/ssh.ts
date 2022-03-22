@@ -42,7 +42,7 @@ export const sshSuite = () => {
             jest.clearAllMocks();
         });
 
-        test('generate sshConfig', async () => {
+        test('2156: generate sshConfig', async () => {
             const currentUser: Subject = {
                 id: configService.me().id,
                 type: SubjectType.User
@@ -81,18 +81,20 @@ export const sshSuite = () => {
             // don't delete policies, because ssh tunnel tests need them
         }, 60 * 1000);
 
-        test.each(ssmTestTargetsToRun)('ssh tunnel to %p', async (testTarget) => {
-            // use the config file we just created to ssh without specifying a user or identity file
-            const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
-            const command = `ssh -F ${userConfigFile} -o CheckHostIP=no -o StrictHostKeyChecking=no ${doTarget.ssmTarget.name} echo success`;
+        ssmTestTargetsToRun.forEach(async (testTarget) => {
+            it(`${testTarget.sshCaseId}: ssh tunnel - ${testTarget.awsRegion} - ${testTarget.installType} - ${testTarget.dropletImage}`, async () => {
+                // use the config file we just created to ssh without specifying a user or identity file
+                const doTarget = testTargets.get(testTarget) as DigitalOceanSSMTarget;
+                const command = `ssh -F ${userConfigFile} -o CheckHostIP=no -o StrictHostKeyChecking=no ${doTarget.ssmTarget.name} echo success`;
 
-            const pexec = promisify(exec);
-            const { stdout } = await pexec(command);
-            expect(stdout.trim()).toEqual('success');
+                const pexec = promisify(exec);
+                const { stdout } = await pexec(command);
+                expect(stdout.trim()).toEqual('success');
 
-        }, 60 * 1000);
+            }, 60 * 1000);
+        });
 
-        test('generate sshConfig with multiple users', async () => {
+        test('2157: generate sshConfig with multiple users', async () => {
             // delete policy from previous test
             await cleanupTargetConnectPolicies(systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'));
 
@@ -135,7 +137,7 @@ export const sshSuite = () => {
 
         }, 60 * 1000);
 
-        test('generate sshConfig without tunnel access', async () => {
+        test('2158: generate sshConfig without tunnel access', async () => {
             const currentUser: Subject = {
                 id: configService.me().id,
                 type: SubjectType.User

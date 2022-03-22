@@ -40,7 +40,7 @@ export const kubeSuite = () => {
             testPassed = false;
         }, 15 * 1000);
 
-        test.each(clusterVersionsToRun)('zli generate kubeConfig %p', async (_) => {
+        test.each(clusterVersionsToRun)('2159: zli generate kubeConfig %p', async (_) => {
             // Generate the kubeConfig YAML and write to a file to be read by
             // the kubectl ts library
             await callZli(['generate', 'kubeConfig', '-o', kubeConfigYamlFilePath]);
@@ -49,7 +49,7 @@ export const kubeSuite = () => {
             expect(fs.existsSync(kubeConfigYamlFilePath));
         });
 
-        test.each(clusterVersionsToRun)('zli connect - Kube REST API plugin - get namespaces - %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('2160: zli connect - Kube REST API plugin - get namespaces - %p', async (clusterVersion) => {
             const doCluster = testClusters.get(clusterVersion);
 
             // Init Kube client
@@ -102,7 +102,7 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli connect - Kube REST API plugin - multiple groups - %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('2161: zli connect - Kube REST API plugin - multiple groups - %p', async (clusterVersion) => {
             const doCluster = testClusters.get(clusterVersion);
 
             // Init Kube client
@@ -149,7 +149,7 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetuser - add target user to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('2162: zli targetuser - add target user to policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 
@@ -168,7 +168,7 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetuser - delete target user to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('2163: zli targetuser - delete target user from policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 
@@ -187,7 +187,7 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetgroup - add target group to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('2164: zli targetgroup - add target group to policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 
@@ -206,7 +206,7 @@ export const kubeSuite = () => {
             testPassed = true;
         }, 30 * 1000);
 
-        test.each(clusterVersionsToRun)('zli targetgroup - delete target group to policy %p', async (clusterVersion) => {
+        test.each(clusterVersionsToRun)('2165: zli targetgroup - delete target group from policy %p', async (clusterVersion) => {
             // Grab our cluster information and set up our spy
             const doCluster = testClusters.get(clusterVersion);
 

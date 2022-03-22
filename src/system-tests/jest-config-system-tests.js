@@ -8,5 +8,9 @@ module.exports = {
     },
     globals: {
         Uint8Array: Uint8Array,
-    }
+    },
+    reporters: [
+        "default",
+        ["jest-2-testrail", { project_id: "2", suite_id: "1" }]
+    ]
 }
