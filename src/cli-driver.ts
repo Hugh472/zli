@@ -243,7 +243,7 @@ export class CliDriver
                 
                 // We set the GA service here since it would otherwise be a circular dependency and we need the configService
                 // to be initialized prior
-                // this.logger.setGAService(this.GAService);
+                this.logger.setGAService(this.GAService);
             })
             
             .middleware(async (argv) => {
