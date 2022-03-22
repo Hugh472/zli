@@ -26,6 +26,7 @@ phases:
   pre_build:
     commands:
       - echo Pre-Build phase...
+      - printenv
       - mkdir -p ~/.ssh
       - chmod 700 ~/.ssh
       - aws s3 cp $(dirname $GITHUB_KEY_PATH) ~/.ssh --recursive --include ".pem"
@@ -35,6 +36,9 @@ phases:
       - eval `ssh-agent -s`
       - ssh-add ~/.ssh/*.pem
       - git submodule update --init --recursive --depth 50
+      # Install Bzero-QA
+      - git clone git@github.com:bastionzero/cwc-infra.git /cwc-infra/
+      - pip3 install -e /cwc-infra/Bzero-Common/. && pip3 install -e /cwc-infra/Bzero-QA/.
   build:
     commands:
       - echo Build started on `date`
