@@ -44,6 +44,14 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
         process.stdin.on('data', async (data) => {
             ssmTunnelService.sendData(data);
         });
+        // this explicit close behavior is needed for an edge case
+        // where we use BastionZero as an ssh proxy via `npm run start`
+        // see this discussion for more: https://github.com/bastionzero/zli/pull/329#discussion_r831502123
+        process.stdin.on('close', async () => {
+            // closing the tunnel directly in this callback does not seem to work
+            // await ssmTunnelService.closeTunnel();
+            await cleanExit(0, logger);
+        });
     }
 
     configService.logoutDetected.subscribe(async () => {

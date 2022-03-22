@@ -7,6 +7,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { OAuthService } from '../../services/oauth/oauth.service';
 import { randomAlphaNumericString } from '../../utils/utils';
 import { connectSuite } from './suites/connect';
+import { sshSuite } from './suites/ssh';
 import { listTargetsSuite } from './suites/list-targets';
 import { versionSuite } from './suites/version';
 import { convertAwsRegionToDigitalOceanRegion, DigitalOceanDropletSize, DigitalOceanRegion } from '../digital-ocean/digital-ocean.types';
@@ -629,11 +630,20 @@ async function cleanupSystemTestApiKeys() {
     await apiKeyService.DeleteApiKey(systemTestRegistrationApiKey.apiKeyDetails.id);
 }
 
+export async function cleanupTargetConnectPolicies(policyName: string) {
+    const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
+    const targetConnectPolicy = targetConnectPolicies.find(policy =>
+        policy.name == policyName
+    );
+    await policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
+}
+
 // Call various test suites
 if(SSM_ENABLED) {
     versionSuite();
     listTargetsSuite();
     connectSuite();
+    sshSuite();
 }
 
 if(KUBE_ENABLED) {

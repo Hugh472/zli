@@ -338,3 +338,6 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+
+# jest coverage report
+src/system-tests/coverage/

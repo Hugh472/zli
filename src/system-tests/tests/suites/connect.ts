@@ -2,7 +2,7 @@ import { MockSTDIN, stdin } from 'mock-stdin';
 import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
-import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets } from '../system-test';
+import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets, cleanupTargetConnectPolicies } from '../system-test';
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
 import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
@@ -19,6 +19,7 @@ export const connectSuite = () => {
         let mockStdin: MockSTDIN;
         const targetUser = 'ssm-user';
         const testUtils = new TestUtils(configService, logger, loggerConfigService);
+        const enterKey = '\x0D';
 
         // Set up the policy before all the tests
         beforeAll(async () => {
@@ -38,20 +39,16 @@ export const connectSuite = () => {
                 description: `Target connect policy created for system test: ${systemTestUniqueId}`,
                 environments: [environment],
                 targets: [],
-                targetUsers: [{userName: targetUser}],
-                verbs: [{type: VerbType.Shell}]
+                targetUsers: [{ userName: targetUser }],
+                verbs: [{type: VerbType.Shell},]
             });
         }, 15 * 1000);
 
         // Cleanup all policy after the tests
         afterAll(async () => {
             // Search and delete our target connect policy
-            const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
-            const targetConnectPolicy = targetConnectPolicies.find(policy =>
-                policy.name == systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect')
-            );
-            policyService.DeleteTargetConnectPolicy(targetConnectPolicy.id);
-        }, 15 * 1000);
+            await cleanupTargetConnectPolicies(systemTestPolicyTemplate.replace('$POLICY_TYPE', 'target-connect'));
+        });
 
         // Called before each case
         beforeEach(() => {
@@ -96,7 +93,7 @@ export const connectSuite = () => {
             // Assert the output spy receives the same input sent to mock stdIn.
             // Keep sending input until the output spy says we've received what
             // we sent (possibly sends command more than once).
-            const enterKey = '\x0D';
+
             await waitForExpect(
                 () => {
                     // Wait for there to be some output
@@ -149,5 +146,6 @@ export const connectSuite = () => {
             // Note, there is no close event since we do not close the connection, just disconnect from it
             expect(await testUtils.EnsureConnectionEventCreated(doTarget.ssmTarget.id, doTarget.ssmTarget.name, targetUser, 'SSM', ConnectionEventType.ClientDisconnect));
         }, 60 * 1000);
+
     });
 };

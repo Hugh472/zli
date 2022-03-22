@@ -3,16 +3,16 @@ import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
 import { cleanExit } from '../clean-exit.handler';
 import yargs from 'yargs';
-import { generateKubeArgs } from './generate-kube.command-builder';
-import { getEnvironmentFromName } from '../../../src/utils/utils';
+import { generateConfigArgs } from './generate-config.command-builder';
+import { getEnvironmentFromName } from '../../utils/utils';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
-import { KubeHttpService } from '../../../src/http-services/targets/kube/kube.http-services';
+import { KubeHttpService } from '../../http-services/targets/kube/kube.http-services';
 
 const fs = require('fs');
 
 
 export async function generateKubeYamlHandler(
-    argv: yargs.Arguments<generateKubeArgs>,
+    argv: yargs.Arguments<generateConfigArgs>,
     envs: Promise<EnvironmentSummary[]>,
     configService: ConfigService,
     logger: Logger
@@ -29,7 +29,7 @@ export async function generateKubeYamlHandler(
     const kubeHttpService = new KubeHttpService(configService, logger);
 
     // Format our labels if they exist
-    const labels: { [index: string ]: string } = {};
+    const labels: { [index: string]: string } = {};
     if (argv.labels != []) {
         for (const keyValueString of argv.labels) {
             const key = keyValueString.split(':')[0];
