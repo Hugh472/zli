@@ -51,6 +51,7 @@ phases:
       - echo 'export PATH=/usr/local/go/bin:$PATH' >>~/.bash_profile
       - export PATH=/usr/local/go/bin:$PATH
       - npm install
+      - npm i jest-2-testrail 
       # Build golang daemon, only run the linux release as we dont want to build all binaries
       - npm run update-daemon-version
       - npm run release-linux
