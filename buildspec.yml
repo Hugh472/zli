@@ -10,6 +10,8 @@ env:
   parameter-store:
     GITHUB_KEY_PATH: "/github/sshkey/path"
     SSH_KEY_PATH: "/webshell/sshkey/path"
+  secrets-manager:
+    GITHUB_API_KEY: arn:aws:secretsmanager:us-east-1:238681891460:secret:development/infra/roleandfrank-github-api-key-1Cok4j:Token
 phases:
   install:
     runtime-versions:
