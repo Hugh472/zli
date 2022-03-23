@@ -22,7 +22,6 @@ phases:
       - echo 'export PATH=/usr/local/go/bin:$PATH' >>~/.bash_profile
       - export PATH=/usr/local/go/bin:$PATH
       - npm install
-      - npm i -g semver
   pre_build:
     commands:
       - echo Pre-Build phase...
@@ -42,14 +41,4 @@ phases:
   build:
     commands:
       - echo Build started on `date`
-      - echo "Running eslint linter"
-      - npm run lint
-      - echo "Building zli"
-      - npm run release-prod
-      - echo "Checking VERSION is incremented compared to target branch ${version_check_branch}"
-      - TARGET_VERSION=$(git show "${version_check_branch}:package.json" | jq -r .version)
-      - BRANCH_VERSION=$(cat package.json| jq -r .version)
-      - echo Master Version=$TARGET_VERSION, Branch Version=$BRANCH_VERSION
-      - semver "$BRANCH_VERSION" -r ">$TARGET_VERSION"
-      - echo "Running zli Unit Tests"
-      - npm run test
+      - bzero-qa checkPr
