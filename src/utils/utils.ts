@@ -978,6 +978,29 @@ export function dynamicConfigToTargetSummary(config: DynamicAccessConfigSummary)
         agentPublicKey: 'N/A'
     };
 }
+/**
+ * handle npm install edge case
+ * note: node will also show up when running 'npm run start -- ssh-proxy-config'
+ * so for devs, they should not rely on generating configs from here and should
+ * map their dev executables in the ProxyCommand output
+ */
+export function getZliRunCommand(): string {
+    // ref: https://nodejs.org/api/process.html#process_process_argv0
+    let processName = process.argv0;
+    // see discussion here: https://github.com/bastionzero/zli/pull/329#discussion_r828118468
+    if (processName.includes('node')) processName = 'npm run start';
+    return processName;
+}
+
+export function removeIfExists(file: string): void {
+    try {
+        fs.unlinkSync(file);
+    } catch (err) {
+        if (err.code !== 'ENOENT') {
+            throw err;
+        }
+    }
+}
 
 export function makeCaseInsensitive(argv: string[]) {
     // Converting commands to lowercase

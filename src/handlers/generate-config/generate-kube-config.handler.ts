@@ -3,7 +3,7 @@ import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
 import { exec } from 'child_process';
 import yargs from 'yargs';
-import { generateKubeArgs } from './generate-kube.command-builder';
+import { generateConfigArgs } from './generate-config.command-builder';
 import { cleanExit } from '../clean-exit.handler';
 import { generateNewCert } from '../../utils/daemon-utils';
 
@@ -14,8 +14,8 @@ const tmp = require('tmp');
 const randtoken = require('rand-token');
 const execPromise = util.promisify(exec);
 
-export async function generateKubeconfigHandler(
-    argv: yargs.Arguments<generateKubeArgs>,
+export async function generateKubeConfigHandler(
+    argv: yargs.Arguments<generateConfigArgs>,
     configService: ConfigService,
     logger: Logger
 ) {
@@ -133,7 +133,7 @@ async function flattenKubeConfig(config: string, logger: Logger) {
             fs.writeFileSync(kubeConfigPath, config);
             return;
         }
-    } catch(err) {
+    } catch (err) {
         logger.error(`Error checking if existing KubeConfig file exists. Failed to check path: ${kubeConfigPath}`);
         await cleanExit(1, logger);
     }
