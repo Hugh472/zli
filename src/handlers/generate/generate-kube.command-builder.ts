@@ -4,7 +4,7 @@ export type generateKubeArgs = {namespace: string} &
 {labels: string[]} &
 {customPort: number} &
 {outputFile: string} &
-{environmentName: string } & 
+{environmentName: string } &
 {clusterName: string}
 
 function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
@@ -37,7 +37,7 @@ function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKube
         .option('environmentName', {
             type: 'string',
             default: null
-        })
+        });
 }
 
 export type generateKubeYamlArgs = generateKubeArgs

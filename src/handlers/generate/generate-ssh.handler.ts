@@ -6,7 +6,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
 import { buildSshConfigStrings } from './generate-ssh-proxy.handler';
-import { generateSshArgs } from './generate-config.command-builder';
+import { generateSshArgs } from './generate-ssh.command-builder';
 
 /**
  *  Generates an ssh config file based on tunnel targets the user has access to, then Includes it

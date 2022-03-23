@@ -324,7 +324,7 @@ export class CliDriver
             )
             .command(
                 'generate <typeOfConfig>',
-                'Generate a different types of configuration files (bash, ssh-proxy, kubeConfig or kubeYaml)',
+                'Generate a different types of configuration files (bash, ssh, ssh-proxy, kubeConfig or kubeYaml)',
                 (yargs) => {
                     return yargs
                         .command(
@@ -332,6 +332,12 @@ export class CliDriver
                             'Generate a bash script to autodiscover a target.',
                             (yargs) => generateBashCmdBuilder(yargs),
                             async (argv) => await generateBashHandler(argv, this.logger, this.configService, this.envs),
+                        )
+                        .command(
+                            'ssh',
+                            'Generate a configuration file for ssh.',
+                            (yargs) => generateSshCmdBuilder(yargs),
+                            async (argv) => await generateSshHandler(argv, this.configService, this.logger, getZliRunCommand())
                         )
                         .command(
                             'ssh-proxy',
@@ -344,12 +350,6 @@ export class CliDriver
                             'Generates a configuration file for Kubernetes.',
                             (yargs) => generateKubeConfigCmdBuilder(yargs),
                             async (argv) => await generateKubeconfigHandler(argv, this.configService, this.logger)
-                        )
-                        .command(
-                            'ssh',
-                            'Generate a yaml file for Kubernetes.',
-                            (yargs) => generateSshCmdBuilder(yargs),
-                            async (argv) => await generateSshHandler(argv, this.configService, this.logger, getZliRunCommand())
                         )
                         .command(
                             'kubeYaml [clusterName]',
@@ -539,9 +539,10 @@ export class CliDriver
             .command(
                 'ssh-proxy-config',
                 'Generate ssh configuration to be used with the ssh-proxy command',
-                (_) => {},
-                async (_) => {
-                    await sshProxyConfigHandler(this.configService, getZliRunCommand(), this.logger);
+                () => {},
+                async () => {
+                    this.logger.warn('The ssh-proxy-config command is deprecated and will be removed soon, please use it\'s equivalent \'zli generate ssh-proxy\'');
+                    await sshProxyConfigHandler(this.configService, getZliRunCommand(), this.logger)
                 }
             )
             .command(
@@ -606,7 +607,7 @@ export class CliDriver
                     return generateBashCmdBuilder(yargs) ;
                 },
                 async (argv) => {
-                    this.logger.warn("The generate-bash command is deprecated and will be removed soon, please use it's equivalent 'zli generate bash'")
+                    this.logger.warn('The generate-bash command is deprecated and will be removed soon, please use it\'s equivalent \'zli generate bash\'');
                     await generateBashHandler(argv, this.logger, this.configService, this.envs);
                 },
             )
