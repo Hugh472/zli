@@ -3,7 +3,7 @@ import fs from 'fs';
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
-import yargs, { env } from 'yargs';
+import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
 import { getEnvironmentFromName } from '../../../src/utils/utils';
 import { EnvironmentSummary } from '../../../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
