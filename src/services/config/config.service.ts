@@ -6,7 +6,6 @@ import path from 'path';
 import { Observable, Subject } from 'rxjs';
 import { DbConfig, getDefaultDbConfig } from '../db/db.service';
 import { WebConfig, getDefaultWebConfig } from '../web/web.service';
-import { TokenService } from '../v1/token/token.service';
 import { UserSummary } from '../v1/user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../v1/kube/kube.service';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';

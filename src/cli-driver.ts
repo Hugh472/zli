@@ -226,7 +226,7 @@ export class CliDriver
                 this.configService = initResponse.configService;
                 this.keySplittingService = initResponse.keySplittingService;
             })
-            .middleware(async (argv) => {
+            .middleware(async (_) => {
                 if(!this.GACommands.has(baseCmd)) {
                     this.GAService = null;
                     return;
@@ -237,18 +237,18 @@ export class CliDriver
                     await this.configService.fetchGAToken();
                 }
 
-                var argvPassed: any = [];
+                let argvPassed: any = [];
                 if (!isSystemTest) {
                     // If we are not running a system tests, attempt to extract the args passed
-                    argvPassed = process.argv.slice(3)
+                    argvPassed = process.argv.slice(3);
                 }
                 this.GAService = await GATrackingMiddleware(this.configService, baseCmd, this.logger, version, argvPassed);
-                
+
                 // We set the GA service here since it would otherwise be a circular dependency and we need the configService
                 // to be initialized prior
                 this.logger.setGAService(this.GAService);
             })
-            
+
             .middleware(async (argv) => {
                 if(!this.GACommands.has(baseCmd))
                     return;
@@ -259,7 +259,7 @@ export class CliDriver
             })
 
 
-            .middleware(async (argv) => {
+            .middleware(async (_) => {
                 if(!(this.oauthCommands.has(baseCmd)))
                     return;
                 await checkVersionMiddleware(this.configService, this.logger);

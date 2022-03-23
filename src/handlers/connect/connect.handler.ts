@@ -100,6 +100,6 @@ export async function connectHandler(
 
     const runShellPromise = createAndRunShell(configService, logger, connectionSummary, pushToStdOut);
     mixpanelService.TrackNewConnection(parsedTarget.type);
-    
+
     return await runShellPromise;
 }

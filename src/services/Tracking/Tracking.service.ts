@@ -21,10 +21,10 @@ export class GAService
     }
 
     constructor(private configService: ConfigService, private logger: Logger, private baseCommand: string, version: string)
-    {   
+    {
         // Set up our user + GA info
         this.userId = this.configService.me().id;
-        const gaToken = configService.GAToken(); 
+        const gaToken = configService.GAToken();
 
         this.visitor = ua(gaToken, {uid: this.userId});
 
@@ -32,7 +32,7 @@ export class GAService
         this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);
         this.visitor.set(this.customDimensionMapper['user-id'], this.userId);
         this.visitor.set(this.customDimensionMapper['zli-version'], version);
-        this.visitor.set(this.customDimensionMapper['service-url'], configService.getBastionUrl())
+        this.visitor.set(this.customDimensionMapper['service-url'], configService.getBastionUrl());
     }
 
     /**
@@ -45,20 +45,20 @@ export class GAService
                 if (err) {
                     this.logger.error(`Error sending GA event zli-command: ${err}`);
                 } else {
-                    this.logger.debug('Successfully tracked event')
+                    this.logger.debug('Successfully tracked event');
                 }
                 resolve();
             });
         });
-        await zliCommandCall; 
-        
+        await zliCommandCall;
+
         if (args.length != 0) {
             const zliArgsCall = new Promise<void>(async (resolve, _) => {
                 await this.visitor.event('zli-args', args.toString(), (err: any) => {
                     if (err) {
                         this.logger.error(`Error sending GA event zli-args: ${err}`);
                     } else {
-                        this.logger.debug('Successfully tracked event')
+                        this.logger.debug('Successfully tracked event');
                     }
                     resolve();
                 });
@@ -76,7 +76,7 @@ export class GAService
                 if (err) {
                     this.logger.error(`Error sending GA event zli-error: ${err}`);
                 } else {
-                    this.logger.debug('Successfully tracked event')
+                    this.logger.debug('Successfully tracked event');
                 }
                 resolve();
             });

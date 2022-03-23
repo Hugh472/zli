@@ -19,9 +19,9 @@ export class TokenHttpService extends HttpService
     }
 
     public getMixpanelToken(): Promise<TrackingTokenResponse>
-     {
-         return this.Get('mixpanel-token', {});
-     }
+    {
+        return this.Get('mixpanel-token', {});
+    }
 
     public getClientIdAndSecretForProvider(idp: IdentityProvider) : Promise<ClientSecretResponse>
     {
