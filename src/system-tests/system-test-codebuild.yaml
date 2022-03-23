@@ -50,8 +50,8 @@ phases:
       - tar -C /usr/local -xzf go1.16.4.linux-amd64.tar.gz
       - echo 'export PATH=/usr/local/go/bin:$PATH' >>~/.bash_profile
       - export PATH=/usr/local/go/bin:$PATH
-      - npm install
-      - npm i jest-2-testrail 
+      - npm ci
+      - echo "$(ls node_modules/)"
       # Build golang daemon, only run the linux release as we dont want to build all binaries
       - npm run update-daemon-version
       - npm run release-linux

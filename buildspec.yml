@@ -23,11 +23,9 @@ phases:
       - tar -C /usr/local -xzf go1.16.4.linux-amd64.tar.gz
       - echo 'export PATH=/usr/local/go/bin:$PATH' >>~/.bash_profile
       - export PATH=/usr/local/go/bin:$PATH
-      - npm install
   pre_build:
     commands:
       - echo Pre-Build phase...
-      - printenv
       - mkdir -p ~/.ssh
       - chmod 700 ~/.ssh
       - aws s3 cp $(dirname $GITHUB_KEY_PATH) ~/.ssh --recursive --include ".pem"

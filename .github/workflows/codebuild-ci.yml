@@ -1,4 +1,4 @@
-name: Build/Lint/Unit Tests CI
+name: PR Check CI
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Build/Lint/Unit Tests CI
+    name: PR Check CI
     runs-on: ubuntu-latest
     steps:
     - name: Configure AWS Credentials
