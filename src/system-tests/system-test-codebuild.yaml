@@ -52,7 +52,7 @@ phases:
       - export PATH=/usr/local/go/bin:$PATH
       # Install nvm
       - curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-      - source ~/.bashrc
+      - . ~/.bashrc
       - nvm install 14 && nvm use -g 14
       - npm ci
       - echo "$(ls node_modules/testrail)"
