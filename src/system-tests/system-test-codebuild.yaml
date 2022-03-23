@@ -50,6 +50,10 @@ phases:
       - tar -C /usr/local -xzf go1.16.4.linux-amd64.tar.gz
       - echo 'export PATH=/usr/local/go/bin:$PATH' >>~/.bash_profile
       - export PATH=/usr/local/go/bin:$PATH
+      # Install nvm
+      - curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+      - source ~/.bashrc
+      - nvm install 14 && nvm use -g 14
       - npm ci
       - echo "$(ls node_modules/testrail)"
       - echo "$(ls node_modules/testrail/dist)"
