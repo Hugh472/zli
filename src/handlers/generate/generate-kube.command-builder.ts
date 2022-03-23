@@ -9,7 +9,7 @@ function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKube
             demandOption: false,
             alias: 'o',
             default: null
-        })
+        });
 }
 
 export type generateKubeYamlArgs = generateKubeArgs

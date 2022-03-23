@@ -35,7 +35,6 @@ import { webConnectHandler } from './handlers/connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
-import { generateKubeConfigHandler } from './handlers/generate/generate-kube-config.handler';
 import { generateKubeYamlHandler } from './handlers/generate/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect/disconnect.handler';
 import { statusHandler } from './handlers/status/status.handler';
@@ -234,7 +233,7 @@ export class CliDriver
                 await oAuthMiddleware(this.configService, this.logger);
             })
             .middleware(async (argv) => {
-                const is_generate_bash = argv._[0] == "generate" && argv._[1] == "bash";
+                const is_generate_bash = argv._[0] == 'generate' && argv._[1] == 'bash';
                 if((this.adminOnlyCommands.has(baseCmd) && !this.configService.me().isAdmin) || is_generate_bash){
                     this.logger.error(`This is an admin restricted command. Please login as an admin to perform it.`);
                     await cleanExit(1, this.logger);
