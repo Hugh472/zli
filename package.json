@@ -33,7 +33,7 @@
     "package": "npm run copy-files && pkg .",
     "clean": "rimraf dist/ && rimraf bin/",
     "test": "jest --config jest-config-unit-tests.js",
-    "system-test": "jest --config src/system-tests/jest-config-system-tests.js --forceExit",
+    "system-test": "jest --config src/system-tests/jest-config-system-tests.js --collectCoverage",
     "lint": "eslint 'src/**/*.ts' 'webshell-common-ts/**/*.ts' -c webshell-common-ts/.eslintrc.json"
   },
   "author": "nabeelperson",

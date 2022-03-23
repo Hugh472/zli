@@ -53,9 +53,6 @@ phases:
       # Update npm 
       - npm install -g npm@7
       - npm ci
-      - echo "$(ls node_modules/testrail)"
-      - echo "$(ls node_modules/testrail/dist)"
-      - npm --version
       # Build golang daemon, only run the linux release as we dont want to build all binaries
       - npm run update-daemon-version
       - npm run release-linux
