@@ -35,7 +35,7 @@ import { webConnectHandler } from './handlers/connect/web-connect.handler';
 import { listConnectionsHandler } from './handlers/list-connections/list-connections.handler';
 import { attachHandler } from './handlers/attach/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection/close-connection.handler';
-import { generateKubeconfigHandler } from './handlers/generate/generate-kube-config.handler';
+import { generateKubeConfigHandler } from './handlers/generate/generate-kube-config.handler';
 import { generateKubeYamlHandler } from './handlers/generate/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect/disconnect.handler';
 import { statusHandler } from './handlers/status/status.handler';

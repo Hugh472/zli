@@ -14,7 +14,7 @@ const tmp = require('tmp');
 const randtoken = require('rand-token');
 const execPromise = util.promisify(exec);
 
-export async function generateKubeconfigHandler(
+export async function generateKubeConfigHandler(
     argv: yargs.Arguments<generateKubeConfigArgs>,
     configService: ConfigService,
     logger: Logger
