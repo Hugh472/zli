@@ -38,7 +38,6 @@ function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKube
             type: 'string',
             default: null
         })
-
 }
 
 export type generateKubeYamlArgs = generateKubeArgs

@@ -61,8 +61,8 @@ import { listTargetConnectPoliciesHandler } from './handlers/policy/list-target-
 import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-session-recording-policies.handler';
 import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-controls-policies.handler';
 import { listUsersHandler } from './handlers/user/list-users.handler.v2';
-import { generateSshConfigHandler } from './handlers/generate-config/generate-ssh-config.handler';
-
+import { sshProxyConfigHandler } from './handlers/generate/generate-ssh-proxy.handler';
+import { generateSshHandler } from './handlers/generate/generate-ssh.handler';
 
 // 3rd Party Modules
 import yargs from 'yargs/yargs';
@@ -87,7 +87,7 @@ import { generateKubeConfigCmdBuilder, generateKubeYamlCmdBuilder } from './hand
 import { generateBashCmdBuilder } from './handlers/generate/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
-import { generateSSHProxyHandler } from './handlers/generate/generate-ssh-proxy.handler';
+import { generateSshCmdBuilder } from './handlers/generate/generate-ssh.command-builder';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -337,13 +337,19 @@ export class CliDriver
                             'ssh-proxy',
                             'Generate an ssh configuration to be used with the ssh-proxy command.',
                             () => {},
-                            () => generateSSHProxyHandler(),
+                            () => sshProxyConfigHandler(this.configService, getZliRunCommand(), this.logger),
                         )
                         .command(
                             'kubeConfig [clusterName]',
                             'Generates a configuration file for Kubernetes.',
                             (yargs) => generateKubeConfigCmdBuilder(yargs),
                             async (argv) => await generateKubeconfigHandler(argv, this.configService, this.logger)
+                        )
+                        .command(
+                            'ssh',
+                            'Generate a yaml file for Kubernetes.',
+                            (yargs) => generateSshCmdBuilder(yargs),
+                            async (argv) => await generateSshHandler(argv, this.configService, this.logger, getZliRunCommand())
                         )
                         .command(
                             'kubeYaml [clusterName]',
@@ -531,6 +537,14 @@ export class CliDriver
                 }
             )
             .command(
+                'ssh-proxy-config',
+                'Generate ssh configuration to be used with the ssh-proxy command',
+                (_) => {},
+                async (_) => {
+                    await sshProxyConfigHandler(this.configService, getZliRunCommand(), this.logger);
+                }
+            )
+            .command(
                 'ssh-proxy <host> <user> <port> <identityFile>',
                 'ssh proxy command (run generate ssh-proxy command to generate configuration)',
                 (yargs) => {
@@ -584,6 +598,17 @@ export class CliDriver
                 async () => {
                     await configHandler(this.logger, this.configService, this.loggerConfigService);
                 }
+            )
+            .command(
+                'generate-bash',
+                'Returns a bash script to autodiscover a target.',
+                (yargs) => {
+                    return generateBashCmdBuilder(yargs) ;
+                },
+                async (argv) => {
+                    this.logger.warn("The generate-bash command is deprecated and will be removed soon, please use it's equivalent 'zli generate bash'")
+                    await generateBashHandler(argv, this.logger, this.configService, this.envs);
+                },
             )
             .command(
                 'quickstart',

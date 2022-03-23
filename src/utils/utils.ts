@@ -1002,6 +1002,14 @@ export function removeIfExists(file: string): void {
     }
 }
 
+export function getZliRunCommand(): string {
+    // ref: https://nodejs.org/api/process.html#process_process_argv0
+    let processName = process.argv0;
+    // see discussion here: https://github.com/bastionzero/zli/pull/329#discussion_r828118468
+    if (processName.includes('node')) processName = 'npm run start';
+    return processName;
+}
+
 export function makeCaseInsensitive(argv: string[]) {
     // Converting commands to lowercase
     if(argv[0]) {
