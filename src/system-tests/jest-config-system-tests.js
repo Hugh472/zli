@@ -1,4 +1,4 @@
-module.exports = {
+toExport = {
     "roots": [
         "<rootDir>/tests"
     ],
@@ -10,7 +10,13 @@ module.exports = {
         Uint8Array: Uint8Array,
     },
     reporters: [
-        "default",
-        ["jest-2-testrail", { project_id: "2", suite_id: "1" }]
+        "default"
     ]
-}
+};
+
+if (process.env.BZERO_PROD == 'true') {
+    toExport.reporters.push(["jest-2-testrail", { project_id: "2", suite_id: "1" }]);
+};
+
+
+module.exports = toExport;

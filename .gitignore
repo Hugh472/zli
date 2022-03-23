@@ -341,3 +341,7 @@ ASALocalRun/
 
 # jest coverage report
 src/system-tests/coverage/
+
+# Ignore any jupyter notebook
+*.ipynb
+*.ipynb_checkpoints/*
