@@ -61,6 +61,7 @@ import { listSessionRecordingPoliciesHandler } from './handlers/policy/list-sess
 import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-organization-controls-policies.handler';
 import { listUsersHandler } from './handlers/user/list-users.handler.v2';
 import { sshProxyConfigHandler } from './handlers/generate/generate-ssh-proxy.handler';
+import { generateKubeConfigHandler } from './handlers/generate/generate-kube-config.handler';
 import { generateSshHandler } from './handlers/generate/generate-ssh.handler';
 
 // 3rd Party Modules
@@ -333,7 +334,7 @@ export class CliDriver
             )
             .command(
                 'generate <typeOfConfig>',
-                'Generate a different types of configuration files (bash, ssh, ssh-proxy, kubeConfig or kubeYaml)',
+                'Generate different types of configuration files (bash, ssh, ssh-proxy, kubeConfig or kubeYaml)',
                 (yargs) => {
                     return yargs
                         .command(
@@ -356,9 +357,9 @@ export class CliDriver
                         )
                         .command(
                             'kubeConfig [clusterName]',
-                            'Generates a configuration file for Kubernetes.',
+                            'Generate a configuration file for Kubernetes.',
                             (yargs) => generateKubeConfigCmdBuilder(yargs),
-                            async (argv) => await generateKubeconfigHandler(argv, this.configService, this.logger)
+                            async (argv) => await generateKubeConfigHandler(argv, this.configService, this.logger)
                         )
                         .command(
                             'kubeYaml [clusterName]',
@@ -551,7 +552,7 @@ export class CliDriver
                 () => {},
                 async () => {
                     await sshProxyConfigHandler(this.configService, getZliRunCommand(), this.logger);
-                    this.logger.warn('The ssh-proxy-config command is deprecated and will be removed soon, please use it\'s equivalent \'zli generate ssh-proxy\'');
+                    this.logger.warn('The ssh-proxy-config command is deprecated and will be removed soon, please use its equivalent \'zli generate ssh-proxy\'');
                 }
             )
             .command(
@@ -617,7 +618,7 @@ export class CliDriver
                 },
                 async (argv) => {
                     await generateBashHandler(argv, this.logger, this.configService, this.envs);
-                    this.logger.warn('The generate-bash command is deprecated and will be removed soon, please use it\'s equivalent \'zli generate bash\'');
+                    this.logger.warn('The generate-bash command is deprecated and will be removed soon, please use its equivalent \'zli generate bash\'');
                 },
             )
             .command(
