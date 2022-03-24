@@ -611,6 +611,7 @@ function initRegionalSSMTargetsTestConfig() {
                 pmConnectCaseId = '2177'
                 adSshCaseId = '2178'
                 pmSshCaseId = '2179'
+                break
             default:
                 logger.warn(`Unhandled TestRail awsRegion passed: ${awsRegion}`)
         }

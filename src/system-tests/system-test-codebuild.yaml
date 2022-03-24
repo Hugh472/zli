@@ -52,10 +52,6 @@ phases:
       - export PATH=/usr/local/go/bin:$PATH
       # Update npm 
       - npm install -g npm@7
-      - npm ci
-      # Build golang daemon, only run the linux release as we dont want to build all binaries
-      - npm run update-daemon-version
-      - npm run release-linux
       - # Install system-test dependencies
       - # Install helm (ref: https://helm.sh/docs/intro/install/#from-apt-debianubuntu)
       - curl https://baltocdn.com/helm/signing.asc | apt-key add -
@@ -65,8 +61,4 @@ phases:
   build:
     commands:
       - echo Build started `date`
-      - echo Running system tests
-      - src/system-tests/run-system-tests.sh
-  post_build:
-    commands:
-      - echo Post build started `date`
+      - bzero-qa test -allSuites
