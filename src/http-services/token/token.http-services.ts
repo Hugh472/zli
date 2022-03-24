@@ -15,7 +15,7 @@ export class TokenHttpService extends HttpService
 
     public getGAToken(): Promise<TrackingTokenResponse>
     {
-        return this.Get('GA-token', {});
+        return this.Get('google-analytics-token', {});
     }
 
     public getMixpanelToken(): Promise<TrackingTokenResponse>

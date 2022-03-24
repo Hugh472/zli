@@ -334,7 +334,7 @@ export class ConfigService implements ConfigInterface {
     }
 
     private async getGAToken(): Promise<string> {
-        return (await this.tokenHttpService.getGAToken()).token;
+        return (await this.tokenHttpService.getGAToken())?.token;
     }
 
     private async getMixpanelToken(): Promise<string> {
