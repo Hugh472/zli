@@ -14,6 +14,7 @@ env:
     BCTL_QUICKSTART_VERSION: /development/infra/bctl-quickstart-version
   secrets-manager:
     DO_API_KEY: development/infra/system-test-secret:DO_API_KEY
+    GITHUB_API_KEY: arn:aws:secretsmanager:us-east-1:238681891460:secret:development/infra/roleandfrank-github-api-key-1Cok4j:Token
   git-credential-helper: yes
 phases:
   install:
