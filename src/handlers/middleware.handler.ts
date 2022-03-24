@@ -85,7 +85,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 }
 
 /*
- * Helper function to get our our GA tracking middleware and track our cli command
+ * Helper function to get our GA tracking middleware and track our cli command
 */
 export async function GATrackingMiddleware(configService: ConfigService, baseCommand: string, logger: Logger, version: string, argvPassed: any,) {
     // GA tracking

@@ -37,7 +37,7 @@ export class Logger implements ILogger {
         // Build our logger
         this.buildLogger(isStdEnabled);
 
-        // Since the GA service is dependent on the logger, this will be set in the GA middleware in cil-driver
+        // Since the GA service is dependent on the logger, this will be set in the GA middleware in cli-driver
         this.gaService = null;
     }
 

@@ -257,8 +257,6 @@ export class CliDriver
                 }
                 this.mixpanelService = mixpanelTrackingMiddleware(this.configService, argv);
             })
-
-
             .middleware(async (_) => {
                 if(!(this.oauthCommands.has(baseCmd)))
                     return;
