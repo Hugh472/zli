@@ -62,4 +62,4 @@ phases:
   build:
     commands:
       - echo Build started `date`
-      - bzero-qa test -allSuites
+      - bzero-qa test -sys-test -allSuites
