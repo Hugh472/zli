@@ -11,10 +11,11 @@ export class GAService
         'zli-os': 'cd1',
         'user-id': 'cd2',
         'zli-version': 'cd3',
-        'service-url': 'cd4'
+        'service-url': 'cd4',
+        'zli-args': 'cd5'
     }
 
-    constructor(private configService: ConfigService, private logger: Logger, private baseCommand: string, version: string)
+    constructor(private configService: ConfigService, private logger: Logger, private baseCommand: string, args: string[], version: string)
     {
         // Set up our user + GA info
         this.userId = this.configService.me().id;
@@ -24,6 +25,7 @@ export class GAService
 
         // Set our custom dimensions
         this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);
+        this.visitor.set(this.customDimensionMapper['zli-args'], args.toString());
         this.visitor.set(this.customDimensionMapper['user-id'], this.userId);
         this.visitor.set(this.customDimensionMapper['zli-version'], version);
         this.visitor.set(this.customDimensionMapper['service-url'], configService.getBastionUrl());
@@ -31,9 +33,8 @@ export class GAService
 
     /**
      * Helper function to track a cli command.
-     * @param {string[]} args Args to the command
     */
-    public async TrackCliCommand(args: string[]) {
+    public async TrackCliCommand() {
         const zliCommandCall = new Promise<void>(async (resolve, _) => {
             await this.visitor.event('zli-command', this.baseCommand, (err: any) => {
                 if (err) {
@@ -45,20 +46,6 @@ export class GAService
             });
         });
         await zliCommandCall;
-
-        if (args.length != 0) {
-            const zliArgsCall = new Promise<void>(async (resolve, _) => {
-                await this.visitor.event('zli-args', args.toString(), (err: any) => {
-                    if (err) {
-                        this.logger.error(`Error sending GA event zli-args: ${err}`);
-                    } else {
-                        this.logger.debug('Successfully tracked event');
-                    }
-                    resolve();
-                });
-            });
-            await zliArgsCall;
-        }
     }
 
     /**
