@@ -1,68 +1,61 @@
-import { TargetUser } from '../../services/common.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { PolicyType, KubernetesPolicyClusterUsers, KubernetesPolicyContext, TargetConnectContext } from '../../services/v1/policy/policy.types';
-import { PolicyService } from '../../services/v1/policy/policy.service';
 import { cleanExit } from '../clean-exit.handler';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
+import { ClusterUser } from '../../../webshell-common-ts/http/v2/policy/types/cluster-user.types';
+import { TargetUser } from '../../../webshell-common-ts/http/v2/policy/types/target-user.types';
 
 export async function addTargetUserHandler(targetUserName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy
-    const policyService = new PolicyService(configService, logger);
-    const policies = await policyService.ListAllPolicies();
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
+    const targetPolicies = await policyHttpService.ListTargetConnectPolicies();
 
     // Loop till we find the one we are looking for
-    const policy = policies.find(p => p.name == policyName);
+    const kubePolicy = kubePolicies.find(p => p.name == policyName);
+    const targetPolicy = targetPolicies.find(p => p.name == policyName);
 
-    if (!policy) {
+    if (!kubePolicy && !targetPolicy) {
         // Log an error
         logger.error(`Unable to find policy with name: ${policyName}`);
         await cleanExit(1, logger);
     }
 
-    switch (policy.type) {
-    case PolicyType.Kubernetes:
-        // Then add the targetUser to the policy
-        const clusterUserToAdd: KubernetesPolicyClusterUsers = {
-            name: targetUserName
-        };
-        const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
-
+    if (kubePolicy) {
         // If this cluster targetUser exists already
-        if (kubernetesPolicyContext.clusterUsers[targetUserName] !== undefined) {
+        if (kubePolicy.clusterUsers.find(u => u.name === targetUserName)) {
             logger.error(`Target user ${targetUserName} exists already for policy: ${policyName}`);
             await cleanExit(1, logger);
         }
-        kubernetesPolicyContext.clusterUsers[targetUserName] = clusterUserToAdd;
+
+        // Then add the targetUser to the policy
+        const clusterUserToAdd: ClusterUser = {
+            name: targetUserName
+        };
 
         // And finally update the policy
-        policy.context = kubernetesPolicyContext;
-        break;
-    case PolicyType.TargetConnect:
+        kubePolicy.clusterUsers.push(clusterUserToAdd);
+
+        await policyHttpService.EditKubernetesPolicy(kubePolicy);
+    } else if (targetPolicy) {
+        // If this cluster targetUser exists already
+        if (targetPolicy.targetUsers.find(u => u.userName === targetUserName)) {
+            logger.error(`Target user ${targetUserName} exists already for policy: ${policyName}`);
+            await cleanExit(1, logger);
+        }
+
         // Then add the targetUser to the policy
         const targetUserToAdd: TargetUser = {
             userName: targetUserName
         };
-        const targetConnectPolicyContext = policy.context as TargetConnectContext;
-        const targetUsers = targetConnectPolicyContext.targetUsers as {[targetUser: string]: TargetUser};
-
-        // If this target user exists already
-        if (targetUsers[targetUserName] !== undefined) {
-            logger.error(`Target user ${targetUserName} exists already for policy: ${policyName}`);
-            await cleanExit(1, logger);
-        }
-        targetUsers[targetUserName] = targetUserToAdd;
-        targetConnectPolicyContext.targetUsers = targetUsers;
 
         // And finally update the policy
-        policy.context = targetConnectPolicyContext;
-        break;
-    default:
-        logger.error(`Adding target user to policy ${policyName} failed. Adding target users to ${policy.type} policies is not currently supported.`);
+        targetPolicy.targetUsers.push(targetUserToAdd);
+        await policyHttpService.EditTargetConnectPolicy(targetPolicy);
+    } else {
+        logger.error(`Adding target user to policy ${policyName} failed. Adding target users to this policy type is not currently supported.`);
         await cleanExit(1, logger);
-        break;
     }
-
-    await policyService.EditPolicy(policy);
 
     logger.info(`Added ${targetUserName} to ${policyName} policy!`);
     await cleanExit(0, logger);

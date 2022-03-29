@@ -1,1 +1,0 @@
-export type OperatingSystem = 'centos' | 'ubuntu' | 'universal'

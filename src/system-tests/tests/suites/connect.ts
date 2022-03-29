@@ -8,11 +8,11 @@ import { callZli } from '../utils/zli-utils';
 import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
 import { DigitalOceanSSMTarget } from '../../digital-ocean/digital-ocean-ssm-target.service.types';
 import { TestUtils } from '../utils/test-utils';
-import { VerbType } from '../../../../src/services/v1/policy-query/policy-query.types';
 import { SubjectType } from '../../../../webshell-common-ts/http/v2/common.types/subject.types';
-import { Subject } from '../../../../src/services/v1/policy/policy.types';
 import { Environment } from '../../../../webshell-common-ts/http/v2/policy/types/environment.types';
 import { ConnectionEventType } from '../../../../webshell-common-ts/http/v2/event/types/connection-event.types';
+import { Subject } from '../../../../webshell-common-ts/http/v2/policy/types/subject.types';
+import { VerbType } from '../../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
 
 export const connectSuite = () => {
     describe('connect suite', () => {

@@ -9,8 +9,8 @@ import { WebTargetService } from '../../../http-services/web-target/web-target.h
 import { TestUtils } from '../utils/test-utils';
 import { SubjectType } from '../../../../webshell-common-ts/http/v2/common.types/subject.types';
 import { Environment } from '../../../../webshell-common-ts/http/v2/policy/types/environment.types';
-import { Subject } from '../../../../src/services/v1/policy/policy.types';
 import { ConnectionEventType } from '../../../../webshell-common-ts/http/v2/event/types/connection-event.types';
+import { Subject } from '../../../../webshell-common-ts/http/v2/policy/types/subject.types';
 
 const { Client } = require('pg');
 

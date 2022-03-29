@@ -1,22 +1,16 @@
-import { GroupSummary } from '../../services/v1/groups/groups.types';
-import { Group } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { OrganizationHttpService } from '../../http-services/organization/organization.http-services';
-import { PolicyHttpService } from '../../../src/http-services/policy/policy.http-services';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
 import { KubernetesPolicySummary } from '../../../webshell-common-ts/http/v2/policy/kubernetes/types/kubernetes-policy-summary.types';
 import { TargetConnectPolicySummary } from '../../../webshell-common-ts/http/v2/policy/target-connect/types/target-connect-policy-summary.types';
 
-export async function addGroupToPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
+export async function deleteGroupFromPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the group
     const organizationHttpService = new OrganizationHttpService(configService, logger);
     const groups = await organizationHttpService.ListGroups();
-    let groupSummary : GroupSummary = undefined;
-    for (const group of groups){
-        if (group.name == groupName)
-            groupSummary = group;
-    }
+    const groupSummary = groups.find(g => g.name == groupName);
     if (groupSummary == undefined) {
         logger.error(`Unable to find group with name: ${groupName}`);
         await cleanExit(1, logger);
@@ -39,19 +33,16 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
 
     const policy = kubePolicy ? kubePolicy : targetPolicy;
 
-    // If this group exists already
-    const group = policy.groups.find((g: Group) => g.name == groupSummary.name);
-    if (group) {
-        logger.error(`Group ${groupSummary.name} exists already for policy: ${policyName}`);
+    // If this group does not exist in this policy
+    const group = policy.groups.find(g => g.name == groupSummary.name);
+    if (!group) {
+        logger.error(`Group ${groupName} does not exist for policy: ${policyName}`);
         await cleanExit(1, logger);
     }
 
-    // Then add the group to the policy
-    const groupToAdd: Group = {
-        id: groupSummary.idPGroupId,
-        name: groupSummary.name
-    };
-    policy.groups.push(groupToAdd);
+
+    // Then delete the group from the policy
+    policy.groups = policy.groups.filter(g => g.name !== groupSummary.name);
 
     // And finally update the policy
     if (kubePolicy)
@@ -59,7 +50,7 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
     else
         await policyHttpService.EditTargetConnectPolicy(policy as TargetConnectPolicySummary);
 
-    logger.info(`Added ${groupName} to ${policyName} policy!`);
+    logger.info(`Deleted ${groupName} from ${policyName} policy!`);
     await cleanExit(0, logger);
 }
 

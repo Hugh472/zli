@@ -8,7 +8,6 @@ import path from 'path';
 import os from 'os';
 import prompts, { PromptObject } from 'prompts';
 import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
-import { Subject, SubjectType } from '../v1/policy/policy.types';
 import { Retrier } from '@jsier/retrier';
 import chalk from 'chalk';
 import { ConsoleWithTranscriptService } from '../consoleWithTranscript/consoleWithTranscript.service';
@@ -26,6 +25,8 @@ import { SsmTargetSummary } from '../../../webshell-common-ts/http/v2/target/ssm
 import { ScriptTargetNameOption } from '../../../webshell-common-ts/http/v2/autodiscovery-script/types/script-target-name-option.types';
 import { getAutodiscoveryScript } from '../..//http-services/auto-discovery-script/auto-discovery-script.http-services';
 import { TargetStatus } from '../../../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { Subject } from '../../../webshell-common-ts/http/v2/policy/types/subject.types';
+import { SubjectType } from '../../../webshell-common-ts/http/v2/common.types/subject.types';
 
 export class QuickstartSsmService {
     constructor(

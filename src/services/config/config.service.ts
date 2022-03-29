@@ -4,13 +4,12 @@ import { Logger } from '../logger/logger.service';
 import { KeySplittingConfigSchema, ConfigInterface, getDefaultKeysplittingConfig } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
 import { Observable, Subject } from 'rxjs';
-import { DbConfig, getDefaultDbConfig } from '../db/db.service';
+import { DbConfig, getDefaultDbConfig } from '../database/database.service';
 import { WebConfig, getDefaultWebConfig } from '../web/web.service';
-import { TokenService } from '../v1/token/token.service';
-import { UserSummary } from '../v1/user/user.types';
-import { KubeConfig, getDefaultKubeConfig } from '../v1/kube/kube.service';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 import { TokenHttpService } from '../../http-services/token/token.http-services';
+import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
+import { getDefaultKubeConfig, KubeConfig } from '../../utils/kubernetes.utils';
 
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
@@ -95,7 +94,7 @@ export class ConfigService implements ConfigInterface {
             process.exit(1);
         }
 
-        this.tokenHttpService = new TokenService(this, logger);
+        this.tokenHttpService = new TokenHttpService(this, logger);
 
         this.config.onDidChange('tokenSet',
             (newValue : TokenSetParameters, oldValue : TokenSetParameters) => {

@@ -1,44 +1,32 @@
-import { PolicyService } from '../../services/v1/policy/policy.service';
-import { PolicyType, KubernetesPolicyContext } from '../../services/v1/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
 
 export async function deleteTargetGroupHandler(targetGroupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy
-    const policyService = new PolicyService(configService, logger);
-    const policies = await policyService.ListAllPolicies();
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
 
     // Loop till we find the one we are looking for
-    const policy = policies.find(p => p.name == policyName);
+    const kubePolicy = kubePolicies.find(p => p.name == policyName);
 
-    if (!policy) {
+    if (!kubePolicy) {
         // Log an error
-        logger.error(`Unable to find policy with name: ${policyName}`);
+        logger.error(`Unable to find Kubernetes Tunnel policy with name: ${policyName}. Please make sure ${policyName} is a Kubernetes Tunnel policy.`);
         await cleanExit(1, logger);
     }
 
-    switch (policy.type) {
-    case PolicyType.Kubernetes:
-        // Now check if the group exists
-        const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
-        if (kubernetesPolicyContext.clusterGroups[targetGroupName] === undefined) {
-            logger.error(`No group ${targetGroupName} exists for policy: ${policyName}`);
-            await cleanExit(1, logger);
-        }
-        // Then remove the group from the policy if it exists
-        delete kubernetesPolicyContext.clusterGroups[targetGroupName];
-
-        // And finally update the policy
-        policy.context = kubernetesPolicyContext;
-        break;
-    default:
-        logger.error(`Delete target group from policy ${policyName} failed. Deleting target groups from ${policy.type} policies is not currently supported.`);
+    // Now check if the group exists
+    if (!kubePolicy.clusterGroups.find(g => g.name === targetGroupName)) {
+        logger.error(`No group ${targetGroupName} exists for policy: ${policyName}`);
         await cleanExit(1, logger);
-        break;
     }
 
-    await policyService.EditPolicy(policy);
+    // And finally update the policy
+    kubePolicy.clusterGroups = kubePolicy.clusterGroups.filter(u => u.name !== targetGroupName);
+
+    await policyHttpService.EditKubernetesPolicy(kubePolicy);
 
     logger.info(`Deleted ${targetGroupName} from ${policyName} policy!`);
     await cleanExit(0, logger);

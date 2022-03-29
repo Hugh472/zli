@@ -1,48 +1,38 @@
+import { ClusterGroup } from '../../../webshell-common-ts/http/v2/policy/types/cluster-group.types';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { PolicyType, KubernetesPolicyClusterGroup, KubernetesPolicyContext } from '../../services/v1/policy/policy.types';
-import { PolicyService } from '../../services/v1/policy/policy.service';
 import { cleanExit } from '../clean-exit.handler';
 
 export async function addTargetGroupHandler(targetGroupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy
-    const policyService = new PolicyService(configService, logger);
-    const policies = await policyService.ListAllPolicies();
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
 
     // Loop till we find the one we are looking for
-    const policy = policies.find(p => p.name == policyName);
+    const kubePolicy = kubePolicies.find(p => p.name == policyName);
 
-    if (!policy) {
+    if (!kubePolicy) {
         // Log an error
-        logger.error(`Unable to find policy with name: ${policyName}`);
+        logger.error(`Unable to find Kubernetes Tunnel policy with name: ${policyName}. Please make sure ${policyName} is a Kubernetes Tunnel policy.`);
         await cleanExit(1, logger);
     }
 
-    switch (policy.type) {
-    case PolicyType.Kubernetes:
-        // Then add the group to the policy
-        const clusterGroupToAdd: KubernetesPolicyClusterGroup = {
-            name: targetGroupName
-        };
-        const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
-
-        // If this cluster group exists already
-        if (kubernetesPolicyContext.clusterGroups[targetGroupName] !== undefined) {
-            logger.error(`Group ${targetGroupName} exists already for policy: ${policyName}`);
-            await cleanExit(1, logger);
-        }
-        kubernetesPolicyContext.clusterGroups[targetGroupName] = clusterGroupToAdd;
-
-        // And finally update the policy
-        policy.context = kubernetesPolicyContext;
-        break;
-    default:
-        logger.error(`Adding target group to policy ${policyName} failed. Adding target group to ${policy.type} policies is not currently supported.`);
+    // If this cluster Group exists already
+    if (kubePolicy.clusterGroups.find(g => g.name === targetGroupName)) {
+        logger.error(`Group ${targetGroupName} exists already for policy: ${policyName}`);
         await cleanExit(1, logger);
-        break;
     }
 
-    await policyService.EditPolicy(policy);
+    // Then add the clusterGroup to the policy
+    const clusterGroupToAdd: ClusterGroup = {
+        name: targetGroupName
+    };
+
+    // And finally update the policy
+    kubePolicy.clusterGroups.push(clusterGroupToAdd);
+
+    await policyHttpService.EditKubernetesPolicy(kubePolicy);
 
     logger.info(`Added ${targetGroupName} to ${policyName} policy!`);
     await cleanExit(0, logger);

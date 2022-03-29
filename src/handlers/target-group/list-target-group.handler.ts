@@ -2,21 +2,19 @@ import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfTargetGroups } from '../../utils/utils';
-import { PolicyService } from '../../services/v1/policy/policy.service';
-import { PolicyType, KubernetesPolicyContext } from '../../services/v1/policy/policy.types';
 import yargs from 'yargs';
 import { targetGroupArgs } from './target-group.command-builder';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
 
 export async function listTargetGroupHandler(configService: ConfigService, logger: Logger, argv : yargs.Arguments<targetGroupArgs>, policyName: string) {
 
-    const policyService = new PolicyService(configService, logger);
-    const policies = await policyService.ListAllPolicies();
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
     const targetGroups : string[] = [];
-    const policy = policies.find(p => p.name == policyName);
-    if (policy != null && policy.type == PolicyType.Kubernetes) {
-        const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
-        Object.values(kubernetesPolicyContext.clusterGroups).forEach(
-            clusterGroup => targetGroups.push(clusterGroup.name)
+    const kubePolicy = kubePolicies.find(p => p.name == policyName);
+    if (kubePolicy) {
+        kubePolicy.clusterGroups.forEach(
+            u => targetGroups.push(u.name)
         );
     }
 

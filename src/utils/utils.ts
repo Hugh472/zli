@@ -8,7 +8,6 @@ import { IdentityProvider } from '../../webshell-common-ts/auth-service/auth.typ
 import { cleanExit } from '../handlers/clean-exit.handler';
 import { ParsedTargetString } from '../services/common.types';
 import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
-import { KubeConfig } from '../services/v1/kube/kube.service';
 import { Logger } from '../services/logger/logger.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../../webshell-common-ts/http/v2/target/types/targetStatus.types';
@@ -27,12 +26,13 @@ import { SsmTargetSummary } from '../../webshell-common-ts/http/v2/target/ssm/ty
 import { DynamicAccessConfigSummary } from '../../webshell-common-ts/http/v2/target/dynamic/types/dynamic-access-config-summary.types';
 import { ApiKeySummary } from '../../webshell-common-ts/http/v2/api-key/types/api-key-summary.types';
 import { WebConfig } from '../services/web/web.service';
-import { DbConfig } from '../services/db/db.service';
+import { DbConfig } from '../services/database/database.service';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { ProxyPolicySummary } from '../../webshell-common-ts/http/v2/policy/proxy/types/proxy-policy-summary.types';
 import { Group } from '../../webshell-common-ts/http/v2/policy/types/group.types';
 import { ConfigService } from '../services/config/config.service';
 import { listDbTargets, listWebTargets } from './list-utils';
+import { KubeConfig } from './kubernetes.utils';
 
 
 // case insensitive substring search, 'find targetString in searchString'

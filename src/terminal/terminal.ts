@@ -7,12 +7,11 @@ import { ConfigService } from '../services/config/config.service';
 import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../services/config/zli-auth-config.service';
 import { Logger } from '../services/logger/logger.service';
-import { SsmTargetService } from '../services/v1/ssm-target/ssm-target.service';
-import { SsmTargetSummary } from '../services/v1/ssm-target/ssm-target.types';
 import { ConnectionSummary } from '../../webshell-common-ts/http/v2/connection/types/connection-summary.types';
 import { ConnectionHttpService } from '../http-services/connection/connection.http-services';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
+import { SsmTargetSummary } from '../../webshell-common-ts/http/v2/target/ssm/types/ssm-target-summary.types';
 
 export class ShellTerminal implements IDisposable
 {
@@ -114,7 +113,7 @@ export class ShellTerminal implements IDisposable
                 switch(shellEvent.type) {
                 case ShellEventType.Ready:
                     if (this.refreshTargetInfoOnReady) {
-                        const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+                        const ssmTargetService = new SsmTargetHttpService(this.configService, this.logger);
                         const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.connectionSummary.targetId);
                         this.shellWebsocketService.updateTargetInfo(ssmTargetInfo);
                     }

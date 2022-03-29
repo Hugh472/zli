@@ -2,26 +2,35 @@ import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfTargetUsers } from '../../utils/utils';
-import { PolicyService } from '../../services/v1/policy/policy.service';
-import { PolicyType, KubernetesPolicyContext, TargetConnectContext } from '../../services/v1/policy/policy.types';
 import yargs from 'yargs';
 import { targetUserArgs } from './target-user.command-builder';
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
 
 export async function listTargetUsersHandler(configService: ConfigService, logger: Logger, argv : yargs.Arguments<targetUserArgs>, policyName: string) {
 
-    const policyService = new PolicyService(configService, logger);
-    const policies = await policyService.ListAllPolicies();
+    const policyHttpService = new PolicyHttpService(configService, logger);
+    const kubePolicies = await policyHttpService.ListKubernetesPolicies();
+    const targetPolicies = await policyHttpService.ListTargetConnectPolicies();
+
+    // Loop till we find the one we are looking for
+    const kubePolicy = kubePolicies.find(p => p.name == policyName);
+    const targetPolicy = targetPolicies.find(p => p.name == policyName);
+
+    if (!kubePolicy && !targetPolicy) {
+        // Log an error
+        logger.error(`Unable to find policy with name: ${policyName}`);
+        await cleanExit(1, logger);
+    }
+
     const targetUsers : string[] = [];
-    const policy = policies.find(p => p.name == policyName);
-    if (policy.type == PolicyType.Kubernetes) {
-        const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
-        Object.values(kubernetesPolicyContext.clusterUsers).forEach(
-            clusterUser => targetUsers.push(clusterUser.name)
+    if (kubePolicy) {
+        kubePolicy.clusterUsers.forEach(
+            u => targetUsers.push(u.name)
         );
-    } else if (policy.type == PolicyType.TargetConnect) {
-        const targetAccessContext = policy.context as TargetConnectContext;
-        Object.values(targetAccessContext.targetUsers).forEach(
-            targetUser => targetUsers.push(targetUser.userName));
+    } else if (targetPolicy) {
+        targetPolicy.targetUsers.forEach(
+            u => targetUsers.push(u.userName)
+        );
     }
 
     if(!! argv.json) {
