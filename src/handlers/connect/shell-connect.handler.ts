@@ -9,10 +9,11 @@ import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { ConnectionHttpService } from '../../http-services/connection/connection.http-services';
 import { SpaceHttpService } from '../../http-services/space/space.http-services';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
-import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
-import { DynamicAccessConfigHttpService } from '../../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { VerbType } from '../../../webshell-common-ts/http/v2/policy/types/verb-type.types';
+import { SsmTargetHttpService } from '../../http-services/targets/ssm/ssm-target.http-services';
+import { DynamicAccessConfigHttpService } from '../../http-services/targets/dynamic-access/dynamic-access-config.http-services';
+import { BzeroAgentService } from '../../http-services/bzero-agent/bzero-agent.http-service';
 
 
 export async function shellConnectHandler(
@@ -41,27 +42,31 @@ export async function shellConnectHandler(
     }
 
     // Check targetUser/Verb
-    // let allowedTargetUsers: string[] = [];
-    // let allowedVerbs: string[] = [];
-    // if(parsedTarget.type == TargetType.SsmTarget) {
-    //     const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
-    //     const ssmTarget = await ssmTargetHttpService.GetSsmTarget(parsedTarget.id);
-    //     allowedTargetUsers = ssmTarget.allowedTargetUsers.map(u => u.userName);
-    //     allowedVerbs = ssmTarget.allowedVerbs.map(v => v.type);
-    // } else if(parsedTarget.type == TargetType.DynamicAccessConfig) {
-    //     const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
-    //     const dynamicAccessTarget = await dynamicConfigHttpService.GetDynamicAccessConfig(parsedTarget.id);
-    //     allowedTargetUsers = dynamicAccessTarget.allowedTargetUsers.map(u => u.userName);
-    //     allowedVerbs = dynamicAccessTarget.allowedVerbs.map(v => v.type);
-    // }
+    let allowedTargetUsers: string[] = [];
+    let allowedVerbs: string[] = [];
+    if(parsedTarget.type == TargetType.SsmTarget) {
+        const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
+        const ssmTarget = await ssmTargetHttpService.GetSsmTarget(parsedTarget.id);
+        allowedTargetUsers = ssmTarget.allowedTargetUsers.map(u => u.userName);
+        allowedVerbs = ssmTarget.allowedVerbs.map(v => v.type);
+    } else if(parsedTarget.type == TargetType.DynamicAccessConfig) {
+        const dynamicConfigHttpService = new DynamicAccessConfigHttpService(configService, logger);
+        const dynamicAccessTarget = await dynamicConfigHttpService.GetDynamicAccessConfig(parsedTarget.id);
+        allowedTargetUsers = dynamicAccessTarget.allowedTargetUsers.map(u => u.userName);
+        allowedVerbs = dynamicAccessTarget.allowedVerbs.map(v => v.type);
+    } else if (parsedTarget.type == TargetType.Bzero) {
+        const bzeroAgentService = new BzeroAgentService(configService, logger);
+        const bzeroTarget = await bzeroAgentService.GetBzeroAgent(parsedTarget.id);
+        allowedTargetUsers = bzeroTarget.allowedTargetUsers.map(u => u.userName);
+        allowedVerbs = bzeroTarget.allowedVerbs.map(v => v.type);
+    }
 
-    // if(! allowedVerbs.includes(VerbType.Shell)) {
-    //     logger.error(`You do not have a TargetAccess policy that allows Shell access to target ${parsedTarget.name}`);
-    //     await cleanExit(1, logger);
-    // }
+    if(! allowedVerbs.includes(VerbType.Shell)) {
+        logger.error(`You do not have a TargetAccess policy that allows Shell access to target ${parsedTarget.name}`);
+        await cleanExit(1, logger);
+    }
 
-    // const targetUser = await connectCheckAllowedTargetUsers(parsedTarget.name, parsedTarget.user, allowedTargetUsers, logger);
-    const targetUser = 'root';
+    const targetUser = await connectCheckAllowedTargetUsers(parsedTarget.name, parsedTarget.user, allowedTargetUsers, logger);
 
     // Get the existing if any or create a new cli space id
     const spaceHttpService = new SpaceHttpService(configService, logger);

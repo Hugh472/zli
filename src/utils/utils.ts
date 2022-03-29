@@ -782,7 +782,6 @@ export async function disambiguateTarget(
     envs: Promise<EnvironmentSummary[]>,
     configService: ConfigService): Promise<ParsedTargetString> {
 
-    logger.info(`\ntargetTypeString: ${targetTypeString}\ntargetString: ${targetString}\n`)
     // First query for our web + db targets as we no longer pre-fetch
     const dbTargets = await listDbTargets(logger, configService);
     const webTargets = await listWebTargets(logger, configService);

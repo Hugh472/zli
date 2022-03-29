@@ -27,10 +27,10 @@ export async function listConnectionsHandler(
     const openConnections = cliSpace.connections.filter(c => c.state === ConnectionState.Open);
 
     const ssmTargetHttpService = new SsmTargetHttpService(configService, logger);
-    let ssmTargets = await ssmTargetHttpService.ListSsmTargets(true);
+    const ssmTargets = await ssmTargetHttpService.ListSsmTargets(true);
 
     const bzeroAgentService = new BzeroAgentService(configService, logger);
-    let bzeroTargets = await bzeroAgentService.ListBzeroAgents();
+    const bzeroTargets = await bzeroAgentService.ListBzeroAgents();
 
     const allTargets = [...ssmTargets.map(ssmTargetToTargetSummary), ...bzeroTargets.map(bzeroTargetToTargetSummary)];
 
