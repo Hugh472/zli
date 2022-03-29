@@ -1,6 +1,6 @@
-import { exec } from "child_process";
-import { ConfigService } from "../services/config/config.service";
-import { Logger } from "winston";
+import { exec } from 'child_process';
+import { ConfigService } from '../services/config/config.service';
+import { Logger } from 'winston';
 
 const pids = require('port-pid');
 

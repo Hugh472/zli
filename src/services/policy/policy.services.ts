@@ -1,7 +1,7 @@
-import { PolicyHttpService } from "../../http-services/policy/policy.http-services";
-import { BasePolicySummary } from "../../../webshell-common-ts/http/v2/policy/types/base-policy-summary.types";
-import { ConfigService } from "../config/config.service";
-import { Logger } from "../logger/logger.service";
+import { PolicyHttpService } from '../../http-services/policy/policy.http-services';
+import { BasePolicySummary } from '../../../webshell-common-ts/http/v2/policy/types/base-policy-summary.types';
+import { ConfigService } from '../config/config.service';
+import { Logger } from '../logger/logger.service';
 
 export async function listAllPolicies(configService: ConfigService,
     logger: Logger,
@@ -10,7 +10,7 @@ export async function listAllPolicies(configService: ConfigService,
     listProxyPolicies: boolean = true,
     listKubernetesPolicies: boolean = true,
     listTargetConnectPolicies: boolean = true,
-    ) : Promise<BasePolicySummary[]> {
+) : Promise<BasePolicySummary[]> {
 
     const policyHttpService = new PolicyHttpService(configService, logger);
 
@@ -25,7 +25,7 @@ export async function listAllPolicies(configService: ConfigService,
 
     if (listSessionRecordingPolicies)
         sessionRecordingPolicies = await policyHttpService.ListSessionRecordingPolicies();
-    
+
     if (listProxyPolicies)
         proxyPolicies = await policyHttpService.ListProxyPolicies();
 
@@ -34,7 +34,7 @@ export async function listAllPolicies(configService: ConfigService,
 
     if (listTargetConnectPolicies)
         targetConnectPolicies = await policyHttpService.ListTargetConnectPolicies();
-        
+
 
     return [
         ...kubernetesPolicies,
