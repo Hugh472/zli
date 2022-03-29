@@ -25,12 +25,11 @@ export class GAService
 
         // Set our custom dimensions
         this.visitor.set(this.customDimensionMapper['zli-os'], process.platform);
-        let argsToLog = args.toString()
+        let argsToLog = args.toString();
         if (argsToLog == '') {
             // Appflow will not pull values if the custom dimension is empty
             // if we have no args, set this value to n/a
-            argsToLog = 'n/a'
-
+            argsToLog = 'n/a';
         }
         this.visitor.set(this.customDimensionMapper['zli-args'], args.toString());
         this.visitor.set(this.customDimensionMapper['user-id'], this.userId);
