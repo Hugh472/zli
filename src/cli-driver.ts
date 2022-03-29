@@ -62,7 +62,7 @@ import { listOrganizationControlsPoliciesHandler } from './handlers/policy/list-
 import { listUsersHandler } from './handlers/user/list-users.handler.v2';
 import { sshProxyConfigHandler } from './handlers/generate/generate-ssh-proxy.handler';
 import { generateKubeConfigHandler } from './handlers/generate/generate-kube-config.handler';
-import { generateSshHandler } from './handlers/generate/generate-ssh.handler';
+import { generateSshConfigHandler } from './handlers/generate/generate-ssh.handler';
 
 // 3rd Party Modules
 import yargs from 'yargs/yargs';
@@ -87,7 +87,7 @@ import { generateKubeConfigCmdBuilder, generateKubeYamlCmdBuilder } from './hand
 import { generateBashCmdBuilder } from './handlers/generate/generate-bash.command-builder';
 import { defaultTargetGroupCmdBuilder } from './handlers/default-target-group/default-target-group.command-builder';
 import { listProxyPoliciesHandler } from './handlers/policy/list-proxy-policies.handler';
-import { generateSshCmdBuilder } from './handlers/generate/generate-ssh.command-builder';
+import { generateSshConfigCmdBuilder } from './handlers/generate/generate-ssh.command-builder';
 
 export type EnvMap = Readonly<{
     configName: string;
@@ -235,7 +235,7 @@ export class CliDriver
             })
             .middleware(async (argv) => {
                 const is_generate_bash = argv._[0] == 'generate' && argv._[1] == 'bash';
-                if((this.adminOnlyCommands.has(baseCmd) && !this.configService.me().isAdmin) || is_generate_bash){
+                if((this.adminOnlyCommands.has(baseCmd) || is_generate_bash) && !this.configService.me().isAdmin){
                     this.logger.error(`This is an admin restricted command. Please login as an admin to perform it.`);
                     await cleanExit(1, this.logger);
                 }
@@ -334,30 +334,30 @@ export class CliDriver
             )
             .command(
                 'generate <typeOfConfig>',
-                'Generate different types of configuration files (bash, ssh, ssh-proxy, kubeConfig or kubeYaml)',
+                'Generate different types of configuration files (bash, sshConfig, ssh-proxy, kubeConfig or kubeYaml)',
                 (yargs) => {
                     return yargs
                         .command(
                             'bash',
-                            'Generate a bash script to autodiscover a target.',
+                            'Generate a bash script to autodiscover a target',
                             (yargs) => generateBashCmdBuilder(yargs),
                             async (argv) => await generateBashHandler(argv, this.logger, this.configService, this.envs),
                         )
                         .command(
-                            'ssh',
-                            'Generate a configuration file for ssh.',
-                            (yargs) => generateSshCmdBuilder(yargs),
-                            async (argv) => await generateSshHandler(argv, this.configService, this.logger, getZliRunCommand())
+                            'sshConfig',
+                            'Generate a configuration file for ssh',
+                            (yargs) => generateSshConfigCmdBuilder(yargs),
+                            async (argv) => await generateSshConfigHandler(argv, this.configService, this.logger, getZliRunCommand())
                         )
                         .command(
                             'ssh-proxy',
-                            'Generate an ssh configuration to be used with the ssh-proxy command.',
+                            'Generate an ssh configuration to be used with the ssh-proxy command',
                             () => {},
                             () => sshProxyConfigHandler(this.configService, getZliRunCommand(), this.logger),
                         )
                         .command(
                             'kubeConfig [clusterName]',
-                            'Generate a configuration file for Kubernetes.',
+                            'Generate a configuration file for Kubernetes',
                             (yargs) => generateKubeConfigCmdBuilder(yargs),
                             async (argv) => await generateKubeConfigHandler(argv, this.configService, this.logger)
                         )
@@ -366,7 +366,14 @@ export class CliDriver
                             'Generate a yaml file for Kubernetes.',
                             (yargs) => generateKubeYamlCmdBuilder(yargs),
                             async (argv) => await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger)
-                        );
+                        )
+                        .demandCommand(1, '')
+                        .strict()
+                        .strictCommands()
+                        .fail((msg: string, err : string | Error, yargs) => {
+                            console.error(`${"cmd"} is not a valid subcommand of generate.`)
+                            yargs.showHelp()
+                        })
                 },
             )
             .command(

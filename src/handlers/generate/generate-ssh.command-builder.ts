@@ -1,9 +1,9 @@
 import yargs from 'yargs';
 
-export type generateSshArgs = { mySshPath: string } &
+export type generateSshConfigArgs = { mySshPath: string } &
 { bzSshPath: string }
 
-export function generateSshCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateSshArgs> {
+export function generateSshConfigCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateSshConfigArgs> {
     return yargs
         .option('mySshPath', {
             type: 'string',

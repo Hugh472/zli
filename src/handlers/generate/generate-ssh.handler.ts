@@ -6,7 +6,7 @@ import { Logger } from '../../services/logger/logger.service';
 import { PolicyQueryHttpService } from '../../http-services/policy-query/policy-query.http-services';
 import { TunnelsResponse } from '../../../webshell-common-ts/http/v2/policy-query/responses/tunnels.response';
 import { buildSshConfigStrings } from './generate-ssh-proxy.handler';
-import { generateSshArgs } from './generate-ssh.command-builder';
+import { generateSshConfigArgs } from './generate-ssh.command-builder';
 
 /**
  *  Generates an ssh config file based on tunnel targets the user has access to, then Includes it
@@ -15,7 +15,7 @@ import { generateSshArgs } from './generate-ssh.command-builder';
  * @param logger {Logger}
  * @param processName {string} the calling process (e.g., "zli"), used to populate the ProxyCommand
  */
-export async function generateSshHandler(argv: yargs.Arguments<generateSshArgs>, configService: ConfigService, logger: Logger, processName: string) {
+export async function generateSshConfigHandler(argv: yargs.Arguments<generateSshConfigArgs>, configService: ConfigService, logger: Logger, processName: string) {
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
     const tunnels: TunnelsResponse[] = await policyQueryHttpService.GetTunnels();
 
