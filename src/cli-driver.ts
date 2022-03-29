@@ -371,9 +371,9 @@ export class CliDriver
                         .strict()
                         .strictCommands()
                         .fail((msg: string, err : string | Error, yargs) => {
-                            console.error(`${"cmd"} is not a valid subcommand of generate.`)
-                            yargs.showHelp()
-                        })
+                            console.error(`${'cmd'} is not a valid subcommand of generate.`);
+                            yargs.showHelp();
+                        });
                 },
             )
             .command(
