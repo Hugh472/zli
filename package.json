@@ -66,7 +66,7 @@
   "dependencies": {
     "@jsier/retrier": "^1.2.4",
     "@microsoft/signalr": "^5.0.0",
-    "@types/async": "^3.2.5",
+    "@types/async": "^3.2.12",
     "@types/chalk": "^2.2.0",
     "@types/crypto-js": "^4.0.1",
     "@types/figlet": "^1.2.1",
