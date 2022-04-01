@@ -10,6 +10,10 @@ Release Notes:
 
 Relates to JIRA: CWC-XXX
 
+## Relevant HotFix if applicable
+
+Relevant HotFix PR Number:
+
 ## Have you considered the security impacts?
 
 Does this PR have any security impact?
