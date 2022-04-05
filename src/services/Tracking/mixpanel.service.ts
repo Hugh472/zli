@@ -1,7 +1,8 @@
+import { ConfigService } from '../config/config.service';
+
 import { TargetType } from '../../../webshell-common-ts/http/v2/target/types/target.types';
 import { Dictionary } from 'lodash';
 import mixpanel, { Mixpanel } from 'mixpanel';
-import { ConfigService } from '../config/config.service';
 import { TrackNewConnection } from './mixpanel.service.types';
 
 

@@ -3,6 +3,7 @@ import figlet from 'figlet';
 import winston, { Logger as WinstonLogger, format } from 'winston';
 import { LoggerConfigService } from './logger-config.service';
 import { ILogger } from '../../../webshell-common-ts/logging/logging.types';
+import { GAService } from '../Tracking/google-analytics.service';
 const { printf } = format;
 
 // Not an enum, must be dictionary for winston
@@ -29,18 +30,31 @@ const loggingDebugFormat = printf(info => {
 
 
 export class Logger implements ILogger {
-    private debugFlag: boolean;
-    private silentFlag: boolean;
     private logger: WinstonLogger;
-    private config: LoggerConfigService;
+    private gaService: GAService
 
-    constructor(config: LoggerConfigService, debug: boolean, silent: boolean, isStdEnabled: boolean) {
-        this.debugFlag = debug;
-        this.config = config;
-        this.silentFlag = silent;
-
+    constructor(private config: LoggerConfigService, private debugFlag: boolean, private silentFlag: boolean, isStdEnabled: boolean) {
         // Build our logger
         this.buildLogger(isStdEnabled);
+
+        // Since the GA service is dependent on the logger, this will be set in the GA middleware in cli-driver
+        this.gaService = null;
+    }
+
+    /**
+     * Helper function to set our GA Service
+     */
+    public setGAService(gaService: GAService): void {
+        this.gaService = gaService;
+    }
+
+    /**
+     * Helper function to use our GA service to track an error
+     */
+    public async logGAError(): Promise<void> {
+        if (this.gaService != null) {
+            await this.gaService.TrackError();
+        }
     }
 
     private buildLogger(isStdEnabled: boolean): void {
