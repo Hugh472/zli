@@ -45,7 +45,7 @@ export const targetStringExample : string = '[targetUser@]<targetId-or-targetNam
 
 export function parseTargetType(targetType: string) : TargetType
 {
-    const connectionTypePattern = /^(ssmtarget|dynamicaccessconfig|cluster)$/i; // case insensitive check for targetType
+    const connectionTypePattern = /^(ssmtarget|dynamicaccessconfig|cluster|bzero|db|web)$/i; // case insensitive check for targetType
 
     if(! connectionTypePattern.test(targetType))
         return undefined;
@@ -57,6 +57,12 @@ export function parseTargetType(targetType: string) : TargetType
         return TargetType.DynamicAccessConfig;
     case TargetType.Cluster.toLowerCase():
         return TargetType.Cluster;
+    case TargetType.Bzero.toLowerCase():
+        return TargetType.Bzero;
+    case TargetType.Db.toLowerCase():
+        return TargetType.Db;
+    case TargetType.Web.toLowerCase():
+        return TargetType.Web;
     default:
         return undefined;
     }
