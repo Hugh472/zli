@@ -31,7 +31,7 @@ export class GAService
             // if we have no args, set this value to n/a
             argsToLog = 'n/a';
         }
-        this.visitor.set(this.customDimensionMapper['zli-args'], args.toString());
+        this.visitor.set(this.customDimensionMapper['zli-args'], argsToLog);
         this.visitor.set(this.customDimensionMapper['user-id'], this.userId);
         this.visitor.set(this.customDimensionMapper['zli-version'], version);
         this.visitor.set(this.customDimensionMapper['service-url'], configService.getBastionUrl());
