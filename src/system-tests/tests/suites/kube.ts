@@ -1,10 +1,11 @@
 import * as k8s from '@kubernetes/client-node';
 import { callZli } from '../utils/zli-utils';
 import { HttpError } from '@kubernetes/client-node';
-import { clusterVersionsToRun, loggerConfigService, policyService, testClusters } from '../system-test';
+import { clusterVersionsToRun, loggerConfigService, testClusters } from '../system-test';
 import { configService, logger } from '../system-test';
 import { TestUtils } from '../utils/test-utils';
 import { ConnectionEventType } from '../../../../webshell-common-ts/http/v2/event/types/connection-event.types';
+import { PolicyHttpService } from '../../../http-services/policy/policy.http-services';
 
 const fs = require('fs');
 
@@ -14,9 +15,17 @@ export const KubeBctlNamespace = 'bastionzero';
 
 export const kubeSuite = () => {
     describe('kube suite', () => {
+        let policyService: PolicyHttpService;
+        let testUtils: TestUtils;
+
         let testPassed = false;
-        const testUtils = new TestUtils(configService, logger, loggerConfigService);
         const kubeConfigYamlFilePath = '/tmp/bzero-agent-kubeconfig.yml';
+
+        beforeAll(() => {
+            // Construct all http services needed to run tests
+            policyService = new PolicyHttpService(configService, logger);
+            testUtils = new TestUtils(configService, logger, loggerConfigService);
+        });
 
         beforeEach(() => {
             jest.restoreAllMocks();

@@ -8,6 +8,7 @@ export async function logoutHandler(configService: ConfigService, logger: Logger
     // Deletes the auth tokens from the config which will force the
     // user to login again before running another command
     configService.logout();
+    configService.deleteSessionId();
     logger.info('Closing any existing SSH Tunnel Connections');
 
     // Close any daemon connections, start with kube

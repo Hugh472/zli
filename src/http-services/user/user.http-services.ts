@@ -1,4 +1,6 @@
-import { UserRegisterResponse } from '../../../webshell-common-ts/http/v2/user/responses/user-resgister.responses';
+import { Dictionary } from 'lodash';
+import { Cookie } from 'tough-cookie';
+import { UserRegisterResponse } from '../../../webshell-common-ts/http/v2/user/responses/user-register.responses';
 import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
 import { ConfigService } from '../../services/config/config.service';
 import { HttpService } from '../../services/http/http.service';
@@ -11,9 +13,32 @@ export class UserHttpService extends HttpService
         super(configService, 'api/v2/users/', logger);
     }
 
-    public Register(): Promise<UserRegisterResponse>
+    public async Register(): Promise<UserRegisterResponse>
     {
-        return this.Post('register', {});
+        const requestHeaders = {
+            'AccessToken': this.configService.getAccessToken(),
+            'IdToken': this.configService.getIdToken()
+        };
+        const resp = await this.Post<{}, UserRegisterResponse>('register', {}, requestHeaders);
+
+        // Store the session cookies in config
+        const cookies = await this.cookieJar.getCookies(this.baseUrl + '/register');
+        const cookiesDict: Dictionary<Cookie> = {};
+        for (const cookie of cookies) {
+            cookiesDict[cookie.key] = cookie;
+        }
+
+        if (cookiesDict['sessionId'].value != this.configService.getSessionId()) {
+            this.logger.debug('Unrecognized session id, proceeding with new one');
+            this.configService.setSessionId(cookiesDict['sessionId'].value);
+        }
+
+        if (cookiesDict['sessionToken'].value != this.configService.getSessionToken()) {
+            this.logger.debug('Received new session token, refreshing session');
+            this.configService.setSessionToken(cookiesDict['sessionToken'].value);
+        }
+
+        return resp;
     }
 
     public Me(): Promise<UserSummary>

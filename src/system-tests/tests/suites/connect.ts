@@ -2,7 +2,7 @@ import { MockSTDIN, stdin } from 'mock-stdin';
 import * as ShellUtils from '../../../utils/shell-utils';
 import * as CleanExitHandler from '../../../handlers/clean-exit.handler';
 import waitForExpect from 'wait-for-expect';
-import { configService, logger, loggerConfigService, policyService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets, cleanupTargetConnectPolicies } from '../system-test';
+import { configService, logger, loggerConfigService, ssmTestTargetsToRun, systemTestEnvId, systemTestPolicyTemplate, systemTestUniqueId, testTargets, cleanupTargetConnectPolicies } from '../system-test';
 import { getMockResultValue } from '../utils/jest-utils';
 import { callZli } from '../utils/zli-utils';
 import { ConnectionHttpService } from '../../../http-services/connection/connection.http-services';
@@ -13,16 +13,23 @@ import { SubjectType } from '../../../../webshell-common-ts/http/v2/common.types
 import { Subject } from '../../../../src/services/v1/policy/policy.types';
 import { Environment } from '../../../../webshell-common-ts/http/v2/policy/types/environment.types';
 import { ConnectionEventType } from '../../../../webshell-common-ts/http/v2/event/types/connection-event.types';
+import { PolicyHttpService } from '../../../http-services/policy/policy.http-services';
 
 export const connectSuite = () => {
     describe('connect suite', () => {
+        let policyService: PolicyHttpService;
+        let testUtils: TestUtils;
+
         let mockStdin: MockSTDIN;
         const targetUser = 'ssm-user';
-        const testUtils = new TestUtils(configService, logger, loggerConfigService);
         const enterKey = '\x0D';
 
         // Set up the policy before all the tests
         beforeAll(async () => {
+            // Construct all http services needed to run tests
+            policyService = new PolicyHttpService(configService, logger);
+            testUtils = new TestUtils(configService, logger, loggerConfigService);
+
             const currentUser: Subject = {
                 id: configService.me().id,
                 type: SubjectType.User

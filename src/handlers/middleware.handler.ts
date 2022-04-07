@@ -113,7 +113,7 @@ export async function oAuthMiddleware(configService: ConfigService, logger: Logg
     // OAuth
     await oauthMiddleware(configService, logger);
     const me = configService.me(); // if you have logged in, this should be set
-    const sessionId = configService.sessionId();
+    const sessionId = configService.getSessionId();
     logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
 }
 

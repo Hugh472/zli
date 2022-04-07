@@ -44,16 +44,11 @@ const ssmDropletSize =  DigitalOceanDropletSize.CPU_1_MEM_1GB;
 export const loggerConfigService = new LoggerConfigService(configName, envMap.configDir);
 export const logger = new Logger(loggerConfigService, false, false, true);
 export const configService = new ConfigService(configName, logger, envMap.configDir);
-export const policyService = new PolicyHttpService(configService, logger);
 
-const oauthService = new OAuthService(configService, logger);
-const environmentService = new EnvironmentHttpService(configService, logger);
 const doApiKey = process.env.DO_API_KEY;
 if (!doApiKey) {
     throw new Error('Must set the DO_API_KEY environment variable');
 }
-const doService = new DigitalOceanSSMTargetService(doApiKey, configService, logger);
-const doKubeService = new DigitalOceanKubeService(doApiKey, configService, logger);
 
 const bzeroAgentVersion = process.env.BZERO_AGENT_VERSION;
 if(! bzeroAgentVersion) {
@@ -95,7 +90,6 @@ if (bzeroKubeAgentImageName) {
 }
 
 // Create a new API Key to be used for cluster registration
-const apiKeyService = new ApiKeyHttpService(configService, logger);
 let systemTestRESTApiKey: NewApiKeyResponse;
 // Create a new API key to be used for self-registration SSM test targets
 let systemTestRegistrationApiKey: NewApiKeyResponse;
@@ -156,6 +150,8 @@ export const systemTestPolicyTemplate = `system-test-$POLICY_TYPE-policy-${syste
 
 // Setup all droplets before running tests
 beforeAll(async () => {
+    const oauthService = new OAuthService(configService, logger);
+
     // Refresh the ID token because it is likely expired
     await oauthService.getIdTokenAndExitOnError();
 
@@ -163,6 +159,7 @@ beforeAll(async () => {
     await setupSystemTestApiKeys();
 
     // Create a new environment for this system test
+    const environmentService = new EnvironmentHttpService(configService, logger);
     const createEnvResponse = await environmentService.CreateEnvironment({
         name: systemTestEnvName,
         description: `Autocreated environment for system test: ${systemTestUniqueId}`,
@@ -189,6 +186,7 @@ afterAll(async () => {
     // Delete the environment for this system test
     // Note this must be called after our cleanup, so we do not have any targets in the environment
     if (systemTestEnvId) {
+        const environmentService = new EnvironmentHttpService(configService, logger);
         await environmentService.DeleteEnvironment(systemTestEnvId);
     }
 }, 60 * 1000);
@@ -200,6 +198,8 @@ async function createDOTestClusters() {
         logger.info(`Skipping kube cluster creation because KUBE_ENABLED is false`);
         return;
     }
+
+    const doKubeService = new DigitalOceanKubeService(doApiKey, configService, logger);
 
     // Create a cluster for various versions
     const createCluster = async (version: DigitalOceanKubernetesClusterVersion) => {
@@ -454,6 +454,8 @@ ${registerCommand}
 }
 
 async function createDOTestTargets() {
+    const doService = new DigitalOceanSSMTargetService(doApiKey, configService, logger);
+
     // Create a droplet for various types of test targets
     const createDroplet = async (testTarget: TestTarget) => {
         const targetName = `st-${systemTestUniqueId}-${getDOImageName(testTarget.dropletImage)}-${testTarget.installType}-${randomAlphaNumericString(15)}`;
@@ -570,6 +572,8 @@ async function createDOTestTargets() {
 }
 
 async function cleanupDOTestClusters() {
+    const doKubeService = new DigitalOceanKubeService(doApiKey, configService, logger);
+
     const allClustersCleanup = Promise.allSettled(Array.from(testClusters.values()).map(doCluster => {
         return doKubeService.deleteRegisteredKubernetesCluster(doCluster);
     }));
@@ -578,6 +582,8 @@ async function cleanupDOTestClusters() {
 }
 
 async function cleanupDOTestTargets() {
+    const doService = new DigitalOceanSSMTargetService(doApiKey, configService, logger);
+
     const allTargetsCleanup = Promise.allSettled(Array.from(testTargets.values()).map((doTarget) => {
         return doService.deleteDigitalOceanTarget(doTarget);
     }));
@@ -616,6 +622,8 @@ function initRegionalSSMTargetsTestConfig() {
 }
 
 async function setupSystemTestApiKeys() {
+    const apiKeyService = new ApiKeyHttpService(configService, logger);
+
     const restApiKeyName = `system-test-${systemTestUniqueId}-api-key`;
     systemTestRESTApiKey = await apiKeyService.CreateNewApiKey({ name: restApiKeyName, isRegistrationKey: false });
     logger.info('Created REST api key ' + systemTestRESTApiKey.apiKeyDetails.id);
@@ -626,11 +634,14 @@ async function setupSystemTestApiKeys() {
 }
 
 async function cleanupSystemTestApiKeys() {
+    const apiKeyService = new ApiKeyHttpService(configService, logger);
+
     await apiKeyService.DeleteApiKey(systemTestRESTApiKey.apiKeyDetails.id);
     await apiKeyService.DeleteApiKey(systemTestRegistrationApiKey.apiKeyDetails.id);
 }
 
 export async function cleanupTargetConnectPolicies(policyName: string) {
+    const policyService = new PolicyHttpService(configService, logger);
     const targetConnectPolicies = await policyService.ListTargetConnectPolicies();
     const targetConnectPolicy = targetConnectPolicies.find(policy =>
         policy.name == policyName

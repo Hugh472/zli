@@ -19,7 +19,7 @@ export class MixpanelService
         });
 
         this.userId = this.configService.me().id;
-        this.sessionId = this.configService.sessionId();
+        this.sessionId = this.configService.getSessionId();
     }
 
 
