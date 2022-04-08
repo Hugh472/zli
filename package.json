@@ -80,7 +80,7 @@
     "@types/tcp-port-used": "^1.0.0",
     "@types/term-size": "^2.0.3",
     "@types/yargs": "^17.0.5",
-    "async": "^3.2.0",
+    "async": "^3.2.2",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.0",
     "conf": "^7.1.2",
