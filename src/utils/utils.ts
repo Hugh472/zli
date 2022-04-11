@@ -176,8 +176,8 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
 {
     // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
     const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16; // || 16 here means that when there are no targets default the length to 16
-    const envNameLength = max(envs.map(e => e.name.length)) + 2 < 16 ? 16 : max(envs.map(e => e.name.length));
-    const targetTypeLength = max(targets.map(t => t.type.length)) + 2;
+    const envNameLength = max([max(envs.map(e => e.name.length)) + 2, 16]);
+    const targetTypeLength = max([max(targets.map(t => t.type.length)) + 2, 6]);
 
     const header: string[] = ['Type', 'Name', 'Environment'];
     const columnWidths = [];
