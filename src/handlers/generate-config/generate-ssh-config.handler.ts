@@ -19,8 +19,8 @@ export async function generateSshConfigHandler(argv: yargs.Arguments<generateCon
     const policyQueryHttpService = new PolicyQueryHttpService(configService, logger);
     const tunnels: TunnelsResponse[] = await policyQueryHttpService.GetTunnels();
 
-    // Build our ssh config file
-    const { identityFile, proxyCommand, prefix } = await buildSshConfigStrings(configService, processName, logger);
+    // Build our ssh config file -- note that by using this function with 'true' we are chosing to add the prefix before our hostname token in the proxycommand
+    const { identityFile, proxyCommand, prefix } = await buildSshConfigStrings(configService, processName, logger, true);
     const bzConfigContentsFormatted = formatBzConfigContents(tunnels, identityFile, proxyCommand);
 
     // Determine and write to the user's ssh and bzero-ssh config path

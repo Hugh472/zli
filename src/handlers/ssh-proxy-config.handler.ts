@@ -20,7 +20,7 @@ ssh <user>@${prefix}<ssm-target-id-or-name>
 `);
 }
 
-export async function buildSshConfigStrings(configService: ConfigService, processName: string, logger: Logger) {
+export async function buildSshConfigStrings(configService: ConfigService, processName: string, logger: Logger, addProxyPrefix: boolean = false) {
     const keyPath = configService.sshKeyPath();
     const identityFile = `IdentityFile ${keyPath}`;
 
@@ -33,7 +33,7 @@ export async function buildSshConfigStrings(configService: ConfigService, proces
     }
 
     const hostnameToken = await getHostnameToken(logger);
-    const proxyCommand = `ProxyCommand ${processName} ssh-proxy ${configNameArg} -s ${prefix}${hostnameToken} %r %p ${keyPath}`;
+    const proxyCommand = `ProxyCommand ${processName} ssh-proxy ${configNameArg} -s ${addProxyPrefix ? prefix : ''}${hostnameToken} %r %p ${keyPath}`;
 
     return { identityFile, proxyCommand, prefix };
 }
