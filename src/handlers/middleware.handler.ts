@@ -14,6 +14,7 @@ import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment
 import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
+import { isZliSilent } from '../utils/utils';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
@@ -121,7 +122,8 @@ export function initLoggerMiddleware(argv: any) {
     // Configure our logger
     const loggerConfigService = new LoggerConfigService(<string> argv.configName, argv.configDir);
 
-    const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent, !!process.stdout.isTTY);
+    const isSilent = isZliSilent(!!argv.silent, !!argv.json, !!argv.verbose);
+    const logger = new Logger(loggerConfigService, !!argv.debug, isSilent, !!process.stdout.isTTY);
 
     // isTTY detects whether the process is being run with a text terminal
     // ("TTY") attached. This way we detect whether we should connect

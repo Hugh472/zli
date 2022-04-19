@@ -51,6 +51,15 @@ yargs.Argv<targetUserArgs> {
                 alias: 'j',
             }
         )
+        .option(
+            'verbose',
+            {
+                type: 'boolean',
+                default: false,
+                demandOption: false,
+                alias: 'v',
+            }
+        )
         .example('$0 targetuser --json', 'List all target users, output as json, pipeable')
         .example('$0 targetuser --add cool-policy centos', 'Adds the centos user to cool-policy')
         .example('$0 targetuser -d test-cluster admin', 'Removes the admin user from the test-cluster policy');

@@ -22,5 +22,14 @@ export function policyCmdBuilder (yargs : yargs.Argv<{}>, policyTypeChoices : st
                 alias: 'j',
             }
         )
+        .option(
+            'verbose',
+            {
+                type: 'boolean',
+                default: false,
+                demandOption: false,
+                alias: 'v',
+            }
+        )
         .example('$0 policy --json', 'List all policies, output as json, pipeable');
 }
