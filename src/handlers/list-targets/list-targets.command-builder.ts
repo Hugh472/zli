@@ -91,6 +91,15 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
                 alias: 'j',
             }
         )
+        .option(
+            'verbose',
+            {
+                type: 'boolean',
+                default: false,
+                demandOption: false,
+                alias: 'v',
+            }
+        )
         .example('$0 lt -t ssm', 'List all SSM targets only')
         .example('$0 lt -i', 'List all targets and show unique ids')
         .example('$0 lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');

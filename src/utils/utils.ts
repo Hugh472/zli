@@ -45,7 +45,7 @@ export const targetStringExample : string = '[targetUser@]<targetId-or-targetNam
 
 export function parseTargetType(targetType: string) : TargetType
 {
-    const connectionTypePattern = /^(ssmtarget|dynamicaccessconfig|cluster)$/i; // case insensitive check for targetType
+    const connectionTypePattern = /^(ssmtarget|dynamicaccessconfig|cluster|bzero|db|web)$/i; // case insensitive check for targetType
 
     if(! connectionTypePattern.test(targetType))
         return undefined;
@@ -57,6 +57,12 @@ export function parseTargetType(targetType: string) : TargetType
         return TargetType.DynamicAccessConfig;
     case TargetType.Cluster.toLowerCase():
         return TargetType.Cluster;
+    case TargetType.Bzero.toLowerCase():
+        return TargetType.Bzero;
+    case TargetType.Db.toLowerCase():
+        return TargetType.Db;
+    case TargetType.Web.toLowerCase():
+        return TargetType.Web;
     default:
         return undefined;
     }
@@ -170,8 +176,8 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentSum
 {
     // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
     const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16; // || 16 here means that when there are no targets default the length to 16
-    const envNameLength = max(envs.map(e => e.name.length)) + 2 < 16 ? 16 : max(envs.map(e => e.name.length));
-    const targetTypeLength = max(targets.map(t => t.type.length)) + 2;
+    const envNameLength = max([max(envs.map(e => e.name.length)) + 2, 16]);
+    const targetTypeLength = max([max(targets.map(t => t.type.length)) + 2, 6]);
 
     const header: string[] = ['Type', 'Name', 'Environment'];
     const columnWidths = [];
@@ -1012,4 +1018,10 @@ export function makeCaseInsensitive(argv: string[]) {
         baseCmd: argv[0],
         parsedArgv: argv
     };
+}
+
+export function isZliSilent(silent_flag: boolean, json_flag: boolean, verbose_flag: boolean) {
+    if(silent_flag) return true;
+    else if(json_flag && !verbose_flag) return true;
+    return false;
 }

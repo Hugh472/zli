@@ -4,8 +4,9 @@ import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { GAService } from '../services/Tracking/google-analytics.service';
+import { MixpanelService } from '../services/Tracking/mixpanel.service';
 import { TargetSummary } from '../../webshell-common-ts/http/v2/target/targetSummary.types';
-import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { TargetType } from '../../webshell-common-ts/http/v2/target/types/target.types';
 import { DynamicAccessConfigHttpService } from '../http-services/targets/dynamic-access/dynamic-access-config.http-services';
 import { EnvironmentHttpService } from '../http-services/environment/environment.http-services';
@@ -13,6 +14,7 @@ import { EnvironmentSummary } from '../../webshell-common-ts/http/v2/environment
 import { KubeHttpService } from '../http-services/targets/kube/kube.http-services';
 import { KubeClusterSummary } from '../../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { SsmTargetHttpService } from '../http-services/targets/ssm/ssm-target.http-services';
+import { isZliSilent } from '../utils/utils';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
@@ -83,6 +85,19 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     };
 }
 
+/*
+ * Helper function to get our GA tracking middleware and track our cli command
+*/
+export async function GATrackingMiddleware(configService: ConfigService, baseCommand: string, logger: Logger, version: string, argvPassed: any,) {
+    // GA tracking
+    const gaService: GAService = new GAService(configService, logger, baseCommand, argvPassed, version);
+
+    // Capturing configName flag does not matter as that is handled by which GA token is used
+    // We slice(1) in order to not capture the baseCommand
+    await gaService.TrackCliCommand();
+    return gaService;
+}
+
 export function mixpanelTrackingMiddleware(configService: ConfigService, argv: any) {
     // Mixpanel tracking
     const mixpanelService = new MixpanelService(configService);
@@ -99,7 +114,7 @@ export async function oAuthMiddleware(configService: ConfigService, logger: Logg
     // OAuth
     await oauthMiddleware(configService, logger);
     const me = configService.me(); // if you have logged in, this should be set
-    const sessionId = configService.sessionId();
+    const sessionId = configService.getSessionId();
     logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
 }
 
@@ -107,7 +122,8 @@ export function initLoggerMiddleware(argv: any) {
     // Configure our logger
     const loggerConfigService = new LoggerConfigService(<string> argv.configName, argv.configDir);
 
-    const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent, !!process.stdout.isTTY);
+    const isSilent = isZliSilent(!!argv.silent, !!argv.json, !!argv.verbose);
+    const logger = new Logger(loggerConfigService, !!argv.debug, isSilent, !!process.stdout.isTTY);
 
     // isTTY detects whether the process is being run with a text terminal
     // ("TTY") attached. This way we detect whether we should connect

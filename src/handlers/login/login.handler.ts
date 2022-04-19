@@ -6,12 +6,12 @@ import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.se
 import qrcode from 'qrcode';
 import yargs from 'yargs';
 import { loginArgs } from './login.command-builder';
-import { UserRegisterResponse } from '../../services/v1/user/user.messages';
 import prompts, { PromptObject } from 'prompts';
 import { MfaHttpService } from '../../http-services/mfa/mfa.http-services';
 import { UserHttpService } from '../../http-services/user/user.http-services';
 import { UserSummary } from '../../../webshell-common-ts/http/v2/user/types/user-summary.types';
 import { MfaActionRequired } from '../../../webshell-common-ts/http/v2/mfa/types/mfa-action-required.types';
+import { UserRegisterResponse } from '../../../webshell-common-ts/http/v2/user/responses/user-register.responses';
 
 export interface LoginResult {
     userSummary: UserSummary;
@@ -62,10 +62,9 @@ export async function login(keySplittingService: KeySplittingService, configServ
         }, nonce);
     }
 
-    // Register user log in and get User Session Id
+    // Register user log in and get User Session Id and Session Token
     const userHttpService = new UserHttpService(configService, logger);
     const registerResponse = await userHttpService.Register();
-    configService.setSessionId(registerResponse.userSessionId);
 
     // Check if we must MFA and act upon it
     const mfaHttpService = new MfaHttpService(configService, logger);

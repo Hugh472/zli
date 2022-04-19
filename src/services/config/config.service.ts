@@ -6,7 +6,6 @@ import path from 'path';
 import { Observable, Subject } from 'rxjs';
 import { DbConfig, getDefaultDbConfig } from '../db/db.service';
 import { WebConfig, getDefaultWebConfig } from '../web/web.service';
-import { TokenService } from '../v1/token/token.service';
 import { UserSummary } from '../v1/user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../v1/kube/kube.service';
 import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
@@ -21,9 +20,11 @@ type BastionZeroConfigSchema = {
     serviceUrl: string,
     tokenSet: TokenSetParameters,
     callbackListenerPort: number,
-    mixpanelToken: string,
+    GAToken: string,
+    MixpanelToken: string,
     idp: IdentityProvider,
     sessionId: string,
+    sessionToken: string,
     whoami: UserSummary,
     sshKeyPath: string
     keySplitting: KeySplittingConfigSchema,
@@ -66,9 +67,11 @@ export class ConfigService implements ConfigInterface {
                 serviceUrl:  appName ? this.getServiceUrl(appName) : undefined,
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
                 callbackListenerPort: 0, // if the port is 0, the oauth.service will ask the OS for available port
-                mixpanelToken: undefined,
+                GAToken: undefined,
+                MixpanelToken: undefined,
                 idp: undefined,
                 sessionId: undefined,
+                sessionToken: undefined,
                 whoami: undefined,
                 sshKeyPath: undefined,
                 keySplitting: getDefaultKeysplittingConfig(),
@@ -93,7 +96,7 @@ export class ConfigService implements ConfigInterface {
             process.exit(1);
         }
 
-        this.tokenHttpService = new TokenService(this, logger);
+        this.tokenHttpService = new TokenHttpService(this, logger);
 
         this.config.onDidChange('tokenSet',
             (newValue : TokenSetParameters, oldValue : TokenSetParameters) => {
@@ -122,6 +125,10 @@ export class ConfigService implements ConfigInterface {
 
     public configPath(): string {
         return this.config.path;
+    }
+
+    public GAToken(): string {
+        return this.config.get('GAToken');
     }
 
     public mixpanelToken(): string {
@@ -165,16 +172,32 @@ export class ConfigService implements ConfigInterface {
         return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`;
     }
 
+    public getIdToken(): string {
+        return this.tokenSet().id_token;
+    }
+
+    public getAccessToken(): string {
+        return this.tokenSet().access_token;
+    }
+
     public getAuth(): string {
         return this.tokenSet().id_token;
     }
 
-    public sessionId(): string {
+    public getSessionId(): string {
         return this.config.get('sessionId');
+    }
+
+    public getSessionToken(): string {
+        return this.config.get('sessionToken');
     }
 
     public setSessionId(sessionId: string): void {
         this.config.set('sessionId', sessionId);
+    }
+
+    public setSessionToken(sessionToken: string): void {
+        this.config.set('sessionToken', sessionToken);
     }
 
     public setTokenSet(tokenSet: TokenSet): void {
@@ -209,10 +232,22 @@ export class ConfigService implements ConfigInterface {
     {
         this.config.delete('tokenSet');
         this.config.delete('keySplitting');
+        this.config.delete('sessionToken');
+    }
+
+    public async fetchGAToken() {
+        // fetch GA token from backend
+        const GAToken = await this.getGAToken();
+        this.config.set('GAToken', GAToken);
+    }
+
+    public deleteSessionId(): void
+    {
+        this.config.delete('sessionId');
     }
 
     public async fetchMixpanelToken() {
-        // fetch mixpanel token from backend
+        // fetch Mixpanel token from backend
         const mixpanelToken = await this.getMixpanelToken();
         this.config.set('mixpanelToken', mixpanelToken);
     }
@@ -244,7 +279,6 @@ export class ConfigService implements ConfigInterface {
         }
 
         // Clear previous login information
-        this.config.delete('sessionId');
         this.config.delete('whoami');
     }
 
@@ -313,13 +347,16 @@ export class ConfigService implements ConfigInterface {
         case IdentityProvider.Google:
             return 'openid email profile';
         case IdentityProvider.Microsoft:
-            // both openid and offline_access must be set for refresh token
-            return 'offline_access openid email profile';
+            return 'offline_access openid email profile User.Read';
         case IdentityProvider.Okta:
             return 'offline_access openid email profile';
         default:
             throw new Error(`Unknown idp ${idp}`);
         }
+    }
+
+    private async getGAToken(): Promise<string> {
+        return (await this.tokenHttpService.getGAToken())?.token;
     }
 
     private async getMixpanelToken(): Promise<string> {

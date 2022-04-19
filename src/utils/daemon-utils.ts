@@ -323,7 +323,8 @@ export function getBaseDaemonArgs(configService: ConfigService, loggerConfigServ
     const entryPoint = getAppEntrypoint();
 
     return [
-        `-sessionId=${configService.sessionId()}`,
+        `-sessionId=${configService.getSessionId()}`,
+        `-sessionToken=${configService.getSessionToken()}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-configPath=${configService.configPath()}`,

@@ -2,7 +2,8 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
+import { GAService } from '../../services/Tracking/google-analytics.service';
+import { MixpanelService } from '../../services/Tracking/mixpanel.service';
 import { readFile } from '../../utils/utils';
 import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 import { OAuthService } from '../../services/oauth/oauth.service';
@@ -208,6 +209,14 @@ export async function quickstartHandler(
 
     // New step so clear screen
     clearScreen();
+
+    // We cannot create the GAService until the user has logged in
+    if (!configService.GAToken()) {
+        // Fetch the GA token in case it is not set (first time user)
+        await configService.fetchGAToken();
+    }
+    const gaService = new GAService(configService, logger, 'quickstart', [], version);
+    await gaService.TrackCliCommand();
 
     // We cannot create the MixpanelService until the user has logged in
     if (!configService.mixpanelToken()) {

@@ -13,16 +13,18 @@ import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { OAuthService } from './services/oauth/oauth.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { TargetSummary } from '../webshell-common-ts/http/v2/target/targetSummary.types';
-import { MixpanelService } from './services/mixpanel/mixpanel.service';
+import { GAService } from './services/Tracking/google-analytics.service';
+import { MixpanelService } from './services/Tracking/mixpanel.service';
 import { PolicyType } from './services/v1/policy/policy.types';
 import { TargetType } from '../webshell-common-ts/http/v2/target/types/target.types';
 import { TargetStatus } from '../webshell-common-ts/http/v2/target/types/targetStatus.types';
+import { TargetSummary } from '../webshell-common-ts/http/v2/target/targetSummary.types';
 import { KubeClusterSummary } from '../webshell-common-ts/http/v2/target/kube/types/kube-cluster-summary.types';
 import { EnvironmentSummary } from '../webshell-common-ts/http/v2/environment/types/environment-summary.responses';
+import { version } from '../package.json';
 
 // Handlers
-import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
+import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, GATrackingMiddleware, initLoggerMiddleware, mixpanelTrackingMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy/ssh-proxy.handler';
 import { loginHandler } from './handlers/login/login.handler';
@@ -109,6 +111,7 @@ export class CliDriver
     private loggerConfigService: LoggerConfigService;
     private logger: Logger;
 
+    private GAService: GAService;
     private mixpanelService: MixpanelService;
 
     private ssmTargets: Promise<TargetSummary[]>;
@@ -141,7 +144,7 @@ export class CliDriver
         'generate-bash'
     ]);
 
-    private mixpanelCommands: Set<string> = new Set([
+    private GACommands: Set<string> = new Set([
         'kube',
         'ssh-proxy-config',
         'connect',
@@ -223,8 +226,39 @@ export class CliDriver
                 this.configService = initResponse.configService;
                 this.keySplittingService = initResponse.keySplittingService;
             })
-            .middleware(async () => {
-                if(!this.oauthCommands.has(baseCmd))
+            .middleware(async (_) => {
+                if(!this.GACommands.has(baseCmd)) {
+                    this.GAService = null;
+                    return;
+                }
+
+                // Attempt to re-get the token if we dont have it
+                if(! this.configService.GAToken()) {
+                    await this.configService.fetchGAToken();
+                }
+
+                let argvPassed: any = [];
+                if (!isSystemTest) {
+                    // If we are not running a system tests, attempt to extract the args passed
+                    argvPassed = process.argv.slice(3);
+                }
+                this.GAService = await GATrackingMiddleware(this.configService, baseCmd, this.logger, version, argvPassed);
+
+                // We set the GA service here since it would otherwise be a circular dependency and we need the configService
+                // to be initialized prior
+                this.logger.setGAService(this.GAService);
+            })
+
+            .middleware(async (argv) => {
+                if(!this.GACommands.has(baseCmd))
+                    return;
+                if(! this.configService.mixpanelToken()) {
+                    await this.configService.fetchMixpanelToken();
+                }
+                this.mixpanelService = mixpanelTrackingMiddleware(this.configService, argv);
+            })
+            .middleware(async (_) => {
+                if(!(this.oauthCommands.has(baseCmd)))
                     return;
                 await checkVersionMiddleware(this.configService, this.logger);
             })
@@ -238,14 +272,6 @@ export class CliDriver
                     this.logger.error(`This is an admin restricted command. Please login as an admin to perform it.`);
                     await cleanExit(1, this.logger);
                 }
-            })
-            .middleware(async (argv) => {
-                if(!this.mixpanelCommands.has(baseCmd))
-                    return;
-                if(! this.configService.mixpanelToken())
-                    await this.configService.fetchMixpanelToken();
-
-                this.mixpanelService = mixpanelTrackingMiddleware(this.configService, argv);
             })
             .middleware(() => {
                 if(!this.fetchCommands.has(baseCmd))
@@ -267,8 +293,7 @@ export class CliDriver
 
                     if (loginResult) {
                         const me = loginResult.userSummary;
-                        const registerResponse = loginResult.userRegisterResponse;
-                        this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`);
+                        this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${this.configService.getSessionId()}`);
                         await cleanExit(0, this.logger);
                     } else {
                         await cleanExit(1, this.logger);

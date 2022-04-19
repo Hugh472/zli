@@ -13,6 +13,7 @@ import { parse as QueryStringParse } from 'query-string';
 import { parseIdpType, randomAlphaNumericString } from '../../utils/utils';
 import { check as checkTcpPort } from 'tcp-port-used';
 import { RefreshTokenError, UserNotLoggedInError } from './oauth.service.types';
+import { UserHttpService } from '../../../src/http-services/user/user.http-services';
 
 // Do not remove any of these, clients have integrations set up based on these!
 const callbackPorts: number[] = [49172, 51252, 58243, 59360, 62109];
@@ -236,7 +237,7 @@ export class OAuthService implements IDisposable {
         if(tokenSet === undefined)
             return false;
 
-        return ! this.isIdTokenExpired(tokenSet);
+        return !tokenSet.expired() && !this.isIdTokenExpired(tokenSet);
     }
 
     private isIdTokenExpired(tokenSet: TokenSet): boolean
@@ -315,7 +316,7 @@ export class OAuthService implements IDisposable {
 
         // Refresh if the token exists and has expired
         if (tokenSet) {
-            if (this.isIdTokenExpired(tokenSet)) {
+            if (!this.isAuthenticated()) {
                 this.logger.debug('Refreshing oauth token');
 
                 let newTokenSet: TokenSet;
@@ -332,6 +333,9 @@ export class OAuthService implements IDisposable {
 
                 this.configService.setTokenSet(newTokenSet);
                 this.logger.debug('Oauth token refreshed');
+
+                const userHttpService = new UserHttpService(this.configService, this.logger);
+                await userHttpService.Register();
             }
         } else {
             throw new UserNotLoggedInError();
@@ -350,6 +354,12 @@ export class OAuthService implements IDisposable {
         let idToken: string;
         try {
             idToken = await this.getIdToken();
+
+            // If the OIDC tokens are not expired but there is no sessionId/Token
+            // or the registration did not create/update properly a new set of sessionId/Token
+            if (!this.configService.getSessionId() || !this.configService.getSessionToken())
+                throw new UserNotLoggedInError();
+
         } catch (e) {
             this.logger.debug(`Get id token error: ${e.message}`);
             if (e instanceof RefreshTokenError) {

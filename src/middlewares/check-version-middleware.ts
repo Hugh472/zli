@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import got from 'got/dist/source';
-import { SemVer } from 'semver';
+import { SemVer, gt } from 'semver';
 import { cleanExit } from '../handlers/clean-exit.handler';
 
 import { name as appName, version } from '../../package.json';
@@ -33,7 +33,7 @@ class CheckVersionMiddleware {
         const latestVersion = new SemVer(manifestFile.version);
         const currentVersion = new SemVer(version);
 
-        if (latestVersion > currentVersion) {
+        if (gt(latestVersion, currentVersion)) {
             logger.warn(`New version of ${appName} available: ${latestVersion} (current version ${currentVersion})`);
         }
 

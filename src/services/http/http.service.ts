@@ -4,22 +4,39 @@ import { ConfigService } from '../config/config.service';
 import FormData from 'form-data';
 import { Logger } from '../logger/logger.service';
 import { URLSearchParams } from 'url';
+import {Cookie, CookieJar} from 'tough-cookie';
 
 export class HttpService {
     // ref for got: https://github.com/sindresorhus/got
     protected httpClient: Got;
-    private baseUrl: string;
+    protected baseUrl: string;
     protected configService: ConfigService;
     private authorized: boolean;
     protected logger: Logger;
+    protected cookieJar: CookieJar;
 
     constructor(configService: ConfigService, serviceRoute: string, logger: Logger, authorized: boolean = true) {
         this.configService = configService;
         this.authorized = authorized;
         this.logger = logger;
         this.baseUrl = `${this.configService.serviceUrl()}${serviceRoute}`;
+        this.cookieJar = new CookieJar();
+
+        const sessionId = this.configService.getSessionId();
+        if (sessionId) {
+            const sessionIdCookie = new Cookie({key: 'sessionId', value: sessionId, path: '/', secure: true, sameSite: 'Strict'});
+            this.cookieJar.setCookieSync(sessionIdCookie, this.baseUrl);
+        }
+
+        const sessionToken = this.configService.getSessionToken();
+        if (sessionToken) {
+            const sessionTokenCookie = new Cookie({key: 'sessionToken', value: sessionToken, path: '/', secure: true, sameSite: 'Strict'});
+            this.cookieJar.setCookieSync(sessionTokenCookie, this.baseUrl);
+        }
+
 
         this.httpClient = got.extend({
+            cookieJar: this.cookieJar,
             prefixUrl: this.baseUrl,
             // Remember to set headers before calling API
             hooks: {
@@ -40,8 +57,8 @@ export class HttpService {
     private setHeaders(extraHeaders? : Dictionary<string>) {
         const headers: Dictionary<string> = extraHeaders ?? {};
 
+        //TODO : This could eventually be transitioned to a cookie as well
         if (this.authorized) headers['Authorization'] = this.configService.getAuthHeader();
-        if (this.authorized && this.configService.sessionId()) headers['X-Session-Id'] = this.configService.sessionId();
 
         // append headers
         this.httpClient = this.httpClient.extend({ headers: headers });
@@ -63,6 +80,18 @@ export class HttpService {
         }
 
         if (error.response.statusCode === 401) {
+            // 401 errors can have either a message in body or a custom
+            // backend exception in body
+
+            // In case of the custom exception
+            if (error.response.body) {
+                try {
+                    const parsedJSON = JSON.parse(error.response.body as string);
+                    errorMessage = JSON.stringify(parsedJSON.errorMsg.errorMessage);
+                } catch { // In case of a body message
+                    errorMessage = error.response.body as string;
+                }
+            }
             return `Authentication Error:\n${errorMessage}`;
         } else if (error.response.statusCode === 502) {
             return 'Service is offline';
@@ -100,7 +129,7 @@ export class HttpService {
                 route,
                 {
                     searchParams: queryParams,
-                    parseJson: text => JSON.parse(text),
+                    parseJson: text => JSON.parse(text)
                 }
             ).json();
             return resp;
